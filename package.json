@@ -1,0 +1,49 @@
+{
+  "name": "librus-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK and CLI for the Librus family portal flow.",
+  "type": "module",
+  "main": "dist/sdk/index.js",
+  "types": "dist/sdk/index.d.ts",
+  "bin": {
+    "librus": "dist/cli/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "cli": "tsx src/cli/main.ts",
+    "test": "vitest run"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "librus",
+    "sdk",
+    "cli",
+    "typescript"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^14.0.0",
+    "dotenv": "^17.2.3",
+    "fetch-cookie": "^3.1.0",
+    "tough-cookie": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
