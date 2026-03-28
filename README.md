@@ -54,7 +54,7 @@ npm run cli -- homework list --child <id-or-login>
 ```ts
 import { LibrusSession } from "librus-sdk";
 
-const session = new LibrusSession();
+const session = LibrusSession.fromEnv();
 const children = await session.listChildren();
 console.log(children);
 ```

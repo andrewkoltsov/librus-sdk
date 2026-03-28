@@ -59,6 +59,34 @@ describe("runCli", () => {
     expect(output.children[0]).not.toHaveProperty("accessToken");
   });
 
+  it("prints root help and exits successfully when no command is provided", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus"], {
+      stdout: { write: (chunk) => (stdout += chunk) },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => createSessionStub() as never,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toContain("Usage: librus");
+  });
+
+  it("prints root help and exits successfully for --help", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus", "--help"], {
+      stdout: { write: (chunk) => (stdout += chunk) },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => createSessionStub() as never,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toContain("Usage: librus");
+  });
+
   it("writes stable JSON errors to stderr", async () => {
     let stdout = "";
     let stderr = "";
@@ -76,6 +104,20 @@ describe("runCli", () => {
     expect(stdout).toBe("");
     expect(output.error.code).toBe("CONFIGURATION_ERROR");
     expect(output.error.message).toBe("Missing portal credentials.");
+  });
+
+  it("keeps usage errors as failures", async () => {
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus", "grades", "list"], {
+      stdout: { write: () => undefined },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => createSessionStub() as never,
+    });
+
+    const output = parseJson<{ error: { code: string; message: string } }>(stderr);
+
+    expect(exitCode).not.toBe(0);
+    expect(output.error.code).toBe("CLI_USAGE_ERROR");
   });
 
   it("does not leak bearer tokens in error payloads", async () => {

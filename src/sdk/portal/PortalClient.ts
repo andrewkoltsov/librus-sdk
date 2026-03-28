@@ -69,8 +69,12 @@ export class PortalClient {
     try {
       await this.getMe();
       this.loggedIn = true;
-    } catch {
-      throw new LibrusAuthenticationError();
+    } catch (error) {
+      if (error instanceof LibrusApiError && error.details?.status === 401) {
+        throw new LibrusAuthenticationError();
+      }
+
+      throw error;
     }
   }
 
