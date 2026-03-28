@@ -1,6 +1,6 @@
 {
   "name": "librus-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK and CLI for the Librus family portal flow.",
   "type": "module",
   "main": "dist/sdk/index.js",

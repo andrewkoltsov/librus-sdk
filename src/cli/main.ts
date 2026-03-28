@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { config as loadDotEnv } from "dotenv";
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { LibrusSession } from "../sdk/index.js";
@@ -56,7 +57,21 @@ export async function runCli(argv = process.argv, context = createDefaultCliCont
   }
 }
 
-const isEntryPoint = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+export function isCliEntryPoint(argv = process.argv, moduleUrl = import.meta.url): boolean {
+  const entryPath = argv[1];
+
+  if (!entryPath) {
+    return false;
+  }
+
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(entryPath)).href;
+  } catch {
+    return moduleUrl === pathToFileURL(entryPath).href;
+  }
+}
+
+const isEntryPoint = isCliEntryPoint();
 
 if (isEntryPoint) {
   loadDotEnv({ quiet: true });
