@@ -5,8 +5,8 @@ export interface PortalCredentials {
 
 export interface PortalSubscription {
   state?: string;
-  purchase?: unknown | null;
-  slots?: unknown | null;
+  purchase?: Record<string, unknown> | null;
+  slots?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 

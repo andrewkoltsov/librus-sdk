@@ -1,11 +1,22 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { isCliEntryPoint, runCli } from "../src/cli/main.js";
-import { LibrusSdkError, type ChildAccount, type ChildAccountSummary } from "../src/sdk/index.js";
+import {
+  LibrusSdkError,
+  type ChildAccount,
+  type ChildAccountSummary,
+} from "../src/sdk/index.js";
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
   return {
@@ -51,7 +62,10 @@ describe("runCli", () => {
       createSession: () => createSessionStub() as never,
     });
 
-    const output = parseJson<{ lastModification: number; children: ChildAccountSummary[] }>(stdout);
+    const output = parseJson<{
+      lastModification: number;
+      children: ChildAccountSummary[];
+    }>(stdout);
 
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
@@ -94,11 +108,16 @@ describe("runCli", () => {
       stdout: { write: (chunk) => (stdout += chunk) },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => {
-        throw new LibrusSdkError("CONFIGURATION_ERROR", "Missing portal credentials.");
+        throw new LibrusSdkError(
+          "CONFIGURATION_ERROR",
+          "Missing portal credentials.",
+        );
       },
     });
 
-    const output = parseJson<{ error: { code: string; message: string } }>(stderr);
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
 
     expect(exitCode).toBe(1);
     expect(stdout).toBe("");
@@ -114,7 +133,9 @@ describe("runCli", () => {
       createSession: () => createSessionStub() as never,
     });
 
-    const output = parseJson<{ error: { code: string; message: string } }>(stderr);
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
 
     expect(exitCode).not.toBe(0);
     expect(output.error.code).toBe("CLI_USAGE_ERROR");
@@ -126,10 +147,14 @@ describe("runCli", () => {
       stdout: { write: () => undefined },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => {
-        throw new LibrusSdkError("API_REQUEST_FAILED", "Synergia API request failed", {
-          endpoint: "https://api.librus.pl/3.0/Grades",
-          status: 401,
-        });
+        throw new LibrusSdkError(
+          "API_REQUEST_FAILED",
+          "Synergia API request failed",
+          {
+            endpoint: "https://api.librus.pl/3.0/Grades",
+            status: 401,
+          },
+        );
       },
     });
 
@@ -137,21 +162,58 @@ describe("runCli", () => {
     expect(stderr).not.toContain("token-secret");
     expect(stderr).not.toContain("Bearer ");
   });
+
+  it("keeps validation errors compact and secret-safe", async () => {
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus", "children", "list"], {
+      stdout: { write: () => undefined },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => {
+        throw new LibrusSdkError(
+          "RESPONSE_VALIDATION_FAILED",
+          "Received an unexpected response from Librus.",
+          {
+            endpoint: "https://api.librus.pl/3.0/Grades",
+            issues: ["Grades.0.Grade: Invalid type"],
+          },
+        );
+      },
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("RESPONSE_VALIDATION_FAILED");
+    expect(stderr).not.toContain("Bearer ");
+    expect(stderr).not.toContain("super-secret");
+  });
 });
 
 describe("isCliEntryPoint", () => {
   it("matches symlinked cli paths to the real module file", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-cli-"));
     const realEntryPath = join(tempDir, "dist", "cli", "main.js");
-    const symlinkedEntryPath = join(tempDir, "node_modules", "librus-sdk", "dist", "cli", "main.js");
+    const symlinkedEntryPath = join(
+      tempDir,
+      "node_modules",
+      "librus-sdk",
+      "dist",
+      "cli",
+      "main.js",
+    );
 
     mkdirSync(join(tempDir, "dist", "cli"), { recursive: true });
-    mkdirSync(join(tempDir, "node_modules", "librus-sdk", "dist", "cli"), { recursive: true });
+    mkdirSync(join(tempDir, "node_modules", "librus-sdk", "dist", "cli"), {
+      recursive: true,
+    });
     writeFileSync(realEntryPath, "// test entrypoint\n", { encoding: "utf8" });
     symlinkSync(realpathSync(realEntryPath), symlinkedEntryPath);
 
     try {
-      expect(isCliEntryPoint(["node", symlinkedEntryPath], pathToFileURL(realpathSync(realEntryPath)).href)).toBe(true);
+      expect(
+        isCliEntryPoint(
+          ["node", symlinkedEntryPath],
+          pathToFileURL(realpathSync(realEntryPath)).href,
+        ),
+      ).toBe(true);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -160,6 +222,11 @@ describe("isCliEntryPoint", () => {
   it("falls back to the original argv path when realpath resolution fails", () => {
     const missingEntryPath = "/tmp/librus-sdk-missing-main.js";
 
-    expect(isCliEntryPoint(["node", missingEntryPath], pathToFileURL(missingEntryPath).href)).toBe(true);
+    expect(
+      isCliEntryPoint(
+        ["node", missingEntryPath],
+        pathToFileURL(missingEntryPath).href,
+      ),
+    ).toBe(true);
   });
 });

@@ -3,6 +3,7 @@
 Date: 2026-03-27
 
 All notes below are sanitized:
+
 - no raw credentials
 - no raw bearer tokens
 - no child names
@@ -18,6 +19,7 @@ npm test
 ```
 
 Outcome:
+
 - build succeeded
 - test suite passed: 10 tests across 4 files
 
@@ -30,6 +32,7 @@ node dist/cli/main.js children list
 ```
 
 Outcome:
+
 - portal login succeeded using the local `.env`
 - `children list` returned exactly `2` linked child accounts
 
@@ -43,6 +46,7 @@ node dist/cli/main.js homework list --child <selected-child-id>
 ```
 
 Observed outcome on 2026-03-27 at approximately 23:06 Europe/Warsaw:
+
 - all four commands reached `https://api.librus.pl/3.0/...`
 - all four returned HTTP `503`
 - the live response body reported a planned maintenance window for the night of March 27/28, 2026, from `23:00` to `06:00`
@@ -53,6 +57,7 @@ Observed outcome on 2026-03-27 at approximately 23:06 Europe/Warsaw:
 ## Prior live API confirmation
 
 Before the maintenance window began, the family portal flow itself had already been confirmed against the same account during the research session captured in [librus-family-portal-research-2026-03-27.md](/Users/andreykoltsov/work/librus-sdk/docs/librus-family-portal-research-2026-03-27.md):
+
 - `portal/api/v3/SynergiaAccounts` returned both linked children
 - child bearer tokens worked against:
   - `GET https://api.librus.pl/3.0/Me`

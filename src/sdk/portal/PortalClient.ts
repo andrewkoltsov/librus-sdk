@@ -4,11 +4,16 @@ import type { FetchLike } from "../models/common.js";
 import {
   LibrusApiError,
   LibrusAuthenticationError,
-  type ChildAccount,
   type PortalCredentials,
   type PortalMe,
   type SynergiaAccountsResponse,
 } from "../models/index.js";
+import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
+import {
+  portalMeSchema,
+  synergiaAccountsResponseSchema,
+} from "../validation/schemas.js";
+import { parseApiResponse } from "../validation/responseValidation.js";
 
 export interface PortalClientOptions {
   fetch?: FetchLike;
@@ -30,9 +35,11 @@ export class PortalClient {
     const sessionFetch = createSessionFetch(options.fetch ?? fetch);
     this.fetchImpl = sessionFetch.fetch;
     this.portalBaseUrl = options.portalBaseUrl ?? "https://portal.librus.pl";
-    this.portalApiBaseUrl = options.portalApiBaseUrl ?? `${this.portalBaseUrl}/api/v3`;
+    this.portalApiBaseUrl =
+      options.portalApiBaseUrl ?? `${this.portalBaseUrl}/api/v3`;
     this.loginPath = options.loginPath ?? "/konto-librus/login";
-    this.loginActionPath = options.loginActionPath ?? "/konto-librus/login/action";
+    this.loginActionPath =
+      options.loginActionPath ?? "/konto-librus/login/action";
   }
 
   async login(credentials: PortalCredentials): Promise<void> {
@@ -53,14 +60,17 @@ export class PortalClient {
       _token: csrfToken,
     });
 
-    const loginActionResponse = await this.fetchImpl(this.buildUrl(this.portalBaseUrl, this.loginActionPath), {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        referer: loginPageUrl,
+    const loginActionResponse = await this.fetchImpl(
+      this.buildUrl(this.portalBaseUrl, this.loginActionPath),
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          referer: loginPageUrl,
+        },
+        body: form.toString(),
       },
-      body: form.toString(),
-    });
+    );
 
     if (!loginActionResponse.ok) {
       throw new LibrusAuthenticationError();
@@ -79,18 +89,27 @@ export class PortalClient {
   }
 
   async getMe(): Promise<PortalMe> {
-    return this.getPortalJson<PortalMe>("/Me");
+    const response = await this.getPortalJson("/Me", portalMeSchema);
+    const { subscription, ...rest } = response;
+
+    return subscription === undefined ? rest : { ...rest, subscription };
   }
 
   async getSynergiaAccounts(): Promise<SynergiaAccountsResponse> {
-    const response = await this.getPortalJson<SynergiaAccountsResponse & { accounts?: ChildAccount[] }>("/SynergiaAccounts");
+    const response = await this.getPortalJson(
+      "/SynergiaAccounts",
+      synergiaAccountsResponseSchema,
+    );
 
     return {
       ...response,
-      accounts: (response.accounts ?? []).map((account) => ({
-        ...account,
-        ...(Array.isArray(account.scopes) ? { scopes: account.scopes } : {}),
-      })),
+      accounts: response.accounts.map((account) => {
+        const { scopes, ...accountWithoutScopes } = account;
+
+        return Array.isArray(scopes)
+          ? { ...accountWithoutScopes, scopes }
+          : accountWithoutScopes;
+      }),
     };
   }
 
@@ -98,7 +117,9 @@ export class PortalClient {
     return this.loggedIn;
   }
 
-  private async getPortalJson<T>(path: string): Promise<T> {
+  private async getPortalJson<
+    TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+  >(path: string, schema: TSchema): Promise<InferOutput<TSchema>> {
     const endpoint = `${this.portalApiBaseUrl}${path}`;
     const response = await this.fetchImpl(endpoint, {
       method: "GET",
@@ -108,10 +129,14 @@ export class PortalClient {
     });
 
     if (!response.ok) {
-      throw new LibrusApiError(endpoint, response.status, "Portal API request failed");
+      throw new LibrusApiError(
+        endpoint,
+        response.status,
+        "Portal API request failed",
+      );
     }
 
-    return (await response.json()) as T;
+    return parseApiResponse(schema, await response.json(), endpoint);
   }
 
   private buildUrl(baseUrl: string, path: string): string {

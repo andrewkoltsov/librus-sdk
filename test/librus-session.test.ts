@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { LibrusSession } from "../src/sdk/LibrusSession.js";
 import { PortalClient } from "../src/sdk/portal/PortalClient.js";
 
-function createPortalClientStub(accounts: Array<Record<string, unknown>>): PortalClient {
+function createPortalClientStub(
+  accounts: Array<Record<string, unknown>>,
+): PortalClient {
   return {
     isLoggedIn: () => true,
     login: vi.fn(),

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.husky/_/
 .env
 .DS_Store
 .claude/

@@ -5,7 +5,9 @@ import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
 
 export function createHomeworkCommand(context: CliContext): Command {
   const homework = new Command("homework").description("Read child homework");
-  const list = addJsonOption(new Command("list").description("List homework for a child"));
+  const list = addJsonOption(
+    new Command("list").description("List homework for a child"),
+  );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
   list.action(async (options: { child: string }) => {

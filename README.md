@@ -36,6 +36,8 @@ npx librus grades list --child <id-or-login>
 
 ```bash
 npm install
+npm run lint
+npm run format:check
 npm run build
 npm run cli -- children list
 npm run cli -- grades list --child <id-or-login>

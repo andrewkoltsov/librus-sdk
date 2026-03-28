@@ -4,8 +4,12 @@ import type { CliContext } from "./common.js";
 import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
 
 export function createChildrenCommand(context: CliContext): Command {
-  const children = new Command("children").description("Manage linked child accounts");
-  const list = addJsonOption(new Command("list").description("List linked child accounts"));
+  const children = new Command("children").description(
+    "Manage linked child accounts",
+  );
+  const list = addJsonOption(
+    new Command("list").description("List linked child accounts"),
+  );
 
   list.action(async () => {
     const session = context.createSession();
