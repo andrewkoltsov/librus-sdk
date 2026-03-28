@@ -5,7 +5,9 @@ import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
 
 export function createGradesCommand(context: CliContext): Command {
   const grades = new Command("grades").description("Read child grades");
-  const list = addJsonOption(new Command("list").description("List grades for a child"));
+  const list = addJsonOption(
+    new Command("list").description("List grades for a child"),
+  );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
   list.action(async (options: { child: string }) => {

@@ -41,11 +41,18 @@ export function createProgram(context: CliContext): Command {
   return program;
 }
 
-export async function runCli(argv = process.argv, context = createDefaultCliContext()): Promise<number> {
+export async function runCli(
+  argv = process.argv,
+  context = createDefaultCliContext(),
+): Promise<number> {
   const program = createProgram(context);
   const userArgs = argv.slice(2);
 
-  if (userArgs.length === 0 || (userArgs.length === 1 && (userArgs[0] === "--help" || userArgs[0] === "-h"))) {
+  if (
+    userArgs.length === 0 ||
+    (userArgs.length === 1 &&
+      (userArgs[0] === "--help" || userArgs[0] === "-h"))
+  ) {
     context.stdout.write(program.helpInformation());
     return 0;
   }
@@ -60,11 +67,18 @@ export async function runCli(argv = process.argv, context = createDefaultCliCont
       error: formatCliError(error),
     });
 
-    return error instanceof Error && "exitCode" in error && typeof error.exitCode === "number" ? error.exitCode : 1;
+    return error instanceof Error &&
+      "exitCode" in error &&
+      typeof error.exitCode === "number"
+      ? error.exitCode
+      : 1;
   }
 }
 
-export function isCliEntryPoint(argv = process.argv, moduleUrl = import.meta.url): boolean {
+export function isCliEntryPoint(
+  argv = process.argv,
+  moduleUrl = import.meta.url,
+): boolean {
   const entryPath = argv[1];
 
   if (!entryPath) {

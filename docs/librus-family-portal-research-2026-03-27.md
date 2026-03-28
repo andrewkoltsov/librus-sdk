@@ -5,6 +5,7 @@ Date: 2026-03-27
 This note summarizes the reverse-engineering work done against a live parent `Konto LIBRUS` account with multiple children.
 
 Sensitive data is intentionally omitted:
+
 - no emails
 - no passwords
 - no access tokens
@@ -27,6 +28,7 @@ This is different from the old JS library and also different from the cookie-bas
 ### 1. Old `Mati365/librus-api` style flow is effectively broken for the tested account
 
 The current repository is a handwritten HTML scraping client:
+
 - `README.md` describes it as parsing HTML
 - `package.json` describes it as a scraping API
 - `lib/api.js` and `lib/resources/*.js` use `cheerio` and CSS selectors
@@ -38,6 +40,7 @@ On the live account, the old HTML pages returned `Brak dostępu` or `403`, so th
 #### A. Synergia cookie/session flow
 
 Previously verified through classic Librus auth:
+
 - login via `https://api.librus.pl/OAuth/Authorization?...`
 - then cookie-backed access to:
   - `https://synergia.librus.pl/gateway/api/2.0/Me`
@@ -49,6 +52,7 @@ This works for direct Synergia session auth, but not for the family portal child
 #### B. Family portal flow
 
 The family portal uses:
+
 - `https://portal.librus.pl/api/v3`
 - `https://api.librus.pl/3.0`
 
@@ -64,6 +68,7 @@ Verified flow:
 4. Session becomes logged in on `portal.librus.pl`
 
 After login:
+
 - `GET https://portal.librus.pl/api/v3/Me` returns portal account information
 - `GET https://portal.librus.pl/rodzina/home` returns the family portal shell page
 
@@ -74,11 +79,13 @@ The page embeds a widget iframe:
 - `/vendor/widget-librus/index.html?...&code=...`
 
 The widget bundle contains configuration pointing to:
+
 - `librusEndpoint: https://portal.librus.pl`
 - `librusEndpointApiVersion: /api/v3`
 - `synergiaEndpoint: https://api.librus.pl`
 
 This strongly suggests the family portal itself is built as:
+
 - portal account and integration management on `portal/api/v3`
 - educational data on `api.librus.pl/3.0`
 
@@ -89,6 +96,7 @@ Verified endpoint:
 - `GET https://portal.librus.pl/api/v3/SynergiaAccounts`
 
 Returned data includes one entry per linked child account. Each entry contains fields such as:
+
 - `id`
 - `accountIdentifier`
 - `group`
@@ -106,6 +114,7 @@ For each entry returned by `SynergiaAccounts`, its `accessToken` was tested as:
 `Authorization: Bearer <accessToken>`
 
 Verified working endpoints:
+
 - `GET https://api.librus.pl/3.0/Me`
 - `GET https://api.librus.pl/3.0/Grades`
 - `GET https://api.librus.pl/3.0/Attendances`
@@ -114,16 +123,19 @@ Verified working endpoints:
 These endpoints returned valid data for both child accounts.
 
 The returned counts differed between the two child accounts, which confirms that:
+
 - the token is already child-specific
 - the CLI does not need a mandatory server-side "switch active child" request to access data
 
 ### 7. These child tokens do not work on `gateway/api/2.0`
 
 Tested with the same `accessToken` values from `portal/api/v3/SynergiaAccounts`:
+
 - `GET https://synergia.librus.pl/gateway/api/2.0/Me`
 - `GET https://synergia.librus.pl/gateway/api/2.0/Auth/TokenInfo`
 
 Result:
+
 - `401 Unauthorized`
 
 So the family portal child tokens are for `https://api.librus.pl/3.0`, not for `gateway/api/2.0`.
@@ -131,6 +143,7 @@ So the family portal child tokens are for `https://api.librus.pl/3.0`, not for `
 ## Inference About Child Switching
 
 The widget bundle contains references like:
+
 - `setActiveAccount`
 - `currentSynergiaAccount`
 - `synergiaAccounts`
@@ -150,6 +163,7 @@ This means "switching child" in the portal is likely a client-side selection of 
 Do not continue from the old HTML scraping client as the main foundation.
 
 Build a new project with:
+
 - SDK/core
 - CLI
 - optional skill/tool wrapper on top
@@ -159,6 +173,7 @@ Recommended architecture:
 ### PortalClient
 
 Responsibilities:
+
 - login to `Konto LIBRUS`
 - manage portal cookies/session
 - fetch `portal/api/v3/Me`
@@ -167,6 +182,7 @@ Responsibilities:
 ### ChildAccount
 
 Represents one entry from `SynergiaAccounts`, for example:
+
 - `id`
 - `login`
 - `accountIdentifier`
@@ -177,6 +193,7 @@ Represents one entry from `SynergiaAccounts`, for example:
 ### SynergiaApiClient
 
 Responsibilities:
+
 - accept a child `accessToken`
 - send `Bearer` requests to `https://api.librus.pl/3.0`
 - expose methods like:
@@ -188,6 +205,7 @@ Responsibilities:
 ### CLI
 
 Suggested commands:
+
 - `librus login`
 - `librus children list`
 - `librus child use <id>`
@@ -201,6 +219,7 @@ Suggested commands:
 Recommended.
 
 The preferred approach is:
+
 - one repository
 - SDK/core as the real domain layer
 - CLI as the first consumer of the SDK
@@ -226,6 +245,7 @@ src/
 ## TypeScript vs Python
 
 For this project, TypeScript is a good default choice if the goal is:
+
 - a reusable SDK
 - a clean CLI
 - typed response models
@@ -252,6 +272,7 @@ Python would be fine for a quick private tool, but TypeScript is the better fit 
 ### Notes from widget bundle
 
 The family portal widget contains strings indicating:
+
 - `portal/api/v3`
 - `api.librus.pl/3.0`
 - account list handling
@@ -260,18 +281,22 @@ The family portal widget contains strings indicating:
 ## Suggested Repository Names
 
 Best candidate:
+
 - `librus-sdk`
 
 Good alternatives:
+
 - `librus-family-sdk`
 - `librus-portal-sdk`
 - `librus-toolkit`
 - `librus-parent-sdk`
 
 If the main public surface is CLI-first:
+
 - `librus-cli`
 
 If the main goal is SDK + CLI together and the name should stay broad:
+
 - `librus-sdk` is still the strongest option.
 
 ## Short Recommendation

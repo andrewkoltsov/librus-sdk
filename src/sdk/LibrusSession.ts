@@ -1,5 +1,11 @@
-import { PortalClient, type PortalClientOptions } from "./portal/PortalClient.js";
-import { SynergiaApiClient, type SynergiaApiClientOptions } from "./synergia/SynergiaApiClient.js";
+import {
+  PortalClient,
+  type PortalClientOptions,
+} from "./portal/PortalClient.js";
+import {
+  SynergiaApiClient,
+  type SynergiaApiClientOptions,
+} from "./synergia/SynergiaApiClient.js";
 import {
   LibrusConfigurationError,
   LibrusSdkError,
@@ -24,7 +30,8 @@ export class LibrusSession {
 
   constructor(options: LibrusSessionOptions) {
     this.credentials = options.credentials;
-    this.portalClient = options.portalClient ?? new PortalClient(options.portalClientOptions);
+    this.portalClient =
+      options.portalClient ?? new PortalClient(options.portalClientOptions);
     this.synergiaClientOptions = options.synergiaClientOptions;
   }
 
@@ -86,21 +93,33 @@ export class LibrusSession {
     }
 
     if (byLogin.length > 1) {
-      throw new LibrusSdkError("AMBIGUOUS_CHILD", `Multiple child accounts matched selector "${selector}".`, {
-        matches: byLogin.map((child) => ({
-          id: child.id,
-          login: child.login,
-          group: child.group,
-          state: child.state,
-        })),
-      });
+      throw new LibrusSdkError(
+        "AMBIGUOUS_CHILD",
+        `Multiple child accounts matched selector "${selector}".`,
+        {
+          matches: byLogin.map((child) => ({
+            id: child.id,
+            login: child.login,
+            group: child.group,
+            state: child.state,
+          })),
+        },
+      );
     }
 
-    throw new LibrusSdkError("CHILD_NOT_FOUND", `No child account matched selector "${selector}".`);
+    throw new LibrusSdkError(
+      "CHILD_NOT_FOUND",
+      `No child account matched selector "${selector}".`,
+    );
   }
 
-  async forChild(selectorOrChild: string | ChildAccount): Promise<SynergiaApiClient> {
-    const child = typeof selectorOrChild === "string" ? await this.resolveChild(selectorOrChild) : selectorOrChild;
+  async forChild(
+    selectorOrChild: string | ChildAccount,
+  ): Promise<SynergiaApiClient> {
+    const child =
+      typeof selectorOrChild === "string"
+        ? await this.resolveChild(selectorOrChild)
+        : selectorOrChild;
     return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
   }
 }

@@ -7,6 +7,14 @@ import {
   type HomeWorksResponse,
   type SynergiaMeResponse,
 } from "../models/index.js";
+import {
+  attendancesResponseSchema,
+  gradesResponseSchema,
+  homeWorksResponseSchema,
+  synergiaMeResponseSchema,
+} from "../validation/schemas.js";
+import { parseApiResponse } from "../validation/responseValidation.js";
+import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 
 export interface SynergiaApiClientOptions {
   fetch?: FetchLike;
@@ -25,22 +33,24 @@ export class SynergiaApiClient {
   }
 
   getMe(): Promise<SynergiaMeResponse> {
-    return this.getJson<SynergiaMeResponse>("/Me");
+    return this.getJson("/Me", synergiaMeResponseSchema);
   }
 
   getGrades(): Promise<GradesResponse> {
-    return this.getJson<GradesResponse>("/Grades");
+    return this.getJson("/Grades", gradesResponseSchema);
   }
 
   getAttendances(): Promise<AttendancesResponse> {
-    return this.getJson<AttendancesResponse>("/Attendances");
+    return this.getJson("/Attendances", attendancesResponseSchema);
   }
 
   getHomeWorks(): Promise<HomeWorksResponse> {
-    return this.getJson<HomeWorksResponse>("/HomeWorks");
+    return this.getJson("/HomeWorks", homeWorksResponseSchema);
   }
 
-  private async getJson<T>(path: string): Promise<T> {
+  private async getJson<
+    TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>>,
+  >(path: string, schema: TSchema): Promise<InferOutput<TSchema>> {
     const endpoint = `${this.apiBaseUrl}${path}`;
     const response = await this.fetchImpl(endpoint, {
       method: "GET",
@@ -69,9 +79,13 @@ export class SynergiaApiClient {
         }
       }
 
-      throw new LibrusApiError(endpoint, response.status, "Synergia API request failed");
+      throw new LibrusApiError(
+        endpoint,
+        response.status,
+        "Synergia API request failed",
+      );
     }
 
-    return (await response.json()) as T;
+    return parseApiResponse(schema, await response.json(), endpoint);
   }
 }

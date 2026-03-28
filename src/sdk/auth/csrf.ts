@@ -1,11 +1,51 @@
-const LOGIN_TOKEN_PATTERN = /name="_token"\s+value="([^"]+)"/i;
+import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 
-export function extractPortalCsrfToken(html: string): string {
-  const match = LOGIN_TOKEN_PATTERN.exec(html);
+import { LibrusPortalPageError } from "../models/errors.js";
 
-  if (!match?.[1]) {
-    throw new Error("Unable to locate portal CSRF token");
+function isElementNode(
+  node: DefaultTreeAdapterTypes.ChildNode,
+): node is DefaultTreeAdapterTypes.Element {
+  return "tagName" in node && "attrs" in node;
+}
+
+function findCsrfToken(
+  node: DefaultTreeAdapterTypes.ParentNode,
+): string | undefined {
+  for (const child of node.childNodes) {
+    if (isElementNode(child)) {
+      const nameAttr = child.attrs.find(
+        (attribute) => attribute.name === "name",
+      );
+      const valueAttr = child.attrs.find(
+        (attribute) => attribute.name === "value",
+      );
+
+      if (
+        child.tagName === "input" &&
+        nameAttr?.value === "_token" &&
+        valueAttr?.value
+      ) {
+        return valueAttr.value;
+      }
+
+      const token = findCsrfToken(child);
+
+      if (token) {
+        return token;
+      }
+    }
   }
 
-  return match[1];
+  return undefined;
+}
+
+export function extractPortalCsrfToken(html: string): string {
+  const document = parseFragment(html);
+  const token = findCsrfToken(document);
+
+  if (!token) {
+    throw new LibrusPortalPageError();
+  }
+
+  return token;
 }
