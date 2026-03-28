@@ -62,4 +62,41 @@ describe("SynergiaApiClient", () => {
       );
     }
   });
+
+  it("accepts attendance payloads without a Trip field", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          Attendances: [
+            {
+              Id: "1",
+              Lesson: { Id: 2, Url: "https://api.librus.pl/3.0/Lessons/2" },
+              Student: { Id: 3, Url: "https://api.librus.pl/3.0/Students/3" },
+              Date: "2026-03-28",
+              AddDate: "2026-03-28 08:00:00",
+              LessonNo: 1,
+              Semester: 2,
+              Type: {
+                Id: 4,
+                Url: "https://api.librus.pl/3.0/AttendanceTypes/4",
+              },
+              AddedBy: { Id: 5, Url: "https://api.librus.pl/3.0/Users/5" },
+            },
+          ],
+          Resources: {},
+          Url: "https://api.librus.pl/3.0/Attendances",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+    const response = await client.getAttendances();
+
+    expect(response.Attendances).toHaveLength(1);
+    expect(response.Attendances[0]?.Trip).toBeUndefined();
+  });
 });

@@ -42,7 +42,7 @@ export interface Attendance {
   Id: string;
   Lesson: ApiRef;
   Student: ApiRef;
-  Trip: ApiRef;
+  Trip?: ApiRef | undefined;
   Date: string;
   AddDate: string;
   LessonNo: number;

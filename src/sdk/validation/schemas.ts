@@ -76,7 +76,7 @@ const attendanceSchema = v.looseObject({
   LessonNo: v.number(),
   Semester: v.number(),
   Student: apiRefSchema,
-  Trip: apiRefSchema,
+  Trip: v.optional(apiRefSchema),
   Type: apiRefSchema,
 });
 
