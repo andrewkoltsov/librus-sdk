@@ -24,7 +24,7 @@ const childAccountSchema = v.looseObject({
   group: v.string(),
   id: v.number(),
   login: v.string(),
-  scopes: v.optional(v.array(v.string())),
+  scopes: v.optional(v.union([v.array(v.string()), v.literal("")])),
   state: v.string(),
   studentName: v.string(),
 });
