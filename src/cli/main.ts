@@ -43,6 +43,13 @@ export function createProgram(context: CliContext): Command {
 
 export async function runCli(argv = process.argv, context = createDefaultCliContext()): Promise<number> {
   const program = createProgram(context);
+  const userArgs = argv.slice(2);
+
+  if (userArgs.length === 0 || (userArgs.length === 1 && (userArgs[0] === "--help" || userArgs[0] === "-h"))) {
+    context.stdout.write(program.helpInformation());
+    return 0;
+  }
+
   program.exitOverride();
 
   try {

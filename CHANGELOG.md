@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Baseline GitHub Actions CI for pull requests and branch pushes running `npm ci`, `npm run build`, and `npm test`.
+
+### Fixed
+- Root CLI help and no-argument invocation now exit cleanly without appending a JSON error payload.
+- Portal login now preserves non-auth API failures from post-login verification instead of always reporting bad credentials.
+- README SDK usage example now uses `LibrusSession.fromEnv()` instead of the unsupported zero-argument constructor.
+
 ## [0.1.1] - 2026-03-28
 
 ### Added
