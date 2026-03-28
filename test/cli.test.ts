@@ -1,6 +1,10 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { runCli } from "../src/cli/main.js";
+import { isCliEntryPoint, runCli } from "../src/cli/main.js";
 import { LibrusSdkError, type ChildAccount, type ChildAccountSummary } from "../src/sdk/index.js";
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
@@ -90,5 +94,30 @@ describe("runCli", () => {
     expect(exitCode).toBe(1);
     expect(stderr).not.toContain("token-secret");
     expect(stderr).not.toContain("Bearer ");
+  });
+});
+
+describe("isCliEntryPoint", () => {
+  it("matches symlinked cli paths to the real module file", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-cli-"));
+    const realEntryPath = join(tempDir, "dist", "cli", "main.js");
+    const symlinkedEntryPath = join(tempDir, "node_modules", "librus-sdk", "dist", "cli", "main.js");
+
+    mkdirSync(join(tempDir, "dist", "cli"), { recursive: true });
+    mkdirSync(join(tempDir, "node_modules", "librus-sdk", "dist", "cli"), { recursive: true });
+    writeFileSync(realEntryPath, "// test entrypoint\n", { encoding: "utf8" });
+    symlinkSync(realpathSync(realEntryPath), symlinkedEntryPath);
+
+    try {
+      expect(isCliEntryPoint(["node", symlinkedEntryPath], pathToFileURL(realpathSync(realEntryPath)).href)).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to the original argv path when realpath resolution fails", () => {
+    const missingEntryPath = "/tmp/librus-sdk-missing-main.js";
+
+    expect(isCliEntryPoint(["node", missingEntryPath], pathToFileURL(missingEntryPath).href)).toBe(true);
   });
 });
