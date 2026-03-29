@@ -26,6 +26,13 @@ describe("SynergiaApiClient", () => {
         status: 503,
       },
     });
+    expect(fetchMock).toHaveBeenCalledWith("https://api.librus.pl/3.0/Me", {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        authorization: "Bearer token",
+      },
+    });
   });
 
   it("fails with a validation error when the response payload is malformed", async () => {
@@ -61,6 +68,14 @@ describe("SynergiaApiClient", () => {
         true,
       );
     }
+
+    expect(fetchMock).toHaveBeenCalledWith("https://api.librus.pl/3.0/Grades", {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        authorization: "Bearer token",
+      },
+    });
   });
 
   it("accepts attendance payloads with string or numeric ids and without a Trip field", async () => {
@@ -115,6 +130,16 @@ describe("SynergiaApiClient", () => {
     expect(response.Attendances[0]?.Trip).toBeUndefined();
     expect(response.Attendances[1]?.Id).toBe("2");
     expect(response.Attendances[1]?.Trip).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.librus.pl/3.0/Attendances",
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: "Bearer token",
+        },
+      },
+    );
   });
 
   it("accepts homework payloads with mixed lesson numbers and missing subjects", async () => {
@@ -188,5 +213,15 @@ describe("SynergiaApiClient", () => {
     expect(Object.hasOwn(response.HomeWorks[1]!, "Subject")).toBe(false);
     expect(response.HomeWorks[1]?.Subject).toBeUndefined();
     expect(response.HomeWorks[2]?.Subject).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.librus.pl/3.0/HomeWorks",
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: "Bearer token",
+        },
+      },
+    );
   });
 });
