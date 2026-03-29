@@ -24,6 +24,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "pack:check": "node ./scripts/pack-check.mjs",
+    "prepublishOnly": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
     "prepare": "husky",
     "test": "vitest run"
   },

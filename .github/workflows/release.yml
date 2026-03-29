@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read package metadata
+        id: package_metadata
+        run: |
+          VERSION=$(node --print "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          EXPECTED_TAG: ${{ steps.package_metadata.outputs.tag }}
+        run: |
+          if [ "$RELEASE_TAG" != "$EXPECTED_TAG" ]; then
+            echo "Expected tag $EXPECTED_TAG but received $RELEASE_TAG." >&2
+            exit 1
+          fi
+
+      - name: Verify tagged commit is reachable from master
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" "origin/master"; then
+            echo "Release tags must point to a commit reachable from origin/master." >&2
+            exit 1
+          fi
+
+      - name: Check npm publication status
+      - name: Write release notes from changelog
+        env:
+          PACKAGE_VERSION: ${{ steps.package_metadata.outputs.version }}
+        run: node ./scripts/extract-release-notes.mjs "$PACKAGE_VERSION" > release-notes.md
+
+      - name: Check npm publication status
+        id: npm_status
+        env:
+          PACKAGE_NAME: librus-sdk
+          PACKAGE_VERSION: ${{ steps.package_metadata.outputs.version }}
+        run: |
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish package to npm
+        if: steps.npm_status.outputs.published != 'true'
+        run: npm publish --provenance
+
+      - name: Check whether GitHub Release already exists
+        id: release_status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.release_status.outputs.exists != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes-file release-notes.md
