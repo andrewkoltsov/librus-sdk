@@ -36,3 +36,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Verify package tarball
+        run: npm run pack:check

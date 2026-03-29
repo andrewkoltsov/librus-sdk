@@ -71,7 +71,7 @@ const attendanceSchema = v.looseObject({
   AddDate: v.string(),
   AddedBy: apiRefSchema,
   Date: v.string(),
-  Id: v.string(),
+  Id: v.union([v.string(), v.number()]),
   Lesson: apiRefSchema,
   LessonNo: v.number(),
   Semester: v.number(),
