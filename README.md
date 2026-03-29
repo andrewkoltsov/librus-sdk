@@ -6,6 +6,10 @@ This project logs into `portal.librus.pl`, loads linked child accounts from `por
 
 It intentionally does not reuse the legacy `synergia.librus.pl` HTML-scraping approach.
 
+## Acknowledgements
+
+This implementation was inspired by [Mati365/librus-api](https://github.com/Mati365/librus-api/).
+
 ## Environment
 
 Set these variables before running the CLI:
