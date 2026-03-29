@@ -61,7 +61,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check npm publication status
       - name: Write release notes from changelog
         env:
           PACKAGE_VERSION: ${{ steps.package_metadata.outputs.version }}
