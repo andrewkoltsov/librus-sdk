@@ -59,6 +59,43 @@ npm run cli -- homework list --child <id-or-login>
 
 `HomeWork.LessonNo` mirrors the live Librus payload and may be `string`, `number`, or `null`. `HomeWork.Subject` may be omitted entirely or returned as `null`.
 
+## Live integration tests
+
+This repo also includes optional live integration tests for the built SDK and CLI artifacts in `dist`.
+
+They are intended for local manual verification only:
+
+- they require real Librus credentials
+- they are not part of `npm test`
+- they are not part of `npm run validate`
+- they are not run in CI or release automation
+
+Create a dedicated local env file:
+
+```bash
+LIBRUS_PORTAL_EMAIL=you@example.com
+LIBRUS_PORTAL_PASSWORD=your-password
+```
+
+Save it as `.env.integration.local`, then run:
+
+```bash
+npm run test:integration
+npm run test:integration:sdk
+npm run test:integration:cli
+
+npm run report:integration
+npm run report:integration:sdk
+npm run report:integration:cli
+```
+
+To limit the live run to specific children, set `LIBRUS_TEST_CHILDREN` as a comma-separated list of child ids or logins:
+
+```bash
+LIBRUS_TEST_CHILDREN=7147345 npm run test:integration
+LIBRUS_TEST_CHILDREN=7147345,child-login npm run report:integration
+```
+
 ## SDK usage
 
 ```ts
