@@ -1,12 +1,21 @@
 import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
-import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
+import {
+  addJsonOption,
+  configureCommand,
+  summarizeChildAccount,
+  writeJson,
+} from "./common.js";
 
 export function createHomeworkCommand(context: CliContext): Command {
-  const homework = new Command("homework").description("Read child homework");
-  const list = addJsonOption(
-    new Command("list").description("List homework for a child"),
+  const homework = configureCommand(
+    new Command("homework").description("Read child homework"),
+    context,
+  );
+  const list = configureCommand(
+    addJsonOption(new Command("list").description("List homework for a child")),
+    context,
   );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");

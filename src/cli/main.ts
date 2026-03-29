@@ -9,7 +9,11 @@ import { LibrusSession } from "../sdk/index.js";
 import { createAttendanceCommand } from "./commands/attendance.js";
 import { createChildrenCommand } from "./commands/children.js";
 import type { CliContext } from "./commands/common.js";
-import { formatCliError, writeJson } from "./commands/common.js";
+import {
+  configureCommand,
+  formatCliError,
+  writeJson,
+} from "./commands/common.js";
 import { createGradesCommand } from "./commands/grades.js";
 import { createHomeworkCommand } from "./commands/homework.js";
 import { createMeCommand } from "./commands/me.js";
@@ -31,15 +35,13 @@ export function createDefaultCliContext(): CliContext {
 }
 
 export function createProgram(context: CliContext): Command {
-  const program = new Command()
-    .name("librus")
-    .description("CLI for the Librus family portal flow")
-    .version(packageJson.version)
-    .showHelpAfterError()
-    .configureOutput({
-      writeOut: (chunk) => context.stdout.write(chunk),
-      writeErr: (chunk) => context.stderr.write(chunk),
-    });
+  const program = configureCommand(
+    new Command()
+      .name("librus")
+      .description("CLI for the Librus family portal flow")
+      .version(packageJson.version),
+    context,
+  );
 
   program.addCommand(createChildrenCommand(context));
   program.addCommand(createMeCommand(context));
@@ -65,8 +67,6 @@ export async function runCli(
     context.stdout.write(program.helpInformation());
     return 0;
   }
-
-  program.exitOverride();
 
   try {
     await program.parseAsync(argv);

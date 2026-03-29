@@ -1,14 +1,23 @@
 import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
-import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
+import {
+  addJsonOption,
+  configureCommand,
+  summarizeChildAccount,
+  writeJson,
+} from "./common.js";
 
 export function createAttendanceCommand(context: CliContext): Command {
-  const attendance = new Command("attendance").description(
-    "Read child attendance",
+  const attendance = configureCommand(
+    new Command("attendance").description("Read child attendance"),
+    context,
   );
-  const list = addJsonOption(
-    new Command("list").description("List attendances for a child"),
+  const list = configureCommand(
+    addJsonOption(
+      new Command("list").description("List attendances for a child"),
+    ),
+    context,
   );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
