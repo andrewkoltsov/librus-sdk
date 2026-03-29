@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ESLint, Prettier, Husky, and lint-staged automation for local code-quality enforcement.
 - Runtime response validation for portal and Synergia API payloads with explicit schema failures.
 - Mocked SDK flow coverage for login, child resolution, and child-scoped API requests.
+- Maintainer release documentation and release safety checks for changelog extraction, package dry runs, and `master`-reachable tags.
 - Security policy plus issue and pull request templates for repository maintenance.
 - Reproducible Vitest V8 coverage reporting for maintainers.
 - Verification notes for the March 29 follow-up checks covering live payload variance, coverage, packaging, and timeout behavior.
@@ -18,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - GitHub Actions CI now runs linting, formatting checks, build, and tests on pull requests and non-`master` pushes.
+- Releases now publish from `vX.Y.Z` tags with npm trusted publishing and changelog-backed GitHub Release notes.
 - Package metadata now links npm consumers back to the GitHub repository and issue tracker.
 - Release safety checks now include `npm pack --dry-run` in both CI and `prepublishOnly`.
 
