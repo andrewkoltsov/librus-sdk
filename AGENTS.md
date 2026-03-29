@@ -23,11 +23,17 @@ Guidance for coding agents working in this repository.
 - Run tests with `npm test`.
 - Run the CLI locally with `npm run cli -- <command>`.
 - `master` is protected. Do not commit directly to `master`.
-- Start every change on a separate branch. Use a short descriptive branch name for each task.
+- Start every change on a separate branch created from `master`. Use a short descriptive branch name for each task.
+- Before creating a new branch, check out `master` and update it from `origin/master` with a fast-forward-only pull.
+- Do not create new work branches from another feature branch or from a stale local `master`.
 
 Useful examples:
 
 ```bash
+git checkout master
+git pull --ff-only origin master
+git checkout -b codex/my-change
+
 npm run cli -- children list
 npm run cli -- me --child <id-or-login>
 npm run cli -- grades list --child <id-or-login>
@@ -60,6 +66,6 @@ npm run cli -- grades list --child <id-or-login>
 ## Change guidance
 
 - Preserve the current portal-based flow unless the task explicitly requires architectural change.
-- All code and documentation changes should be made on separate branches, not on `master`.
+- All code and documentation changes should be made on separate branches cut from an up-to-date `master`, not on `master`.
 - Keep public SDK exports intentional and update `README.md` when user-facing CLI or SDK behavior changes.
 - Update `CHANGELOG.md` for notable user-facing changes.

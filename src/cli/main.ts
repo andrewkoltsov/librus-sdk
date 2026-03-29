@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { config as loadDotEnv } from "dotenv";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { LibrusSession } from "../sdk/index.js";
@@ -13,6 +13,10 @@ import { formatCliError, writeJson } from "./commands/common.js";
 import { createGradesCommand } from "./commands/grades.js";
 import { createHomeworkCommand } from "./commands/homework.js";
 import { createMeCommand } from "./commands/me.js";
+
+const packageJson = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 export function createDefaultCliContext(): CliContext {
   return {
@@ -30,7 +34,12 @@ export function createProgram(context: CliContext): Command {
   const program = new Command()
     .name("librus")
     .description("CLI for the Librus family portal flow")
-    .showHelpAfterError();
+    .version(packageJson.version)
+    .showHelpAfterError()
+    .configureOutput({
+      writeOut: (chunk) => context.stdout.write(chunk),
+      writeErr: (chunk) => context.stderr.write(chunk),
+    });
 
   program.addCommand(createChildrenCommand(context));
   program.addCommand(createMeCommand(context));
@@ -63,6 +72,18 @@ export async function runCli(
     await program.parseAsync(argv);
     return 0;
   } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      "exitCode" in error &&
+      typeof error.code === "string" &&
+      error.code.startsWith("commander.") &&
+      typeof error.exitCode === "number" &&
+      error.exitCode === 0
+    ) {
+      return 0;
+    }
+
     writeJson(context.stderr, {
       error: formatCliError(error),
     });
