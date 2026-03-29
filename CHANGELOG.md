@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- GitHub Actions CI now runs linting, formatting checks, build, and tests on pull requests and non-`master` pushes.
+- GitHub Actions CI now runs the shared validation gates on pull requests and `master` pushes.
 - Releases now publish from `vX.Y.Z` tags with npm trusted publishing and changelog-backed GitHub Release notes.
 - GitHub Actions CI now runs the shared validation gates on pull requests and `master` pushes.
 - Package metadata now links npm consumers back to the GitHub repository and issue tracker.
