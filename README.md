@@ -57,7 +57,7 @@ npm run cli -- attendance list --child <id-or-login>
 npm run cli -- homework list --child <id-or-login>
 ```
 
-`HomeWork.LessonNo` mirrors the live Librus payload and may be `string`, `number`, or `null`.
+`HomeWork.LessonNo` mirrors the live Librus payload and may be `string`, `number`, or `null`. `HomeWork.Subject` may be omitted entirely or returned as `null`.
 
 ## SDK usage
 
@@ -69,6 +69,6 @@ const children = await session.listChildren();
 console.log(children);
 ```
 
-`await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`.
+`await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`, and leaves `HomeWork.Subject` absent when the API omits it.
 
 All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code.
