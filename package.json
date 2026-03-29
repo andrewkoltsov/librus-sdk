@@ -2,6 +2,15 @@
   "name": "librus-sdk",
   "version": "0.1.1",
   "description": "TypeScript SDK and CLI for the Librus family portal flow.",
+  "author": "Andrey Koltsov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrewkoltsov/librus-sdk.git"
+  },
+  "homepage": "https://github.com/andrewkoltsov/librus-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/andrewkoltsov/librus-sdk/issues"
+  },
   "type": "module",
   "main": "dist/sdk/index.js",
   "types": "dist/sdk/index.d.ts",
@@ -24,8 +33,12 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "pack:check": "node ./scripts/pack-check.mjs",
+    "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
+    "prepublishOnly": "npm run validate",
     "prepare": "husky",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "files": [
     "dist",
@@ -50,6 +63,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.4.0",
