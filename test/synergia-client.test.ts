@@ -116,4 +116,74 @@ describe("SynergiaApiClient", () => {
     expect(response.Attendances[1]?.Id).toBe("2");
     expect(response.Attendances[1]?.Trip).toBeUndefined();
   });
+
+  it("accepts homework payloads with string, numeric, or null lesson numbers", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          HomeWorks: [
+            {
+              AddDate: "2026-03-29 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Read chapter 5",
+              CreatedBy: null,
+              Date: "2026-03-29",
+              Id: 1,
+              LessonNo: "5",
+              Subject: {
+                Id: 10,
+                Url: "https://api.librus.pl/3.0/Subjects/10",
+              },
+              TimeFrom: null,
+              TimeTo: null,
+            },
+            {
+              AddDate: "2026-03-30 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Solve exercises 1-3",
+              CreatedBy: null,
+              Date: "2026-03-30",
+              Id: 2,
+              LessonNo: 2,
+              Subject: {
+                Id: 11,
+                Url: "https://api.librus.pl/3.0/Subjects/11",
+              },
+              TimeFrom: "09:00",
+              TimeTo: "09:45",
+            },
+            {
+              AddDate: "2026-03-31 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Bring materials",
+              CreatedBy: null,
+              Date: "2026-03-31",
+              Id: 3,
+              LessonNo: null,
+              Subject: null,
+              TimeFrom: null,
+              TimeTo: null,
+            },
+          ],
+          Resources: {},
+          Url: "https://api.librus.pl/3.0/HomeWorks",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+    const response = await client.getHomeWorks();
+
+    expect(response.HomeWorks).toHaveLength(3);
+    expect(response.HomeWorks[0]?.LessonNo).toBe("5");
+    expect(response.HomeWorks[1]?.LessonNo).toBe(2);
+    expect(response.HomeWorks[2]?.LessonNo).toBeNull();
+  });
 });

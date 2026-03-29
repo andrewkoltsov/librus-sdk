@@ -63,7 +63,7 @@ export interface HomeWork {
   CreatedBy: JsonObject | ApiRef | null;
   Date: string;
   Id: number;
-  LessonNo: number;
+  LessonNo: string | number | null;
   Subject: JsonObject | ApiRef | null;
   TimeFrom: string | null;
   TimeTo: string | null;
