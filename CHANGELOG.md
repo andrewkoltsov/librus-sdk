@@ -11,14 +11,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ESLint, Prettier, Husky, and lint-staged automation for local code-quality enforcement.
 - Runtime response validation for portal and Synergia API payloads with explicit schema failures.
 - Mocked SDK flow coverage for login, child resolution, and child-scoped API requests.
+- Maintainer release documentation and release safety checks for changelog extraction, package dry runs, and `master`-reachable tags.
+- Security policy plus issue and pull request templates for repository maintenance.
+- Reproducible Vitest V8 coverage reporting for maintainers.
+- Verification notes for the March 29 follow-up checks covering live payload variance, coverage, packaging, and timeout behavior.
 
 ### Changed
 
 - GitHub Actions CI now runs linting, formatting checks, build, and tests on pull requests and non-`master` pushes.
+- Releases now publish from `vX.Y.Z` tags with npm trusted publishing and changelog-backed GitHub Release notes.
+- Package metadata now links npm consumers back to the GitHub repository and issue tracker.
+- Release safety checks now include `npm pack --dry-run` in both CI and `prepublishOnly`.
 
 ### Fixed
 
 - Root CLI help and no-argument invocation now exit cleanly without appending a JSON error payload.
+- Root CLI `--version` now exits cleanly and prints the published package version.
+- Attendance validation now accepts the mixed numeric and string ids returned by the live API.
 - Portal CSRF token extraction now parses HTML defensively and reports a specific login-page error when the token is missing.
 - Portal login now preserves non-auth API failures from post-login verification instead of always reporting bad credentials.
 - README SDK usage example now uses `LibrusSession.fromEnv()` instead of the unsupported zero-argument constructor.

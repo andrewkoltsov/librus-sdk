@@ -39,7 +39,7 @@ export interface GradesResponse extends SynergiaResponseEnvelope {
 }
 
 export interface Attendance {
-  Id: string;
+  Id: string | number;
   Lesson: ApiRef;
   Student: ApiRef;
   Trip?: ApiRef | undefined;

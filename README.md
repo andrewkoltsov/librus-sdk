@@ -32,6 +32,7 @@ npm install librus-sdk
 Use the CLI without installing it globally:
 
 ```bash
+npx librus --version
 npx librus children list
 npx librus grades list --child <id-or-login>
 ```
@@ -43,6 +44,7 @@ npm install
 npm run lint
 npm run format:check
 npm run build
+npm run pack:check
 npm run cli -- children list
 npm run cli -- grades list --child <id-or-login>
 ```
