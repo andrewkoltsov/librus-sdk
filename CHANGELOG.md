@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - GitHub Actions CI now runs the shared validation gates on pull requests and `master` pushes.
 - Releases now publish from `vX.Y.Z` tags with npm trusted publishing and changelog-backed GitHub Release notes.
+- GitHub Actions CI now runs the shared validation gates on pull requests and `master` pushes.
 - Package metadata now links npm consumers back to the GitHub repository and issue tracker.
 - Release safety checks now include `npm pack --dry-run` in both CI and `prepublishOnly`.
 
