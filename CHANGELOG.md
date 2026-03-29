@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-29
+
+### Fixed
+
+- Homework validation now accepts live `HomeWork.Subject` values that are omitted entirely or returned as `null`.
+
 ## [0.2.1] - 2026-03-29
 
 ### Fixed

@@ -117,7 +117,7 @@ describe("SynergiaApiClient", () => {
     expect(response.Attendances[1]?.Trip).toBeUndefined();
   });
 
-  it("accepts homework payloads with string, numeric, or null lesson numbers", async () => {
+  it("accepts homework payloads with mixed lesson numbers and missing subjects", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -147,10 +147,6 @@ describe("SynergiaApiClient", () => {
               Date: "2026-03-30",
               Id: 2,
               LessonNo: 2,
-              Subject: {
-                Id: 11,
-                Url: "https://api.librus.pl/3.0/Subjects/11",
-              },
               TimeFrom: "09:00",
               TimeTo: "09:45",
             },
@@ -185,5 +181,12 @@ describe("SynergiaApiClient", () => {
     expect(response.HomeWorks[0]?.LessonNo).toBe("5");
     expect(response.HomeWorks[1]?.LessonNo).toBe(2);
     expect(response.HomeWorks[2]?.LessonNo).toBeNull();
+    expect(response.HomeWorks[0]?.Subject).toEqual({
+      Id: 10,
+      Url: "https://api.librus.pl/3.0/Subjects/10",
+    });
+    expect(Object.hasOwn(response.HomeWorks[1]!, "Subject")).toBe(false);
+    expect(response.HomeWorks[1]?.Subject).toBeUndefined();
+    expect(response.HomeWorks[2]?.Subject).toBeNull();
   });
 });

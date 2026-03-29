@@ -96,7 +96,7 @@ const homeWorkSchema = v.looseObject({
   Date: v.string(),
   Id: v.number(),
   LessonNo: v.union([v.string(), v.number(), v.null()]),
-  Subject: v.union([apiRefOrJsonSchema, v.null()]),
+  Subject: v.exactOptional(v.union([apiRefOrJsonSchema, v.null()])),
   TimeFrom: v.union([v.string(), v.null()]),
   TimeTo: v.union([v.string(), v.null()]),
 });
