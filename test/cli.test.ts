@@ -2,6 +2,7 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -17,6 +18,10 @@ import {
   type ChildAccount,
   type ChildAccountSummary,
 } from "../src/sdk/index.js";
+
+const packageJson = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
   return {
@@ -99,6 +104,20 @@ describe("runCli", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
     expect(stdout).toContain("Usage: librus");
+  });
+
+  it("prints the package version and exits successfully for --version", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus", "--version"], {
+      stdout: { write: (chunk) => (stdout += chunk) },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => createSessionStub() as never,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout.trim()).toBe(packageJson.version);
   });
 
   it("writes stable JSON errors to stderr", async () => {
