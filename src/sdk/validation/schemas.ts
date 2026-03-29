@@ -95,7 +95,7 @@ const homeWorkSchema = v.looseObject({
   CreatedBy: v.union([apiRefOrJsonSchema, v.null()]),
   Date: v.string(),
   Id: v.number(),
-  LessonNo: v.number(),
+  LessonNo: v.union([v.string(), v.number(), v.null()]),
   Subject: v.union([apiRefOrJsonSchema, v.null()]),
   TimeFrom: v.union([v.string(), v.null()]),
   TimeTo: v.union([v.string(), v.null()]),
