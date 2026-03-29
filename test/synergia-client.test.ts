@@ -63,7 +63,7 @@ describe("SynergiaApiClient", () => {
     }
   });
 
-  it("accepts attendance payloads with numeric ids and without a Trip field", async () => {
+  it("accepts attendance payloads with string or numeric ids and without a Trip field", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -82,6 +82,20 @@ describe("SynergiaApiClient", () => {
               },
               AddedBy: { Id: 5, Url: "https://api.librus.pl/3.0/Users/5" },
             },
+            {
+              Id: "2",
+              Lesson: { Id: 6, Url: "https://api.librus.pl/3.0/Lessons/6" },
+              Student: { Id: 3, Url: "https://api.librus.pl/3.0/Students/3" },
+              Date: "2026-03-29",
+              AddDate: "2026-03-29 08:00:00",
+              LessonNo: 2,
+              Semester: 2,
+              Type: {
+                Id: 7,
+                Url: "https://api.librus.pl/3.0/AttendanceTypes/7",
+              },
+              AddedBy: { Id: 5, Url: "https://api.librus.pl/3.0/Users/5" },
+            },
           ],
           Resources: {},
           Url: "https://api.librus.pl/3.0/Attendances",
@@ -96,8 +110,10 @@ describe("SynergiaApiClient", () => {
     const client = new SynergiaApiClient("token", { fetch: fetchMock });
     const response = await client.getAttendances();
 
-    expect(response.Attendances).toHaveLength(1);
+    expect(response.Attendances).toHaveLength(2);
     expect(response.Attendances[0]?.Id).toBe(1);
     expect(response.Attendances[0]?.Trip).toBeUndefined();
+    expect(response.Attendances[1]?.Id).toBe("2");
+    expect(response.Attendances[1]?.Trip).toBeUndefined();
   });
 });
