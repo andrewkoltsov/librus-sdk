@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-29
+
 ### Fixed
 
 - Homework validation now accepts mixed and null `HomeWork.LessonNo` values returned by the live API.
