@@ -2,12 +2,13 @@
 
 import { Command } from "commander";
 import { config as loadDotEnv } from "dotenv";
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { LibrusSession } from "../sdk/index.js";
 import { createAnnouncementsCommand } from "./commands/announcements.js";
 import { createAttendanceCommand } from "./commands/attendance.js";
+import { createAuthCommand } from "./commands/auth.js";
 import { createChildrenCommand } from "./commands/children.js";
 import type { CliContext } from "./commands/common.js";
 import {
@@ -17,9 +18,13 @@ import {
 } from "./commands/common.js";
 import { createGradesCommand } from "./commands/grades.js";
 import { createHomeworkCommand } from "./commands/homework.js";
+import { createJustificationsCommand } from "./commands/justifications.js";
+import { createLessonsCommand } from "./commands/lessons.js";
+import { createLuckyNumberCommand } from "./commands/luckyNumber.js";
 import { createMessagesCommand } from "./commands/messages.js";
 import { createMeCommand } from "./commands/me.js";
 import { createNotesCommand } from "./commands/notes.js";
+import { createNotificationsCommand } from "./commands/notifications.js";
 import { createTimetableCommand } from "./commands/timetable.js";
 
 const packageJson = JSON.parse(
@@ -35,6 +40,7 @@ export function createDefaultCliContext(): CliContext {
       write: (chunk) => process.stderr.write(chunk),
     },
     createSession: () => LibrusSession.fromEnv(),
+    writeFile: (path, data) => writeFileSync(path, data),
   };
 }
 
@@ -52,9 +58,14 @@ export function createProgram(context: CliContext): Command {
   program.addCommand(createMeCommand(context));
   program.addCommand(createGradesCommand(context));
   program.addCommand(createAttendanceCommand(context));
+  program.addCommand(createAuthCommand(context));
   program.addCommand(createHomeworkCommand(context));
+  program.addCommand(createJustificationsCommand(context));
+  program.addCommand(createLessonsCommand(context));
+  program.addCommand(createLuckyNumberCommand(context));
   program.addCommand(createMessagesCommand(context));
   program.addCommand(createNotesCommand(context));
+  program.addCommand(createNotificationsCommand(context));
   program.addCommand(createTimetableCommand(context));
 
   return program;
