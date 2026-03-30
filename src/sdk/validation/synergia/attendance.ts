@@ -26,5 +26,5 @@ export const attendancesResponseSchema = v.looseObject({
 
 export const attendanceTypesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  AttendancesTypes: synergiaEntityListSchema,
+  Types: synergiaEntityListSchema,
 });

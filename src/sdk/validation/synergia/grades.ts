@@ -5,6 +5,7 @@ import {
   synergiaEntityListSchema,
   synergiaEntitySchema,
   synergiaResponseEnvelopeSchema,
+  synergiaStatusResponseSchema,
 } from "./common.js";
 
 const gradeSchema = v.looseObject({
@@ -30,44 +31,47 @@ export const gradesResponseSchema = v.looseObject({
   Grades: v.array(gradeSchema),
 });
 
-export const gradeAveragesResponseSchema = v.looseObject({
-  ...synergiaResponseEnvelopeSchema.entries,
-  GradesAverages: synergiaEntityListSchema,
-});
+export const gradeAveragesResponseSchema = v.union([
+  v.looseObject({
+    ...synergiaResponseEnvelopeSchema.entries,
+    Averages: synergiaEntityListSchema,
+  }),
+  synergiaStatusResponseSchema,
+]);
 
 export const gradeCategoriesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  GradesCategories: synergiaEntityListSchema,
+  Categories: synergiaEntityListSchema,
 });
 
 export const gradeCommentsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  GradesComments: synergiaEntityListSchema,
+  Comments: synergiaEntityListSchema,
 });
 
 export const behaviourGradesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  BehaviourGrades: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
 export const behaviourGradeTypesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  BehaviourGradesTypes: synergiaEntityListSchema,
+  Types: synergiaEntityListSchema,
 });
 
 export const behaviourGradePointsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  BehaviourGradesPoints: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
 export const behaviourPointCategoriesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  BehaviourGradesPointsCategories: synergiaEntityListSchema,
+  Categories: synergiaEntityListSchema,
 });
 
 export const behaviourPointCommentsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  BehaviourGradesPointsComments: synergiaEntityListSchema,
+  Comments: synergiaEntityListSchema,
 });
 
 export const behaviourSystemProposalResponseSchema = v.looseObject({
@@ -81,60 +85,63 @@ export const behaviourSystemProposalResponseSchema = v.looseObject({
 
 export const descriptiveGradesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveGrades: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
 export const descriptiveGradeCommentsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveGradesComments: synergiaEntityListSchema,
+  Comments: synergiaEntityListSchema,
 });
 
 export const descriptiveGradeSkillsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveGradesSkills: synergiaEntityListSchema,
+  Skills: synergiaEntityListSchema,
 });
 
 export const descriptiveGradeTextResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveGradesText: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
 export const descriptiveGradeTextCategoriesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveGradesTextCategories: synergiaEntityListSchema,
+  Categories: synergiaEntityListSchema,
 });
 
 export const descriptiveTextGradesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveTextGrades: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
 export const descriptiveTextGradeSkillsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  DescriptiveTextGradesSkills: synergiaEntityListSchema,
+  Skills: synergiaEntityListSchema,
 });
 
 export const pointGradesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  PointGrades: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });
 
-export const pointGradeAveragesResponseSchema = v.looseObject({
-  ...synergiaResponseEnvelopeSchema.entries,
-  PointGradesAverages: synergiaEntityListSchema,
-});
+export const pointGradeAveragesResponseSchema = v.union([
+  v.looseObject({
+    ...synergiaResponseEnvelopeSchema.entries,
+    Averages: synergiaEntityListSchema,
+  }),
+  synergiaStatusResponseSchema,
+]);
 
 export const pointGradeCategoriesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  PointGradesCategories: synergiaEntityListSchema,
+  Categories: synergiaEntityListSchema,
 });
 
 export const pointGradeCommentsResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  PointGradesComments: synergiaEntityListSchema,
+  Comments: synergiaEntityListSchema,
 });
 
 export const textGradesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  TextGrades: synergiaEntityListSchema,
+  Grades: synergiaEntityListSchema,
 });

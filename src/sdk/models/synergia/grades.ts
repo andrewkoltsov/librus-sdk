@@ -1,6 +1,9 @@
 import type { ApiRef, JsonObject } from "../common.js";
 
-import type { SynergiaResponseEnvelope } from "./common.js";
+import type {
+  SynergiaResponseEnvelope,
+  SynergiaStatusResponse,
+} from "./common.js";
 
 export interface Grade {
   Id: number;
@@ -66,36 +69,40 @@ export type PointGradeComment = JsonObject;
 
 export type TextGrade = JsonObject;
 
-export interface GradeAveragesResponse extends SynergiaResponseEnvelope {
-  GradesAverages: GradeAverage[];
+export interface GradeAveragesListResponse extends SynergiaResponseEnvelope {
+  Averages: GradeAverage[];
 }
 
+export type GradeAveragesResponse =
+  | GradeAveragesListResponse
+  | SynergiaStatusResponse;
+
 export interface GradeCategoriesResponse extends SynergiaResponseEnvelope {
-  GradesCategories: GradeCategory[];
+  Categories: GradeCategory[];
 }
 
 export interface GradeCommentsResponse extends SynergiaResponseEnvelope {
-  GradesComments: GradeComment[];
+  Comments: GradeComment[];
 }
 
 export interface BehaviourGradesResponse extends SynergiaResponseEnvelope {
-  BehaviourGrades: BehaviourGrade[];
+  Grades: BehaviourGrade[];
 }
 
 export interface BehaviourGradeTypesResponse extends SynergiaResponseEnvelope {
-  BehaviourGradesTypes: BehaviourGradeType[];
+  Types: BehaviourGradeType[];
 }
 
 export interface BehaviourGradePointsResponse extends SynergiaResponseEnvelope {
-  BehaviourGradesPoints: BehaviourGradePoint[];
+  Grades: BehaviourGradePoint[];
 }
 
 export interface BehaviourPointCategoriesResponse extends SynergiaResponseEnvelope {
-  BehaviourGradesPointsCategories: BehaviourPointCategory[];
+  Categories: BehaviourPointCategory[];
 }
 
 export interface BehaviourPointCommentsResponse extends SynergiaResponseEnvelope {
-  BehaviourGradesPointsComments: BehaviourPointComment[];
+  Comments: BehaviourPointComment[];
 }
 
 export interface BehaviourSystemProposalResponse extends SynergiaResponseEnvelope {
@@ -106,49 +113,53 @@ export interface BehaviourSystemProposalResponse extends SynergiaResponseEnvelop
 }
 
 export interface DescriptiveGradesResponse extends SynergiaResponseEnvelope {
-  DescriptiveGrades: DescriptiveGrade[];
+  Grades: DescriptiveGrade[];
 }
 
 export interface DescriptiveGradeCommentsResponse extends SynergiaResponseEnvelope {
-  DescriptiveGradesComments: DescriptiveGradeComment[];
+  Comments: DescriptiveGradeComment[];
 }
 
 export interface DescriptiveGradeSkillsResponse extends SynergiaResponseEnvelope {
-  DescriptiveGradesSkills: DescriptiveGradeSkill[];
+  Skills: DescriptiveGradeSkill[];
 }
 
 export interface DescriptiveGradeTextResponse extends SynergiaResponseEnvelope {
-  DescriptiveGradesText: DescriptiveGradeText[];
+  Grades: DescriptiveGradeText[];
 }
 
 export interface DescriptiveGradeTextCategoriesResponse extends SynergiaResponseEnvelope {
-  DescriptiveGradesTextCategories: DescriptiveGradeTextCategory[];
+  Categories: DescriptiveGradeTextCategory[];
 }
 
 export interface DescriptiveTextGradesResponse extends SynergiaResponseEnvelope {
-  DescriptiveTextGrades: DescriptiveTextGrade[];
+  Grades: DescriptiveTextGrade[];
 }
 
 export interface DescriptiveTextGradeSkillsResponse extends SynergiaResponseEnvelope {
-  DescriptiveTextGradesSkills: DescriptiveTextGradeSkill[];
+  Skills: DescriptiveTextGradeSkill[];
 }
 
 export interface PointGradesResponse extends SynergiaResponseEnvelope {
-  PointGrades: PointGrade[];
+  Grades: PointGrade[];
 }
 
-export interface PointGradeAveragesResponse extends SynergiaResponseEnvelope {
-  PointGradesAverages: PointGradeAverage[];
+export interface PointGradeAveragesListResponse extends SynergiaResponseEnvelope {
+  Averages: PointGradeAverage[];
 }
+
+export type PointGradeAveragesResponse =
+  | PointGradeAveragesListResponse
+  | SynergiaStatusResponse;
 
 export interface PointGradeCategoriesResponse extends SynergiaResponseEnvelope {
-  PointGradesCategories: PointGradeCategory[];
+  Categories: PointGradeCategory[];
 }
 
 export interface PointGradeCommentsResponse extends SynergiaResponseEnvelope {
-  PointGradesComments: PointGradeComment[];
+  Comments: PointGradeComment[];
 }
 
 export interface TextGradesResponse extends SynergiaResponseEnvelope {
-  TextGrades: TextGrade[];
+  Grades: TextGrade[];
 }

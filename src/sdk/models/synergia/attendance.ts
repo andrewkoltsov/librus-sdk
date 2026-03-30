@@ -22,5 +22,5 @@ export interface AttendancesResponse extends SynergiaResponseEnvelope {
 export type AttendanceType = JsonObject;
 
 export interface AttendanceTypesResponse extends SynergiaResponseEnvelope {
-  AttendancesTypes: AttendanceType[];
+  Types: AttendanceType[];
 }

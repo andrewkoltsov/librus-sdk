@@ -23,5 +23,5 @@ export interface HomeWorksResponse extends SynergiaResponseEnvelope {
 export type HomeworkCategory = JsonObject;
 
 export interface HomeworkCategoriesResponse extends SynergiaResponseEnvelope {
-  HomeWorksCategories: HomeworkCategory[];
+  Categories: HomeworkCategory[];
 }

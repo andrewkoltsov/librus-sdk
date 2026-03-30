@@ -27,5 +27,5 @@ export const homeWorksResponseSchema = v.looseObject({
 
 export const homeworkCategoriesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
-  HomeWorksCategories: synergiaEntityListSchema,
+  Categories: synergiaEntityListSchema,
 });
