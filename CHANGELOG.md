@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-29
+
+### Fixed
+
+- Homework validation now accepts live `HomeWork.Subject` values that are omitted entirely or returned as `null`.
+
+## [0.2.1] - 2026-03-29
+
+### Fixed
+
+- Homework validation now accepts mixed and null `HomeWork.LessonNo` values returned by the live API.
+
+## [0.2.0] - 2026-03-29
+
 ### Added
 
 - ESLint, Prettier, Husky, and lint-staged automation for local code-quality enforcement.
@@ -18,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- GitHub Actions CI now runs linting, formatting checks, build, and tests on pull requests and non-`master` pushes.
+- GitHub Actions CI now runs the shared validation gates on pull requests and `master` pushes.
 - Releases now publish from `vX.Y.Z` tags with npm trusted publishing and changelog-backed GitHub Release notes.
 - Package metadata now links npm consumers back to the GitHub repository and issue tracker.
 - Release safety checks now include `npm pack --dry-run` in both CI and `prepublishOnly`.

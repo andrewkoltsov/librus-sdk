@@ -1,6 +1,6 @@
 {
   "name": "librus-sdk",
-  "version": "0.1.1",
+  "version": "0.2.2",
   "description": "TypeScript SDK and CLI for the Librus family portal flow.",
   "author": "Andrey Koltsov",
   "repository": {
@@ -34,7 +34,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:check": "node ./scripts/pack-check.mjs",
-    "prepublishOnly": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
+    "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
+    "prepublishOnly": "npm run validate",
     "prepare": "husky",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"

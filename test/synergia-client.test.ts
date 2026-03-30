@@ -63,7 +63,7 @@ describe("SynergiaApiClient", () => {
     }
   });
 
-  it("accepts attendance payloads with numeric ids and without a Trip field", async () => {
+  it("accepts attendance payloads with string or numeric ids and without a Trip field", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -82,6 +82,20 @@ describe("SynergiaApiClient", () => {
               },
               AddedBy: { Id: 5, Url: "https://api.librus.pl/3.0/Users/5" },
             },
+            {
+              Id: "2",
+              Lesson: { Id: 6, Url: "https://api.librus.pl/3.0/Lessons/6" },
+              Student: { Id: 3, Url: "https://api.librus.pl/3.0/Students/3" },
+              Date: "2026-03-29",
+              AddDate: "2026-03-29 08:00:00",
+              LessonNo: 2,
+              Semester: 2,
+              Type: {
+                Id: 7,
+                Url: "https://api.librus.pl/3.0/AttendanceTypes/7",
+              },
+              AddedBy: { Id: 5, Url: "https://api.librus.pl/3.0/Users/5" },
+            },
           ],
           Resources: {},
           Url: "https://api.librus.pl/3.0/Attendances",
@@ -96,8 +110,83 @@ describe("SynergiaApiClient", () => {
     const client = new SynergiaApiClient("token", { fetch: fetchMock });
     const response = await client.getAttendances();
 
-    expect(response.Attendances).toHaveLength(1);
+    expect(response.Attendances).toHaveLength(2);
     expect(response.Attendances[0]?.Id).toBe(1);
     expect(response.Attendances[0]?.Trip).toBeUndefined();
+    expect(response.Attendances[1]?.Id).toBe("2");
+    expect(response.Attendances[1]?.Trip).toBeUndefined();
+  });
+
+  it("accepts homework payloads with mixed lesson numbers and missing subjects", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          HomeWorks: [
+            {
+              AddDate: "2026-03-29 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Read chapter 5",
+              CreatedBy: null,
+              Date: "2026-03-29",
+              Id: 1,
+              LessonNo: "5",
+              Subject: {
+                Id: 10,
+                Url: "https://api.librus.pl/3.0/Subjects/10",
+              },
+              TimeFrom: null,
+              TimeTo: null,
+            },
+            {
+              AddDate: "2026-03-30 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Solve exercises 1-3",
+              CreatedBy: null,
+              Date: "2026-03-30",
+              Id: 2,
+              LessonNo: 2,
+              TimeFrom: "09:00",
+              TimeTo: "09:45",
+            },
+            {
+              AddDate: "2026-03-31 08:00:00",
+              Category: null,
+              Class: null,
+              Content: "Bring materials",
+              CreatedBy: null,
+              Date: "2026-03-31",
+              Id: 3,
+              LessonNo: null,
+              Subject: null,
+              TimeFrom: null,
+              TimeTo: null,
+            },
+          ],
+          Resources: {},
+          Url: "https://api.librus.pl/3.0/HomeWorks",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+    const response = await client.getHomeWorks();
+
+    expect(response.HomeWorks).toHaveLength(3);
+    expect(response.HomeWorks[0]?.LessonNo).toBe("5");
+    expect(response.HomeWorks[1]?.LessonNo).toBe(2);
+    expect(response.HomeWorks[2]?.LessonNo).toBeNull();
+    expect(response.HomeWorks[0]?.Subject).toEqual({
+      Id: 10,
+      Url: "https://api.librus.pl/3.0/Subjects/10",
+    });
+    expect(Object.hasOwn(response.HomeWorks[1]!, "Subject")).toBe(false);
+    expect(response.HomeWorks[1]?.Subject).toBeUndefined();
+    expect(response.HomeWorks[2]?.Subject).toBeNull();
   });
 });
