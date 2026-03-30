@@ -1,7 +1,10 @@
 import * as v from "valibot";
 
 import { apiRefSchema } from "../common.js";
-import { synergiaResponseEnvelopeSchema } from "./common.js";
+import {
+  synergiaEntityListSchema,
+  synergiaResponseEnvelopeSchema,
+} from "./common.js";
 
 const attendanceSchema = v.looseObject({
   AddDate: v.string(),
@@ -19,4 +22,9 @@ const attendanceSchema = v.looseObject({
 export const attendancesResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
   Attendances: v.array(attendanceSchema),
+});
+
+export const attendanceTypesResponseSchema = v.looseObject({
+  ...synergiaResponseEnvelopeSchema.entries,
+  Types: synergiaEntityListSchema,
 });

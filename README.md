@@ -108,4 +108,6 @@ console.log(children);
 
 `await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`, and leaves `HomeWork.Subject` absent when the API omits it.
 
+The SDK also exposes adjacent metadata and assignment reads for the partially covered widget areas, including grade averages/categories/comments, behaviour and descriptive grade families, attendance types, homework assignments, and homework categories. Attachment methods such as `getHomeworkAssignmentAttachment(id)` return `{ data, contentType, contentDisposition }`.
+
 All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code.

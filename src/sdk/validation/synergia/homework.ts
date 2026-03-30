@@ -1,7 +1,10 @@
 import * as v from "valibot";
 
 import { apiRefOrJsonSchema } from "../common.js";
-import { synergiaResponseEnvelopeSchema } from "./common.js";
+import {
+  synergiaEntityListSchema,
+  synergiaResponseEnvelopeSchema,
+} from "./common.js";
 
 const homeWorkSchema = v.looseObject({
   AddDate: v.string(),
@@ -20,4 +23,9 @@ const homeWorkSchema = v.looseObject({
 export const homeWorksResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
   HomeWorks: v.array(homeWorkSchema),
+});
+
+export const homeworkCategoriesResponseSchema = v.looseObject({
+  ...synergiaResponseEnvelopeSchema.entries,
+  Categories: synergiaEntityListSchema,
 });

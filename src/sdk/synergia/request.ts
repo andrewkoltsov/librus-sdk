@@ -1,5 +1,6 @@
 import type { FetchLike } from "../models/common.js";
 import { LibrusApiError, LibrusSdkError } from "../models/errors.js";
+import type { SynergiaBinaryResult } from "../models/synergia/common.js";
 import { parseApiResponse } from "../validation/responseValidation.js";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 
@@ -7,12 +8,6 @@ export type SynergiaQuery = Record<
   string,
   string | number | boolean | null | undefined
 >;
-
-export interface SynergiaBinaryResult {
-  data: ArrayBuffer;
-  contentType: string | null;
-  contentDisposition: string | null;
-}
 
 export interface SynergiaRequestOptions {
   query?: SynergiaQuery;
