@@ -1,11 +1,17 @@
 import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
-import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
+import {
+  addJsonOption,
+  configureCommand,
+  summarizeChildAccount,
+  writeJson,
+} from "./common.js";
 
 export function createMeCommand(context: CliContext): Command {
-  const me = addJsonOption(
-    new Command("me").description("Get child profile data"),
+  const me = configureCommand(
+    addJsonOption(new Command("me").description("Get child profile data")),
+    context,
   );
 
   me.requiredOption("--child <id-or-login>", "Child account id or login");

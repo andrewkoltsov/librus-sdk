@@ -1,14 +1,23 @@
 import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
-import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
+import {
+  addJsonOption,
+  configureCommand,
+  summarizeChildAccount,
+  writeJson,
+} from "./common.js";
 
 export function createChildrenCommand(context: CliContext): Command {
-  const children = new Command("children").description(
-    "Manage linked child accounts",
+  const children = configureCommand(
+    new Command("children").description("Manage linked child accounts"),
+    context,
   );
-  const list = addJsonOption(
-    new Command("list").description("List linked child accounts"),
+  const list = configureCommand(
+    addJsonOption(
+      new Command("list").description("List linked child accounts"),
+    ),
+    context,
   );
 
   list.action(async () => {
