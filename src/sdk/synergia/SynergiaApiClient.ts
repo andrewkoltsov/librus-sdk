@@ -1,5 +1,9 @@
 import type { FetchLike } from "../models/common.js";
 import type {
+  SchoolNoticeResponse,
+  SchoolNoticesResponse,
+} from "../models/synergia/announcements.js";
+import type {
   AttendanceTypesResponse,
   AttendancesResponse,
 } from "../models/synergia/attendance.js";
@@ -34,6 +38,43 @@ import type {
 } from "../models/synergia/homework.js";
 import type { HomeworkAssignmentsResponse } from "../models/synergia/homeworkAssignments.js";
 import type { SynergiaMeResponse } from "../models/synergia/me.js";
+import type {
+  ListMessagesOptions,
+  MessageReceiverGroupResponse,
+  MessageReceiverGroupsResponse,
+  MessageResponse,
+  MessagesResponse,
+  UnreadMessagesResponse,
+} from "../models/synergia/messages.js";
+import type {
+  NoteCategoriesResponse,
+  NoteResponse,
+  NotesResponse,
+} from "../models/synergia/notes.js";
+import type {
+  ClassResponse,
+  ClassroomResponse,
+  SchoolResponse,
+  SubjectResponse,
+  SubjectsResponse,
+  UserResponse,
+  UsersResponse,
+} from "../models/synergia/school.js";
+import type {
+  CalendarsResponse,
+  ClassFreeDaysResponse,
+  ClassFreeDayTypesResponse,
+  SchoolFreeDaysResponse,
+  SubstitutionResponse,
+  TeacherFreeDaysResponse,
+  TimetableEntryResponse,
+  TimetablesResponse,
+  VirtualClassesResponse,
+} from "../models/synergia/timetable.js";
+import {
+  schoolNoticeResponseSchema,
+  schoolNoticesResponseSchema,
+} from "../validation/synergia/announcements.js";
 import {
   attendanceTypesResponseSchema,
   attendancesResponseSchema,
@@ -68,6 +109,38 @@ import {
 } from "../validation/synergia/homework.js";
 import { homeworkAssignmentsResponseSchema } from "../validation/synergia/homeworkAssignments.js";
 import { synergiaMeResponseSchema } from "../validation/synergia/me.js";
+import {
+  messageReceiverGroupResponseSchema,
+  messageReceiverGroupsResponseSchema,
+  messageResponseSchema,
+  messagesResponseSchema,
+  unreadMessagesResponseSchema,
+} from "../validation/synergia/messages.js";
+import {
+  noteCategoriesResponseSchema,
+  noteResponseSchema,
+  notesResponseSchema,
+} from "../validation/synergia/notes.js";
+import {
+  classResponseSchema,
+  classroomResponseSchema,
+  schoolResponseSchema,
+  subjectResponseSchema,
+  subjectsResponseSchema,
+  userResponseSchema,
+  usersResponseSchema,
+} from "../validation/synergia/school.js";
+import {
+  calendarsResponseSchema,
+  classFreeDaysResponseSchema,
+  classFreeDayTypesResponseSchema,
+  schoolFreeDaysResponseSchema,
+  substitutionResponseSchema,
+  teacherFreeDaysResponseSchema,
+  timetableEntryResponseSchema,
+  timetablesResponseSchema,
+  virtualClassesResponseSchema,
+} from "../validation/synergia/timetable.js";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 
 import {
@@ -278,6 +351,190 @@ export class SynergiaApiClient {
 
   getAttendanceTypes(): Promise<AttendanceTypesResponse> {
     return this.getJson("/Attendances/Types", attendanceTypesResponseSchema);
+  }
+
+  getTimetableWeek(weekStart: string): Promise<TimetablesResponse> {
+    return this.getJson("/Timetables", timetablesResponseSchema, {
+      query: { weekStart },
+    });
+  }
+
+  getTimetableDay(day: string): Promise<TimetablesResponse> {
+    return this.getJson("/Timetables", timetablesResponseSchema, {
+      query: { day },
+    });
+  }
+
+  getTimetableEntry(id: SynergiaId): Promise<TimetableEntryResponse> {
+    return this.getJson(
+      `/TimetableEntries/${encodeURIComponent(String(id))}`,
+      timetableEntryResponseSchema,
+    );
+  }
+
+  getCalendars(): Promise<CalendarsResponse> {
+    return this.getJson("/Calendars", calendarsResponseSchema);
+  }
+
+  getClassFreeDays(): Promise<ClassFreeDaysResponse> {
+    return this.getJson(
+      "/Calendars/ClassFreeDays",
+      classFreeDaysResponseSchema,
+    );
+  }
+
+  getClassFreeDayTypes(): Promise<ClassFreeDayTypesResponse> {
+    return this.getJson(
+      "/Calendars/ClassFreeDays/Types",
+      classFreeDayTypesResponseSchema,
+    );
+  }
+
+  getSchoolFreeDays(): Promise<SchoolFreeDaysResponse> {
+    return this.getJson(
+      "/Calendars/SchoolFreeDays",
+      schoolFreeDaysResponseSchema,
+    );
+  }
+
+  getTeacherFreeDays(): Promise<TeacherFreeDaysResponse> {
+    return this.getJson(
+      "/Calendars/TeacherFreeDays",
+      teacherFreeDaysResponseSchema,
+    );
+  }
+
+  getSubstitution(id: SynergiaId): Promise<SubstitutionResponse> {
+    return this.getJson(
+      `/Calendars/Substitutions/${encodeURIComponent(String(id))}`,
+      substitutionResponseSchema,
+    );
+  }
+
+  getVirtualClasses(): Promise<VirtualClassesResponse> {
+    return this.getJson("/VirtualClasses", virtualClassesResponseSchema);
+  }
+
+  listMessages(options: ListMessagesOptions = {}): Promise<MessagesResponse> {
+    const { afterId, alternativeBody = true, changeNewLine = 1 } = options;
+
+    return this.getJson("/Messages", messagesResponseSchema, {
+      query: {
+        afterId,
+        alternativeBody,
+        changeNewLine,
+      },
+    });
+  }
+
+  getMessage(id: SynergiaId): Promise<MessageResponse> {
+    return this.getJson(
+      `/Messages/${encodeURIComponent(String(id))}`,
+      messageResponseSchema,
+    );
+  }
+
+  getUnreadMessages(): Promise<UnreadMessagesResponse> {
+    return this.getJson("/Messages/Unread", unreadMessagesResponseSchema);
+  }
+
+  listMessagesForUser(userId: SynergiaId): Promise<MessagesResponse> {
+    return this.getJson(
+      `/Messages/User/${encodeURIComponent(String(userId))}`,
+      messagesResponseSchema,
+    );
+  }
+
+  listMessageReceiverGroups(): Promise<MessageReceiverGroupsResponse> {
+    return this.getJson(
+      "/Messages/ReceiversGroup",
+      messageReceiverGroupsResponseSchema,
+    );
+  }
+
+  getMessageReceiverGroup(
+    id: SynergiaId,
+  ): Promise<MessageReceiverGroupResponse> {
+    return this.getJson(
+      `/Messages/ReceiversGroup/${encodeURIComponent(String(id))}`,
+      messageReceiverGroupResponseSchema,
+    );
+  }
+
+  getMessageAttachment(id: SynergiaId): Promise<SynergiaBinaryResult> {
+    return this.getBinary(
+      `/Messages/Attachment/${encodeURIComponent(String(id))}`,
+    );
+  }
+
+  listSchoolNotices(): Promise<SchoolNoticesResponse> {
+    return this.getJson("/SchoolNotices", schoolNoticesResponseSchema);
+  }
+
+  getSchoolNotice(id: SynergiaId): Promise<SchoolNoticeResponse> {
+    return this.getJson(
+      `/SchoolNotices/${encodeURIComponent(String(id))}`,
+      schoolNoticeResponseSchema,
+    );
+  }
+
+  listNotes(): Promise<NotesResponse> {
+    return this.getJson("/Notes", notesResponseSchema);
+  }
+
+  getNote(id: SynergiaId): Promise<NoteResponse> {
+    return this.getJson(
+      `/Notes/${encodeURIComponent(String(id))}`,
+      noteResponseSchema,
+    );
+  }
+
+  listNoteCategories(): Promise<NoteCategoriesResponse> {
+    return this.getJson("/Notes/Categories", noteCategoriesResponseSchema);
+  }
+
+  getSchool(): Promise<SchoolResponse> {
+    return this.getJson("/Schools", schoolResponseSchema);
+  }
+
+  getSchoolById(id: SynergiaId): Promise<SchoolResponse> {
+    return this.getJson(
+      `/Schools/${encodeURIComponent(String(id))}`,
+      schoolResponseSchema,
+    );
+  }
+
+  getClass(): Promise<ClassResponse> {
+    return this.getJson("/Classes", classResponseSchema);
+  }
+
+  getClassroom(id: SynergiaId): Promise<ClassroomResponse> {
+    return this.getJson(
+      `/Classrooms/${encodeURIComponent(String(id))}`,
+      classroomResponseSchema,
+    );
+  }
+
+  listSubjects(): Promise<SubjectsResponse> {
+    return this.getJson("/Subjects", subjectsResponseSchema);
+  }
+
+  getSubject(id: SynergiaId): Promise<SubjectResponse> {
+    return this.getJson(
+      `/Subjects/${encodeURIComponent(String(id))}`,
+      subjectResponseSchema,
+    );
+  }
+
+  listUsers(): Promise<UsersResponse> {
+    return this.getJson("/Users", usersResponseSchema);
+  }
+
+  getUser(id: SynergiaId): Promise<UserResponse> {
+    return this.getJson(
+      `/Users/${encodeURIComponent(String(id))}`,
+      userResponseSchema,
+    );
   }
 
   getHomeWorks(): Promise<HomeWorksResponse> {
