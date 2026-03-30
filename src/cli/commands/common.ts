@@ -17,6 +17,19 @@ export interface CliContext {
   createSession: () => LibrusSession;
 }
 
+export function configureCommand(
+  command: Command,
+  context: CliContext,
+): Command {
+  return command
+    .configureOutput({
+      writeOut: (chunk) => context.stdout.write(chunk),
+      writeErr: (chunk) => context.stderr.write(chunk),
+      outputError: () => undefined,
+    })
+    .exitOverride();
+}
+
 export function addJsonOption(command: Command): Command {
   return command.option("--json", "Emit JSON output");
 }
