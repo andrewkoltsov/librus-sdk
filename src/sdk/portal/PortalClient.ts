@@ -12,7 +12,7 @@ import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   portalMeSchema,
   synergiaAccountsResponseSchema,
-} from "../validation/schemas.js";
+} from "../validation/portal.js";
 import { parseApiResponse } from "../validation/responseValidation.js";
 
 export interface PortalClientOptions {
