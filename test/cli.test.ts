@@ -10,7 +10,7 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { isCliEntryPoint, runCli } from "../src/cli/main.js";
 import {
@@ -146,6 +146,10 @@ describe("runCli", () => {
 
   it("keeps usage errors as failures", async () => {
     let stderr = "";
+    const processStderrWrite = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
     const exitCode = await runCli(["node", "librus", "grades", "list"], {
       stdout: { write: () => undefined },
       stderr: { write: (chunk) => (stderr += chunk) },
@@ -158,6 +162,8 @@ describe("runCli", () => {
 
     expect(exitCode).not.toBe(0);
     expect(output.error.code).toBe("CLI_USAGE_ERROR");
+    expect(processStderrWrite).not.toHaveBeenCalled();
+    processStderrWrite.mockRestore();
   });
 
   it("does not leak bearer tokens in error payloads", async () => {

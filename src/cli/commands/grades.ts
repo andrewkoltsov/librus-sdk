@@ -1,12 +1,21 @@
 import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
-import { addJsonOption, summarizeChildAccount, writeJson } from "./common.js";
+import {
+  addJsonOption,
+  configureCommand,
+  summarizeChildAccount,
+  writeJson,
+} from "./common.js";
 
 export function createGradesCommand(context: CliContext): Command {
-  const grades = new Command("grades").description("Read child grades");
-  const list = addJsonOption(
-    new Command("list").description("List grades for a child"),
+  const grades = configureCommand(
+    new Command("grades").description("Read child grades"),
+    context,
+  );
+  const list = configureCommand(
+    addJsonOption(new Command("list").description("List grades for a child")),
+    context,
   );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
