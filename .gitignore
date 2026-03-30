@@ -3,6 +3,8 @@ dist/
 coverage/
 .husky/_/
 .env
+.env.integration
+.env.integration.local
 .DS_Store
 .claude/
 .serena/

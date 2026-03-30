@@ -34,11 +34,17 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:check": "node ./scripts/pack-check.mjs",
+    "report:integration": "npm run build && node --env-file=.env.integration.local test/integration/report-all.mjs",
+    "report:integration:cli": "npm run build && node --env-file=.env.integration.local test/integration/report-cli.mjs",
+    "report:integration:sdk": "npm run build && node --env-file=.env.integration.local test/integration/report-sdk.mjs",
     "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
     "prepublishOnly": "npm run validate",
     "prepare": "husky",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "npm run build && node --env-file=.env.integration.local --test test/integration/*.integration.test.mjs",
+    "test:integration:cli": "npm run build && node --env-file=.env.integration.local --test test/integration/cli.integration.test.mjs",
+    "test:integration:sdk": "npm run build && node --env-file=.env.integration.local --test test/integration/sdk.integration.test.mjs"
   },
   "files": [
     "dist",
