@@ -47,8 +47,8 @@ export const messageReceiverGroupsResponseSchema = v.looseObject({
 export const messageReceiverGroupResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
   ReceiversGroup: v.union([
-    synergiaEntitySchema,
     synergiaEntityListSchema,
+    synergiaEntitySchema,
     v.null(),
   ]),
 });

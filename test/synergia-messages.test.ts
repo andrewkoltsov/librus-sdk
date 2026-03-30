@@ -144,6 +144,29 @@ const parseCases = [
       });
     },
   },
+  {
+    name: "receiver group array payloads",
+    call: (client: SynergiaApiClient) => client.getMessageReceiverGroup(9),
+    path: "/Messages/ReceiversGroup/9",
+    body: {
+      ReceiversGroup: [
+        {
+          Id: 9,
+          Name: "Parents",
+        },
+      ],
+    },
+    assert: (response: unknown) => {
+      const payload = response as MessageReceiverGroupResponse;
+
+      expect(payload.ReceiversGroup).toEqual([
+        {
+          Id: 9,
+          Name: "Parents",
+        },
+      ]);
+    },
+  },
 ];
 
 describe("SynergiaApiClient message methods", () => {
