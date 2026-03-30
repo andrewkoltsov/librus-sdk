@@ -6,6 +6,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { LibrusSession } from "../sdk/index.js";
+import { createAnnouncementsCommand } from "./commands/announcements.js";
 import { createAttendanceCommand } from "./commands/attendance.js";
 import { createChildrenCommand } from "./commands/children.js";
 import type { CliContext } from "./commands/common.js";
@@ -16,7 +17,10 @@ import {
 } from "./commands/common.js";
 import { createGradesCommand } from "./commands/grades.js";
 import { createHomeworkCommand } from "./commands/homework.js";
+import { createMessagesCommand } from "./commands/messages.js";
 import { createMeCommand } from "./commands/me.js";
+import { createNotesCommand } from "./commands/notes.js";
+import { createTimetableCommand } from "./commands/timetable.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
@@ -43,11 +47,15 @@ export function createProgram(context: CliContext): Command {
     context,
   );
 
+  program.addCommand(createAnnouncementsCommand(context));
   program.addCommand(createChildrenCommand(context));
   program.addCommand(createMeCommand(context));
   program.addCommand(createGradesCommand(context));
   program.addCommand(createAttendanceCommand(context));
   program.addCommand(createHomeworkCommand(context));
+  program.addCommand(createMessagesCommand(context));
+  program.addCommand(createNotesCommand(context));
+  program.addCommand(createTimetableCommand(context));
 
   return program;
 }

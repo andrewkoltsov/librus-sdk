@@ -55,6 +55,10 @@ More examples:
 npm run cli -- me --child <id-or-login>
 npm run cli -- attendance list --child <id-or-login>
 npm run cli -- homework list --child <id-or-login>
+npm run cli -- messages list --child <id-or-login>
+npm run cli -- timetable week --child <id-or-login> --week-start 2026-03-30
+npm run cli -- announcements list --child <id-or-login>
+npm run cli -- notes list --child <id-or-login>
 ```
 
 `HomeWork.LessonNo` mirrors the live Librus payload and may be `string`, `number`, or `null`. `HomeWork.Subject` may be omitted entirely or returned as `null`.
@@ -108,6 +112,6 @@ console.log(children);
 
 `await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`, and leaves `HomeWork.Subject` absent when the API omits it.
 
-The SDK also exposes adjacent metadata and assignment reads for the partially covered widget areas, including grade averages/categories/comments, behaviour and descriptive grade families, attendance types, homework assignments, and homework categories. Attachment methods such as `getHomeworkAssignmentAttachment(id)` return `{ data, contentType, contentDisposition }`.
+The SDK also exposes higher-value widget GET coverage for timetable, messages, announcements, notes, and school/class metadata, plus the earlier grade, attendance-type, homework-assignment, and homework-category reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)` and `getMessageAttachment(id)` return `{ data, contentType, contentDisposition }`.
 
 All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code.

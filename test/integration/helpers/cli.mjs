@@ -27,8 +27,121 @@ function parseJsonPayload(stdout, stderr) {
   return text ? JSON.parse(text) : null;
 }
 
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getCurrentDay() {
+  return formatLocalDate(new Date());
+}
+
+function getCurrentWeekStart() {
+  const date = new Date();
+  const weekStart = new Date(date);
+  const day = weekStart.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+
+  weekStart.setDate(weekStart.getDate() + diff);
+
+  return formatLocalDate(weekStart);
+}
+
+function findEntityId(items) {
+  if (!Array.isArray(items)) {
+    return null;
+  }
+
+  for (const item of items) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    if (!("Id" in item)) {
+      continue;
+    }
+
+    const { Id } = item;
+
+    if (typeof Id === "string" || typeof Id === "number") {
+      return Id;
+    }
+  }
+
+  return null;
+}
+
+function countTimetableEntries(timetable) {
+  if (!timetable || typeof timetable !== "object" || Array.isArray(timetable)) {
+    return 0;
+  }
+
+  let count = 0;
+
+  for (const value of Object.values(timetable)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+
+    for (const slot of value) {
+      if (Array.isArray(slot)) {
+        count += slot.length;
+      }
+    }
+  }
+
+  return count;
+}
+
+function findTimetableEntryId(timetable) {
+  if (!timetable || typeof timetable !== "object" || Array.isArray(timetable)) {
+    return null;
+  }
+
+  for (const value of Object.values(timetable)) {
+    if (!Array.isArray(value)) {
+      continue;
+    }
+
+    for (const slot of value) {
+      if (!Array.isArray(slot)) {
+        continue;
+      }
+
+      for (const entry of slot) {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          continue;
+        }
+
+        const entryId = entry.TimetableEntry?.Id ?? entry.Id;
+
+        if (typeof entryId === "string" || typeof entryId === "number") {
+          return entryId;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function skippedCliResult(args, reason) {
+  return {
+    command: `node dist/cli/main.js ${args.join(" ")}`,
+    exitCode: 0,
+    ok: true,
+    skipped: true,
+    reason,
+    parseError: null,
+  };
+}
+
 function summarizeSuccess(args, payload) {
   const commandName = args[0];
+  const subcommandName = args[1];
 
   if (commandName === "children") {
     return {
@@ -67,6 +180,57 @@ function summarizeSuccess(args, payload) {
       ok: true,
       child: payload.child ? summarizeChild(payload.child) : null,
       count: payload.data?.HomeWorks?.length ?? 0,
+    };
+  }
+
+  if (commandName === "messages") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count:
+        subcommandName === "unread"
+          ? typeof payload.data?.UnreadMessages === "number"
+            ? payload.data.UnreadMessages
+            : 0
+          : (payload.data?.Messages?.length ?? 0),
+      keys:
+        subcommandName === "get"
+          ? Object.keys(payload.data?.Message ?? {})
+          : [],
+    };
+  }
+
+  if (commandName === "timetable") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count: countTimetableEntries(payload.data?.Timetable),
+      keys:
+        subcommandName === "entry"
+          ? Object.keys(payload.data?.TimetableEntry ?? {})
+          : [],
+    };
+  }
+
+  if (commandName === "announcements") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count: payload.data?.SchoolNotices?.length ?? 0,
+      keys:
+        subcommandName === "get"
+          ? Object.keys(payload.data?.SchoolNotice ?? {})
+          : [],
+    };
+  }
+
+  if (commandName === "notes") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count: payload.data?.Notes?.length ?? 0,
+      keys:
+        subcommandName === "get" ? Object.keys(payload.data?.Note ?? {}) : [],
     };
   }
 
@@ -143,6 +307,8 @@ export function runCliMatrix(env = process.env) {
   const linkedChildren = childrenResult.payload.children;
   const targetChildren = selectTargetChildren(linkedChildren, env);
   const targetResults = [];
+  const currentDay = getCurrentDay();
+  const currentWeekStart = getCurrentWeekStart();
 
   for (const child of targetChildren) {
     const childArgs = [
@@ -150,11 +316,143 @@ export function runCliMatrix(env = process.env) {
       ["grades", "list", "--child", String(child.id)],
       ["attendance", "list", "--child", String(child.id)],
       ["homework", "list", "--child", String(child.id)],
+      ["messages", "list", "--child", String(child.id)],
+      ["messages", "unread", "--child", String(child.id)],
+      ["timetable", "day", "--child", String(child.id), "--day", currentDay],
+      [
+        "timetable",
+        "week",
+        "--child",
+        String(child.id),
+        "--week-start",
+        currentWeekStart,
+      ],
+      ["announcements", "list", "--child", String(child.id)],
+      ["notes", "list", "--child", String(child.id)],
     ];
 
     for (const args of childArgs) {
       targetResults.push(summarizeCliResult(runCliCommand(args, env)));
     }
+
+    const messagesList = runCliCommand(
+      ["messages", "list", "--child", String(child.id)],
+      env,
+    );
+    const messageId = findEntityId(messagesList.payload?.data?.Messages);
+
+    targetResults.push(
+      messageId === null
+        ? skippedCliResult(
+            ["messages", "get", "--child", String(child.id), "--id", "<id>"],
+            "No message id found in the live messages payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "messages",
+                "get",
+                "--child",
+                String(child.id),
+                "--id",
+                String(messageId),
+              ],
+              env,
+            ),
+          ),
+    );
+
+    const timetableDay = runCliCommand(
+      ["timetable", "day", "--child", String(child.id), "--day", currentDay],
+      env,
+    );
+    const timetableEntryId = findTimetableEntryId(
+      timetableDay.payload?.data?.Timetable,
+    );
+
+    targetResults.push(
+      timetableEntryId === null
+        ? skippedCliResult(
+            ["timetable", "entry", "--child", String(child.id), "--id", "<id>"],
+            "No timetable entry id found in the current day payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "timetable",
+                "entry",
+                "--child",
+                String(child.id),
+                "--id",
+                String(timetableEntryId),
+              ],
+              env,
+            ),
+          ),
+    );
+
+    const announcementsList = runCliCommand(
+      ["announcements", "list", "--child", String(child.id)],
+      env,
+    );
+    const announcementId = findEntityId(
+      announcementsList.payload?.data?.SchoolNotices,
+    );
+
+    targetResults.push(
+      announcementId === null
+        ? skippedCliResult(
+            [
+              "announcements",
+              "get",
+              "--child",
+              String(child.id),
+              "--id",
+              "<id>",
+            ],
+            "No school notice id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "announcements",
+                "get",
+                "--child",
+                String(child.id),
+                "--id",
+                String(announcementId),
+              ],
+              env,
+            ),
+          ),
+    );
+
+    const notesList = runCliCommand(
+      ["notes", "list", "--child", String(child.id)],
+      env,
+    );
+    const noteId = findEntityId(notesList.payload?.data?.Notes);
+
+    targetResults.push(
+      noteId === null
+        ? skippedCliResult(
+            ["notes", "get", "--child", String(child.id), "--id", "<id>"],
+            "No note id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "notes",
+                "get",
+                "--child",
+                String(child.id),
+                "--id",
+                String(noteId),
+              ],
+              env,
+            ),
+          ),
+    );
   }
 
   return {
