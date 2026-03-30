@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - SDK GET coverage for high-value timetable, message, announcement, note, and school/class metadata endpoints.
 - CLI commands for `messages`, `timetable`, `announcements`, and `notes`.
 - Public `SynergiaBinaryResult` export for attachment-style SDK methods such as `getHomeworkAssignmentAttachment(id)`.
+- Generated `openapi.json` for the SDK-supported child-scoped Synergia GET surface, plus a public `generateOpenApiDocument()` helper and npm regeneration scripts.
 
 ## [0.2.2] - 2026-03-29
 

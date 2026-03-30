@@ -37,6 +37,8 @@ npx librus children list
 npx librus grades list --child <id-or-login>
 ```
 
+The package also ships a generated [`openapi.json`](./openapi.json) for the SDK-supported child-scoped `https://api.librus.pl/3.0` surface, so non-TypeScript consumers can generate clients in other languages. It is also exported as `librus-sdk/openapi.json`.
+
 ## Local development
 
 ```bash
@@ -44,6 +46,7 @@ npm install
 npm run lint
 npm run format:check
 npm run build
+npm run openapi:generate
 npm run pack:check
 npm run cli -- children list
 npm run cli -- grades list --child <id-or-login>
@@ -113,5 +116,24 @@ console.log(children);
 `await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`, and leaves `HomeWork.Subject` absent when the API omits it.
 
 The SDK also exposes higher-value widget GET coverage for timetable, messages, announcements, notes, and school/class metadata, plus the earlier grade, attendance-type, homework-assignment, and homework-category reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)` and `getMessageAttachment(id)` return `{ data, contentType, contentDisposition }`.
+
+## OpenAPI
+
+`openapi.json` is generated from the SDK's supported Synergia GET endpoints and the shared valibot response schemas. The document is best-effort and intentionally covers only the child-scoped `api.librus.pl/3.0` requests, not the `portal.librus.pl` login flow.
+
+Regenerate or verify the file locally with:
+
+```bash
+npm run openapi:generate
+npm run openapi:check
+```
+
+You can also generate the document programmatically:
+
+```ts
+import { generateOpenApiDocument } from "librus-sdk";
+
+const openApi = generateOpenApiDocument({ version: "0.2.2" });
+```
 
 All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code.
