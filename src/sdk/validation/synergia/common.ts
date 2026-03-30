@@ -6,3 +6,7 @@ export const synergiaResponseEnvelopeSchema = v.looseObject({
   Resources: unknownRecordSchema,
   Url: v.string(),
 });
+
+export const synergiaEntitySchema = v.looseObject({});
+
+export const synergiaEntityListSchema = v.array(synergiaEntitySchema);
