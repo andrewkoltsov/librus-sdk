@@ -2,6 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { format } from "prettier";
+
 import { generateOpenApiDocument } from "../src/sdk/openapi.js";
 
 async function main(): Promise<void> {
@@ -14,7 +16,9 @@ async function main(): Promise<void> {
     version: string;
   };
   const document = generateOpenApiDocument({ version: packageJson.version });
-  const serialized = `${JSON.stringify(document, null, 2)}\n`;
+  const serialized = await format(JSON.stringify(document), {
+    filepath: outputPath,
+  });
   const checkMode = process.argv.includes("--check");
 
   if (checkMode) {
