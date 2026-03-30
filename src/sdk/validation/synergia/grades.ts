@@ -77,8 +77,8 @@ export const behaviourPointCommentsResponseSchema = v.looseObject({
 export const behaviourSystemProposalResponseSchema = v.looseObject({
   ...synergiaResponseEnvelopeSchema.entries,
   BehaviourGradesSystemProposal: v.union([
-    synergiaEntitySchema,
     synergiaEntityListSchema,
+    synergiaEntitySchema,
     v.null(),
   ]),
 });

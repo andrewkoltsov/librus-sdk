@@ -254,6 +254,22 @@ const parseCases = [
       }),
   },
   {
+    name: "behaviour system proposal list",
+    call: (client: SynergiaApiClient) => client.getBehaviourSystemProposal(),
+    path: "/BehaviourGrades/SystemProposal",
+    body: {
+      BehaviourGradesSystemProposal: [
+        { Id: 9, Proposal: "Very good" },
+        { Id: 10, Proposal: "Excellent" },
+      ],
+    },
+    assert: (response: Record<string, unknown>) =>
+      expect(response.BehaviourGradesSystemProposal).toEqual([
+        { Id: 9, Proposal: "Very good" },
+        { Id: 10, Proposal: "Excellent" },
+      ]),
+  },
+  {
     name: "descriptive grades",
     call: (client: SynergiaApiClient) => client.getDescriptiveGrades(),
     path: "/DescriptiveGrades",
