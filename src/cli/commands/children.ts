@@ -2,10 +2,11 @@ import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
 import {
-  addJsonOption,
+  addFormatOption,
+  type CliFormatOptions,
   configureCommand,
   summarizeChildAccount,
-  writeJson,
+  writeCommandOutput,
 } from "./common.js";
 
 export function createChildrenCommand(context: CliContext): Command {
@@ -14,20 +15,32 @@ export function createChildrenCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("list").description("List linked child accounts"),
     ),
     context,
   );
 
-  list.action(async () => {
+  list.action(async (options: CliFormatOptions) => {
     const session = context.createSession();
     const response = await session.getSynergiaAccounts();
-
-    writeJson(context.stdout, {
+    const payload = {
       lastModification: response.lastModification,
       children: response.accounts.map(summarizeChildAccount),
-    });
+    };
+
+    writeCommandOutput(context, options.format, payload, () => [
+      {
+        title: "Response",
+        value: {
+          lastModification: payload.lastModification,
+        },
+      },
+      {
+        title: "Children",
+        value: payload.children,
+      },
+    ]);
   });
 
   children.addCommand(list);

@@ -121,7 +121,7 @@ console.log(children);
 
 The SDK also exposes widget-derived GET coverage for timetable, messages, announcements, notes, school/class metadata, lessons, lucky number, notification settings, justifications, parent-teacher conferences, system data, and auth-related reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)`, `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return `{ data, contentType, contentDisposition }`.
 
-`getAuthPhoto(id)` mirrors the live API and returns JSON with the photo payload under `data.photo`, including base64 content in `data.photo.content`. The CLI `auth photo --output <path>` command decodes that content to a file and still writes JSON metadata to stdout.
+`getAuthPhoto(id)` mirrors the live API and returns JSON with the photo payload under `data.photo`, including base64 content in `data.photo.content`. The CLI `auth photo --output <path>` command decodes that content to a file and reports the saved-file metadata in text by default or JSON with `--format json`.
 
 ## OpenAPI
 
@@ -142,4 +142,4 @@ import { generateOpenApiDocument } from "librus-sdk";
 const openApi = generateOpenApiDocument({ version: "0.2.2" });
 ```
 
-All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then emit JSON metadata describing the saved output.
+Leaf commands write structured text to stdout by default. Pass `--format json` for stable machine-readable output. Errors follow the selected format on stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then report metadata describing the saved output.

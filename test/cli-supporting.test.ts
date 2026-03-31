@@ -20,6 +20,10 @@ function parseJson<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
+function withJsonFormat(argv: string[]): string[] {
+  return [...argv, "--format", "json"];
+}
+
 function createCommandContext(
   method: string,
   response: unknown,
@@ -39,6 +43,7 @@ function createCommandContext(
     context: {
       stdout: { write: (chunk: string) => (stdout += chunk) },
       stderr: { write: (chunk: string) => (stderr += chunk) },
+      outputWidth: 80,
       createSession: () =>
         ({
           resolveChild,
@@ -444,7 +449,7 @@ describe("supporting CLI commands", () => {
       const { apiMethod, context, getOutput, resolveChild, forChild } =
         createCommandContext(method, response);
 
-      const exitCode = await runCli(argv, context);
+      const exitCode = await runCli(withJsonFormat(argv), context);
       const output = parseJson<{ child: ChildAccount; data: unknown }>(
         getOutput().stdout,
       );
@@ -473,7 +478,7 @@ describe("supporting CLI commands", () => {
     const forChild = vi.fn().mockResolvedValue({ getPlannedLessonAttachment });
 
     const exitCode = await runCli(
-      [
+      withJsonFormat([
         "node",
         "librus",
         "lessons",
@@ -484,10 +489,11 @@ describe("supporting CLI commands", () => {
         "attachment-1",
         "--output",
         "/tmp/planned.pdf",
-      ],
+      ]),
       {
         stdout: { write: (chunk) => (stdout += chunk) },
         stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
         createSession: () =>
           ({
             resolveChild,
@@ -537,7 +543,7 @@ describe("supporting CLI commands", () => {
     const forChild = vi.fn().mockResolvedValue({ getAuthPhoto });
 
     const exitCode = await runCli(
-      [
+      withJsonFormat([
         "node",
         "librus",
         "auth",
@@ -548,10 +554,11 @@ describe("supporting CLI commands", () => {
         "photo-1",
         "--output",
         "/tmp/photo.jpg",
-      ],
+      ]),
       {
         stdout: { write: (chunk) => (stdout += chunk) },
         stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
         createSession: () =>
           ({
             resolveChild,
@@ -595,7 +602,7 @@ describe("supporting CLI commands", () => {
     const forChild = vi.fn().mockResolvedValue({ getAuthPhoto });
 
     const exitCode = await runCli(
-      [
+      withJsonFormat([
         "node",
         "librus",
         "auth",
@@ -606,10 +613,11 @@ describe("supporting CLI commands", () => {
         "photo-1",
         "--output",
         "/tmp/photo.jpg",
-      ],
+      ]),
       {
         stdout: { write: () => undefined },
         stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
         createSession: () =>
           ({
             resolveChild,
@@ -630,9 +638,10 @@ describe("supporting CLI commands", () => {
   it.each(usageFailureCases)("$name", async ({ argv, expectedMessage }) => {
     let stderr = "";
 
-    const exitCode = await runCli(argv, {
+    const exitCode = await runCli(withJsonFormat(argv), {
       stdout: { write: () => undefined },
       stderr: { write: (chunk) => (stderr += chunk) },
+      outputWidth: 80,
       createSession: () =>
         ({
           resolveChild: vi.fn(),
@@ -647,5 +656,24 @@ describe("supporting CLI commands", () => {
     expect(exitCode).not.toBe(0);
     expect(output.error.code).toBe("CLI_USAGE_ERROR");
     expect(output.error.message).toContain(expectedMessage);
+  });
+
+  it("renders text output by default for lessons list", async () => {
+    const { context, getOutput } = createCommandContext("listLessons", {
+      Lessons: [],
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Lessons",
+    });
+
+    const exitCode = await runCli(
+      ["node", "librus", "lessons", "list", "--child", "child-login"],
+      context,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(getOutput().stderr).toBe("");
+    expect(getOutput().stdout).toContain("Child");
+    expect(getOutput().stdout).toContain("Lessons");
+    expect(getOutput().stdout).toContain("Metadata");
   });
 });

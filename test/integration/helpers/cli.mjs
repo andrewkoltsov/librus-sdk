@@ -417,8 +417,9 @@ function summarizeOrSkipCliStatus(result, status, reason) {
 
 export function runCliCommand(args, env = process.env) {
   assertBuiltCli();
+  const commandArgs = [...args, "--format", "json"];
 
-  const result = spawnSync(process.execPath, [cliEntryPath, ...args], {
+  const result = spawnSync(process.execPath, [cliEntryPath, ...commandArgs], {
     cwd: repoRoot,
     encoding: "utf8",
     env,
@@ -436,7 +437,7 @@ export function runCliCommand(args, env = process.env) {
 
   return {
     args,
-    command: `node dist/cli/main.js ${args.join(" ")}`,
+    command: `node dist/cli/main.js ${commandArgs.join(" ")}`,
     exitCode: result.status ?? 1,
     payload,
     parseError,

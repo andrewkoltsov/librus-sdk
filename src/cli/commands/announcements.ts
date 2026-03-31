@@ -2,10 +2,10 @@ import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
 import {
-  addJsonOption,
+  addFormatOption,
   configureCommand,
-  summarizeChildAccount,
-  writeJson,
+  type CliFormatOptions,
+  writeChildScopedOutput,
 } from "./common.js";
 
 export function createAnnouncementsCommand(context: CliContext): Command {
@@ -14,42 +14,40 @@ export function createAnnouncementsCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addJsonOption(new Command("list").description("List school announcements")),
+    addFormatOption(
+      new Command("list").description("List school announcements"),
+    ),
     context,
   );
   const get = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("get").description("Get a school announcement by id"),
     ),
     context,
   );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
-  list.action(async (options: { child: string }) => {
+  list.action(async (options: CliFormatOptions & { child: string }) => {
     const session = context.createSession();
     const child = await session.resolveChild(options.child);
     const client = await session.forChild(child);
     const data = await client.listSchoolNotices();
 
-    writeJson(context.stdout, {
-      child: summarizeChildAccount(child),
-      data,
-    });
+    writeChildScopedOutput(context, options.format, child, data);
   });
 
   get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Announcement id");
-  get.action(async (options: { child: string; id: string }) => {
-    const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
-    const data = await client.getSchoolNotice(options.id);
+  get.action(
+    async (options: CliFormatOptions & { child: string; id: string }) => {
+      const session = context.createSession();
+      const child = await session.resolveChild(options.child);
+      const client = await session.forChild(child);
+      const data = await client.getSchoolNotice(options.id);
 
-    writeJson(context.stdout, {
-      child: summarizeChildAccount(child),
-      data,
-    });
-  });
+      writeChildScopedOutput(context, options.format, child, data);
+    },
+  );
 
   announcements.addCommand(list);
   announcements.addCommand(get);
