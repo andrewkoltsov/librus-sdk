@@ -6,6 +6,11 @@ labels: ["bug"]
 assignees: []
 ---
 
+Review [`CONTRIBUTING.md`](../CONTRIBUTING.md) before filing.
+
+Do not use this template for security vulnerabilities. Follow
+[`SECURITY.md`](../SECURITY.md) instead.
+
 ## Summary
 
 Describe the problem in one or two sentences.

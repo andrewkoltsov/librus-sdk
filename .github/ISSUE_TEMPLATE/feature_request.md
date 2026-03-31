@@ -6,6 +6,8 @@ labels: ["enhancement"]
 assignees: []
 ---
 
+Review [`CONTRIBUTING.md`](../CONTRIBUTING.md) before filing.
+
 ## Summary
 
 Describe the capability you want to add.
