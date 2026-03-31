@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-31
+
 ### Added
 
 - SDK GET coverage for the remaining widget-adjacent grade, behaviour, attendance-type, homework-assignment, and homework-category endpoints.
@@ -13,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - SDK GET coverage for supporting lessons, lucky number, notification settings, justifications, parent-teacher conferences, system data, and auth-related endpoints.
 - CLI commands for `messages`, `timetable`, `announcements`, and `notes`.
 - CLI commands for `lessons`, `lucky-number`, `notifications`, `justifications`, and `auth`.
-- CLI download commands that write files to `--output` paths and emit JSON metadata to stdout instead of raw bytes.
+- CLI download commands that write files to `--output` paths and then report saved-file metadata instead of raw bytes.
 - Auth photo CLI download support that decodes the live API's base64 JSON content before writing the output file.
 - Public `SynergiaBinaryResult` export for attachment-style SDK methods such as `getHomeworkAssignmentAttachment(id)`.
 - Generated `openapi.json` for the SDK-supported child-scoped Synergia GET surface, plus a public `generateOpenApiDocument()` helper and npm regeneration scripts.

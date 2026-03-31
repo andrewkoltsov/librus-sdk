@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Librus Synergia API (SDK-supported subset)",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "description": "Best-effort OpenAPI document generated from the SDK's supported child-scoped Synergia GET surface. Authentication starts on portal.librus.pl; this document covers the subsequent bearer-token calls against api.librus.pl/3.0."
   },
   "servers": [
