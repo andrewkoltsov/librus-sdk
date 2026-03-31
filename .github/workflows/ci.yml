@@ -34,6 +34,26 @@ jobs:
       - name: Validate release gates
         run: npm run validate
 
+  dependency-vulnerabilities:
+    name: Dependency vulnerability gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fail on high or critical advisories
+        run: npm audit --audit-level=high
+
   trivy:
     name: Trivy scan
     runs-on: ubuntu-latest

@@ -10,6 +10,13 @@ It intentionally does not reuse the legacy `synergia.librus.pl` HTML-scraping ap
 
 This implementation was inspired by [Mati365/librus-api](https://github.com/Mati365/librus-api/).
 
+## Security
+
+Report vulnerabilities privately as described in [`SECURITY.md`](./SECURITY.md).
+
+Never commit, log, or print real credentials, bearer tokens, cookies, or other
+secrets in source files, fixtures, examples, or documentation.
+
 ## Environment
 
 Set these variables before running the CLI:
