@@ -13,8 +13,9 @@ import { createChildrenCommand } from "./commands/children.js";
 import type { CliContext } from "./commands/common.js";
 import {
   configureCommand,
-  formatCliError,
-  writeJson,
+  createCliRenderOptions,
+  detectCliOutputFormat,
+  writeCliError,
 } from "./commands/common.js";
 import { createGradesCommand } from "./commands/grades.js";
 import { createHomeworkCommand } from "./commands/homework.js";
@@ -40,6 +41,7 @@ export function createDefaultCliContext(): CliContext {
       write: (chunk) => process.stderr.write(chunk),
     },
     createSession: () => LibrusSession.fromEnv(),
+    outputWidth: process.stdout.columns ?? 80,
     writeFile: (path, data) => writeFileSync(path, data),
   };
 }
@@ -91,6 +93,11 @@ export async function runCli(
     await program.parseAsync(argv);
     return 0;
   } catch (error) {
+    const renderOptions = createCliRenderOptions(
+      context,
+      detectCliOutputFormat(userArgs),
+    );
+
     if (
       error instanceof Error &&
       "code" in error &&
@@ -103,9 +110,7 @@ export async function runCli(
       return 0;
     }
 
-    writeJson(context.stderr, {
-      error: formatCliError(error),
-    });
+    writeCliError(context.stderr, renderOptions, error);
 
     return error instanceof Error &&
       "exitCode" in error &&

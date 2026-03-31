@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Public `SynergiaBinaryResult` export for attachment-style SDK methods such as `getHomeworkAssignmentAttachment(id)`.
 - Generated `openapi.json` for the SDK-supported child-scoped Synergia GET surface, plus a public `generateOpenApiDocument()` helper and npm regeneration scripts.
 
+### Changed
+
+- CLI leaf commands now accept `--format <text|json>`, default to human-readable text output, and keep `json` as the full machine-readable format.
+- CLI errors now follow the selected output format, and download commands report saved-file metadata in text by default.
+
 ## [0.2.2] - 2026-03-29
 
 ### Fixed

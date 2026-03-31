@@ -2,29 +2,26 @@ import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
 import {
-  addJsonOption,
+  addFormatOption,
   configureCommand,
-  summarizeChildAccount,
-  writeJson,
+  type CliFormatOptions,
+  writeChildScopedOutput,
 } from "./common.js";
 
 export function createMeCommand(context: CliContext): Command {
   const me = configureCommand(
-    addJsonOption(new Command("me").description("Get child profile data")),
+    addFormatOption(new Command("me").description("Get child profile data")),
     context,
   );
 
   me.requiredOption("--child <id-or-login>", "Child account id or login");
-  me.action(async (options: { child: string }) => {
+  me.action(async (options: CliFormatOptions & { child: string }) => {
     const session = context.createSession();
     const child = await session.resolveChild(options.child);
     const client = await session.forChild(child);
     const data = await client.getMe();
 
-    writeJson(context.stdout, {
-      child: summarizeChildAccount(child),
-      data,
-    });
+    writeChildScopedOutput(context, options.format, child, data);
   });
 
   return me;

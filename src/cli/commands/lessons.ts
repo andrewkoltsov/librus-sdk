@@ -2,11 +2,12 @@ import { Command } from "commander";
 
 import type { CliContext } from "./common.js";
 import {
-  addJsonOption,
+  addFormatOption,
   configureCommand,
-  summarizeChildAccount,
+  createSingleDataSection,
+  type CliFormatOptions,
   writeBinaryDownload,
-  writeJson,
+  writeChildScopedOutput,
 } from "./common.js";
 
 export function createLessonsCommand(context: CliContext): Command {
@@ -15,27 +16,27 @@ export function createLessonsCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addJsonOption(new Command("list").description("List lessons")),
+    addFormatOption(new Command("list").description("List lessons")),
     context,
   );
   const get = configureCommand(
-    addJsonOption(new Command("get").description("Get a lesson by id")),
+    addFormatOption(new Command("get").description("Get a lesson by id")),
     context,
   );
   const plannedList = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("planned-list").description("List planned lessons"),
     ),
     context,
   );
   const plannedGet = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("planned-get").description("Get a planned lesson by id"),
     ),
     context,
   );
   const plannedAttachment = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("planned-attachment").description(
         "Download a planned lesson attachment",
       ),
@@ -43,13 +44,13 @@ export function createLessonsCommand(context: CliContext): Command {
     context,
   );
   const realizationsList = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("realizations-list").description("List lesson realizations"),
     ),
     context,
   );
   const realizationsGet = configureCommand(
-    addJsonOption(
+    addFormatOption(
       new Command("realizations-get").description(
         "Get a lesson realization by id",
       ),
@@ -58,37 +59,39 @@ export function createLessonsCommand(context: CliContext): Command {
   );
 
   list.requiredOption("--child <id-or-login>", "Child account id or login");
-  list.action(async (options: { child: string }) => {
+  list.action(async (options: CliFormatOptions & { child: string }) => {
     const session = context.createSession();
     const child = await session.resolveChild(options.child);
     const client = await session.forChild(child);
     const data = await client.listLessons();
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
+    writeChildScopedOutput(context, options.format, child, data);
   });
 
   get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Lesson id");
-  get.action(async (options: { child: string; id: string }) => {
-    const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
-    const data = await client.getLesson(options.id);
+  get.action(
+    async (options: CliFormatOptions & { child: string; id: string }) => {
+      const session = context.createSession();
+      const child = await session.resolveChild(options.child);
+      const client = await session.forChild(child);
+      const data = await client.getLesson(options.id);
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
-  });
+      writeChildScopedOutput(context, options.format, child, data);
+    },
+  );
 
   plannedList.requiredOption(
     "--child <id-or-login>",
     "Child account id or login",
   );
-  plannedList.action(async (options: { child: string }) => {
+  plannedList.action(async (options: CliFormatOptions & { child: string }) => {
     const session = context.createSession();
     const child = await session.resolveChild(options.child);
     const client = await session.forChild(child);
     const data = await client.listPlannedLessons();
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
+    writeChildScopedOutput(context, options.format, child, data);
   });
 
   plannedGet.requiredOption(
@@ -96,14 +99,16 @@ export function createLessonsCommand(context: CliContext): Command {
     "Child account id or login",
   );
   plannedGet.requiredOption("--id <id>", "Planned lesson id");
-  plannedGet.action(async (options: { child: string; id: string }) => {
-    const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
-    const data = await client.getPlannedLesson(options.id);
+  plannedGet.action(
+    async (options: CliFormatOptions & { child: string; id: string }) => {
+      const session = context.createSession();
+      const child = await session.resolveChild(options.child);
+      const client = await session.forChild(child);
+      const data = await client.getPlannedLesson(options.id);
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
-  });
+      writeChildScopedOutput(context, options.format, child, data);
+    },
+  );
 
   plannedAttachment.requiredOption(
     "--child <id-or-login>",
@@ -115,17 +120,29 @@ export function createLessonsCommand(context: CliContext): Command {
     "Write the attachment to this file path",
   );
   plannedAttachment.action(
-    async (options: { child: string; id: string; output: string }) => {
+    async (
+      options: CliFormatOptions & {
+        child: string;
+        id: string;
+        output: string;
+      },
+    ) => {
       const session = context.createSession();
       const child = await session.resolveChild(options.child);
       const client = await session.forChild(child);
       const file = await client.getPlannedLessonAttachment(options.id);
       const data = writeBinaryDownload(context, options.output, file);
 
-      writeJson(context.stdout, {
-        child: summarizeChildAccount(child),
+      writeChildScopedOutput(
+        context,
+        options.format,
+        child,
         data,
-      });
+        (summary) => [
+          { title: "Child", value: summary },
+          ...createSingleDataSection("Saved File", data),
+        ],
+      );
     },
   );
 
@@ -133,28 +150,32 @@ export function createLessonsCommand(context: CliContext): Command {
     "--child <id-or-login>",
     "Child account id or login",
   );
-  realizationsList.action(async (options: { child: string }) => {
-    const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
-    const data = await client.listRealizations();
+  realizationsList.action(
+    async (options: CliFormatOptions & { child: string }) => {
+      const session = context.createSession();
+      const child = await session.resolveChild(options.child);
+      const client = await session.forChild(child);
+      const data = await client.listRealizations();
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
-  });
+      writeChildScopedOutput(context, options.format, child, data);
+    },
+  );
 
   realizationsGet.requiredOption(
     "--child <id-or-login>",
     "Child account id or login",
   );
   realizationsGet.requiredOption("--id <id>", "Realization id");
-  realizationsGet.action(async (options: { child: string; id: string }) => {
-    const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
-    const data = await client.getRealization(options.id);
+  realizationsGet.action(
+    async (options: CliFormatOptions & { child: string; id: string }) => {
+      const session = context.createSession();
+      const child = await session.resolveChild(options.child);
+      const client = await session.forChild(child);
+      const data = await client.getRealization(options.id);
 
-    writeJson(context.stdout, { child: summarizeChildAccount(child), data });
-  });
+      writeChildScopedOutput(context, options.format, child, data);
+    },
+  );
 
   lessons.addCommand(list);
   lessons.addCommand(get);

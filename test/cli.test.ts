@@ -57,15 +57,42 @@ function parseJson<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
+function withJsonFormat(argv: string[]): string[] {
+  return [...argv, "--format", "json"];
+}
+
 describe("runCli", () => {
-  it("writes success payloads to stdout", async () => {
+  it("writes text output by default", async () => {
     let stdout = "";
     let stderr = "";
     const exitCode = await runCli(["node", "librus", "children", "list"], {
       stdout: { write: (chunk) => (stdout += chunk) },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => createSessionStub() as never,
+      outputWidth: 80,
     });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toContain("Response");
+    expect(stdout).toContain("lastModification:");
+    expect(stdout).toContain("Children");
+    expect(stdout).toContain("login:");
+    expect(stdout).not.toContain("accessToken");
+  });
+
+  it("writes JSON payloads to stdout for --format json", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "children", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createSessionStub() as never,
+        outputWidth: 80,
+      },
+    );
 
     const output = parseJson<{
       lastModification: number;
@@ -85,6 +112,7 @@ describe("runCli", () => {
       stdout: { write: (chunk) => (stdout += chunk) },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => createSessionStub() as never,
+      outputWidth: 80,
     });
 
     expect(exitCode).toBe(0);
@@ -99,6 +127,7 @@ describe("runCli", () => {
       stdout: { write: (chunk) => (stdout += chunk) },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => createSessionStub() as never,
+      outputWidth: 80,
     });
 
     expect(exitCode).toBe(0);
@@ -113,6 +142,7 @@ describe("runCli", () => {
       stdout: { write: (chunk) => (stdout += chunk) },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => createSessionStub() as never,
+      outputWidth: 80,
     });
 
     expect(exitCode).toBe(0);
@@ -120,7 +150,35 @@ describe("runCli", () => {
     expect(stdout.trim()).toBe(packageJson.version);
   });
 
-  it("writes stable JSON errors to stderr", async () => {
+  it("writes stable JSON errors to stderr for --format json", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "children", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => {
+          throw new LibrusSdkError(
+            "CONFIGURATION_ERROR",
+            "Missing portal credentials.",
+          );
+        },
+        outputWidth: 80,
+      },
+    );
+
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(output.error.code).toBe("CONFIGURATION_ERROR");
+    expect(output.error.message).toBe("Missing portal credentials.");
+  });
+
+  it("writes text errors to stderr by default", async () => {
     let stdout = "";
     let stderr = "";
     const exitCode = await runCli(["node", "librus", "children", "list"], {
@@ -132,16 +190,15 @@ describe("runCli", () => {
           "Missing portal credentials.",
         );
       },
+      outputWidth: 80,
     });
-
-    const output = parseJson<{ error: { code: string; message: string } }>(
-      stderr,
-    );
 
     expect(exitCode).toBe(1);
     expect(stdout).toBe("");
-    expect(output.error.code).toBe("CONFIGURATION_ERROR");
-    expect(output.error.message).toBe("Missing portal credentials.");
+    expect(stderr).toContain("Error");
+    expect(stderr).toContain("code:");
+    expect(stderr).toContain("CONFIGURATION_ERROR");
+    expect(stderr).toContain("message:");
   });
 
   it("keeps usage errors as failures", async () => {
@@ -154,16 +211,32 @@ describe("runCli", () => {
       stdout: { write: () => undefined },
       stderr: { write: (chunk) => (stderr += chunk) },
       createSession: () => createSessionStub() as never,
+      outputWidth: 80,
     });
 
-    const output = parseJson<{ error: { code: string; message: string } }>(
-      stderr,
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("CLI_USAGE_ERROR");
+    expect(stderr).toContain("required option");
+    expect(processStderrWrite).not.toHaveBeenCalled();
+    processStderrWrite.mockRestore();
+  });
+
+  it("fails cleanly for invalid --format values", async () => {
+    let stderr = "";
+
+    const exitCode = await runCli(
+      ["node", "librus", "children", "list", "--format", "yaml"],
+      {
+        stdout: { write: () => undefined },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createSessionStub() as never,
+        outputWidth: 80,
+      },
     );
 
     expect(exitCode).not.toBe(0);
-    expect(output.error.code).toBe("CLI_USAGE_ERROR");
-    expect(processStderrWrite).not.toHaveBeenCalled();
-    processStderrWrite.mockRestore();
+    expect(stderr).toContain("CLI_USAGE_ERROR");
+    expect(stderr).toContain('Expected "text" or "json".');
   });
 
   it("does not leak bearer tokens in error payloads", async () => {
@@ -181,6 +254,7 @@ describe("runCli", () => {
           },
         );
       },
+      outputWidth: 80,
     });
 
     expect(exitCode).toBe(1);
@@ -203,6 +277,7 @@ describe("runCli", () => {
           },
         );
       },
+      outputWidth: 80,
     });
 
     expect(exitCode).toBe(1);

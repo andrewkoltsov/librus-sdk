@@ -20,6 +20,10 @@ function parseJson<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
+function withJsonFormat(argv: string[]): string[] {
+  return [...argv, "--format", "json"];
+}
+
 function createCommandContext(
   method: string,
   response: unknown,
@@ -39,6 +43,7 @@ function createCommandContext(
     context: {
       stdout: { write: (chunk: string) => (stdout += chunk) },
       stderr: { write: (chunk: string) => (stderr += chunk) },
+      outputWidth: 80,
       createSession: () =>
         ({
           resolveChild,
@@ -299,7 +304,7 @@ describe("runCli high-value commands", () => {
       const { apiMethod, child, context, forChild, getOutput, resolveChild } =
         createCommandContext(method, response);
 
-      const exitCode = await runCli(argv, context);
+      const exitCode = await runCli(withJsonFormat(argv), context);
       const output = parseJson<{ child: { login: string }; data: unknown }>(
         getOutput().stdout,
       );
@@ -319,10 +324,11 @@ describe("runCli high-value commands", () => {
     async ({ argv, expectedMessage }) => {
       let stderr = "";
 
-      const exitCode = await runCli(argv, {
+      const exitCode = await runCli(withJsonFormat(argv), {
         stdout: { write: () => undefined },
         stderr: { write: (chunk) => (stderr += chunk) },
         createSession: () => ({}) as never,
+        outputWidth: 80,
       });
 
       const output = parseJson<{ error: { code: string; message: string } }>(
@@ -343,6 +349,7 @@ describe("runCli high-value commands", () => {
       {
         stdout: { write: () => undefined },
         stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
         createSession: () =>
           ({
             resolveChild: async () => createChild(),
@@ -364,5 +371,24 @@ describe("runCli high-value commands", () => {
     expect(stderr).toContain("API_REQUEST_FAILED");
     expect(stderr).not.toContain("token-secret");
     expect(stderr).not.toContain("Bearer ");
+  });
+
+  it("renders text output by default for messages list", async () => {
+    const { context, getOutput } = createCommandContext("listMessages", {
+      Messages: [],
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Messages",
+    });
+
+    const exitCode = await runCli(
+      ["node", "librus", "messages", "list", "--child", "child-login"],
+      context,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(getOutput().stderr).toBe("");
+    expect(getOutput().stdout).toContain("Child");
+    expect(getOutput().stdout).toContain("Messages");
+    expect(getOutput().stdout).toContain("Metadata");
   });
 });
