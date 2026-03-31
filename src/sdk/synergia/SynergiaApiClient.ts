@@ -8,6 +8,13 @@ import type {
   AttendancesResponse,
 } from "../models/synergia/attendance.js";
 import type {
+  AuthClassroomResponse,
+  AuthPhotoResponse,
+  AuthPhotosResponse,
+  AuthTokenInfoResponse,
+  AuthUserInfoResponse,
+} from "../models/synergia/auth.js";
+import type {
   BehaviourGradePointsResponse,
   BehaviourGradeTypesResponse,
   BehaviourGradesResponse,
@@ -37,6 +44,21 @@ import type {
   HomeWorksResponse,
 } from "../models/synergia/homework.js";
 import type { HomeworkAssignmentsResponse } from "../models/synergia/homeworkAssignments.js";
+import type {
+  JustificationResponse,
+  JustificationsResponse,
+  ListJustificationsOptions,
+  ParentTeacherConferencesResponse,
+  SystemDataResponse,
+} from "../models/synergia/justifications.js";
+import type {
+  LessonResponse,
+  LessonsResponse,
+  PlannedLessonResponse,
+  PlannedLessonsResponse,
+  RealizationResponse,
+  RealizationsResponse,
+} from "../models/synergia/lessons.js";
 import type { SynergiaMeResponse } from "../models/synergia/me.js";
 import type {
   ListMessagesOptions,
@@ -51,6 +73,11 @@ import type {
   NoteResponse,
   NotesResponse,
 } from "../models/synergia/notes.js";
+import type {
+  LuckyNumberResponse,
+  NotificationCenterResponse,
+  PushConfigurationsResponse,
+} from "../models/synergia/notifications.js";
 import type {
   ClassResponse,
   ClassroomResponse,
@@ -80,6 +107,13 @@ import {
   attendancesResponseSchema,
 } from "../validation/synergia/attendance.js";
 import {
+  authClassroomResponseSchema,
+  authPhotoResponseSchema,
+  authPhotosResponseSchema,
+  authTokenInfoResponseSchema,
+  authUserInfoResponseSchema,
+} from "../validation/synergia/auth.js";
+import {
   behaviourGradePointsResponseSchema,
   behaviourGradeTypesResponseSchema,
   behaviourGradesResponseSchema,
@@ -108,6 +142,20 @@ import {
   homeworkCategoriesResponseSchema,
 } from "../validation/synergia/homework.js";
 import { homeworkAssignmentsResponseSchema } from "../validation/synergia/homeworkAssignments.js";
+import {
+  justificationResponseSchema,
+  justificationsResponseSchema,
+  parentTeacherConferencesResponseSchema,
+  systemDataResponseSchema,
+} from "../validation/synergia/justifications.js";
+import {
+  lessonResponseSchema,
+  lessonsResponseSchema,
+  plannedLessonResponseSchema,
+  plannedLessonsResponseSchema,
+  realizationResponseSchema,
+  realizationsResponseSchema,
+} from "../validation/synergia/lessons.js";
 import { synergiaMeResponseSchema } from "../validation/synergia/me.js";
 import {
   messageReceiverGroupResponseSchema,
@@ -121,6 +169,11 @@ import {
   noteResponseSchema,
   notesResponseSchema,
 } from "../validation/synergia/notes.js";
+import {
+  luckyNumberResponseSchema,
+  notificationCenterResponseSchema,
+  pushConfigurationsResponseSchema,
+} from "../validation/synergia/notifications.js";
 import {
   classResponseSchema,
   classroomResponseSchema,
@@ -413,6 +466,120 @@ export class SynergiaApiClient {
 
   getVirtualClasses(): Promise<VirtualClassesResponse> {
     return this.getJson("/VirtualClasses", virtualClassesResponseSchema);
+  }
+
+  listLessons(): Promise<LessonsResponse> {
+    return this.getJson("/Lessons", lessonsResponseSchema);
+  }
+
+  getLesson(id: SynergiaId): Promise<LessonResponse> {
+    return this.getJson(
+      `/Lessons/${encodeURIComponent(String(id))}`,
+      lessonResponseSchema,
+    );
+  }
+
+  listPlannedLessons(): Promise<PlannedLessonsResponse> {
+    return this.getJson("/PlannedLessons", plannedLessonsResponseSchema);
+  }
+
+  getPlannedLesson(id: SynergiaId): Promise<PlannedLessonResponse> {
+    return this.getJson(
+      `/PlannedLessons/${encodeURIComponent(String(id))}`,
+      plannedLessonResponseSchema,
+    );
+  }
+
+  getPlannedLessonAttachment(id: SynergiaId): Promise<SynergiaBinaryResult> {
+    return this.getBinary(
+      `/PlannedLessons/Attachment/${encodeURIComponent(String(id))}`,
+    );
+  }
+
+  listRealizations(): Promise<RealizationsResponse> {
+    return this.getJson("/Realizations", realizationsResponseSchema);
+  }
+
+  getRealization(id: SynergiaId): Promise<RealizationResponse> {
+    return this.getJson(
+      `/Realizations/${encodeURIComponent(String(id))}`,
+      realizationResponseSchema,
+    );
+  }
+
+  getLuckyNumber(forDay?: string): Promise<LuckyNumberResponse> {
+    return this.getJson("/LuckyNumbers", luckyNumberResponseSchema, {
+      query: { forDay },
+    });
+  }
+
+  getNotificationCenter(): Promise<NotificationCenterResponse> {
+    return this.getJson(
+      "/NotificationCenter",
+      notificationCenterResponseSchema,
+    );
+  }
+
+  getPushConfigurations(): Promise<PushConfigurationsResponse> {
+    return this.getJson(
+      "/PushConfigurations",
+      pushConfigurationsResponseSchema,
+    );
+  }
+
+  listJustifications(
+    options: ListJustificationsOptions = {},
+  ): Promise<JustificationsResponse> {
+    return this.getJson("/Justifications", justificationsResponseSchema, {
+      query: { dateFrom: options.dateFrom },
+    });
+  }
+
+  getJustification(id: SynergiaId): Promise<JustificationResponse> {
+    return this.getJson(
+      `/Justifications/${encodeURIComponent(String(id))}`,
+      justificationResponseSchema,
+    );
+  }
+
+  listParentTeacherConferences(): Promise<ParentTeacherConferencesResponse> {
+    return this.getJson(
+      "/ParentTeacherConferences",
+      parentTeacherConferencesResponseSchema,
+    );
+  }
+
+  getSystemData(): Promise<SystemDataResponse> {
+    return this.getJson("/SystemData", systemDataResponseSchema);
+  }
+
+  listAuthPhotos(): Promise<AuthPhotosResponse> {
+    return this.getJson("/Auth/Photos", authPhotosResponseSchema);
+  }
+
+  getAuthPhoto(id: SynergiaId): Promise<AuthPhotoResponse> {
+    return this.getJson(
+      `/Auth/Photos/${encodeURIComponent(String(id))}`,
+      authPhotoResponseSchema,
+    );
+  }
+
+  getAuthUserInfo(id: SynergiaId): Promise<AuthUserInfoResponse> {
+    return this.getJson(
+      `/Auth/UserInfo/${encodeURIComponent(String(id))}`,
+      authUserInfoResponseSchema,
+    );
+  }
+
+  getAuthTokenInfo(): Promise<AuthTokenInfoResponse> {
+    return this.getJson("/Auth/TokenInfo", authTokenInfoResponseSchema);
+  }
+
+  getAuthClassroom(id: SynergiaId): Promise<AuthClassroomResponse> {
+    return this.getJson(
+      `/Auth/Classrooms/${encodeURIComponent(String(id))}`,
+      authClassroomResponseSchema,
+    );
   }
 
   listMessages(options: ListMessagesOptions = {}): Promise<MessagesResponse> {

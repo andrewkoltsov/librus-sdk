@@ -164,6 +164,14 @@ function summarizeBinaryResponse(payload) {
   };
 }
 
+function summarizeKeysResponse(payload) {
+  return {
+    keys: Object.keys(payload).filter(
+      (key) => key !== "Resources" && key !== "Url",
+    ),
+  };
+}
+
 function arrayCheck(name, load, key) {
   return {
     name,
@@ -193,6 +201,14 @@ function objectCheck(name, load, key) {
     name,
     load,
     summarize: (payload) => summarizeObjectResponse(payload, key),
+  };
+}
+
+function keysCheck(name, load) {
+  return {
+    name,
+    load,
+    summarize: summarizeKeysResponse,
   };
 }
 
@@ -330,6 +346,24 @@ function findHomeworkAssignmentAttachmentId(assignments) {
   return null;
 }
 
+function findAuthPhotoId(payload) {
+  const photo = payload?.data?.photo;
+  const id = photo?.id ?? photo?.Id;
+
+  return typeof id === "string" || typeof id === "number" ? id : null;
+}
+
+function isApiStatus(error, status) {
+  return (
+    error instanceof Error &&
+    "details" in error &&
+    error.details &&
+    typeof error.details === "object" &&
+    "status" in error.details &&
+    error.details.status === status
+  );
+}
+
 async function runHomeworkAssignmentAttachmentCheck(api) {
   try {
     const assignments = await api.getHomeworkAssignments();
@@ -353,6 +387,281 @@ async function runHomeworkAssignmentAttachmentCheck(api) {
       ...summarizeBinaryResponse(payload),
     };
   } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runLessonDetailCheck(api) {
+  try {
+    const payload = await api.listLessons();
+    const lessonId = findEntityId(payload.Lessons);
+
+    if (lessonId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No lesson id found in the live lessons payload.",
+      };
+    }
+
+    const lesson = await api.getLesson(lessonId);
+
+    return {
+      ok: true,
+      lessonId: String(lessonId),
+      keys: Object.keys(lesson.Lesson ?? {}),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runPlannedLessonDetailCheck(api) {
+  try {
+    const payload = await api.listPlannedLessons();
+    const plannedLessonId = findEntityId(payload.PlannedLessons);
+
+    if (plannedLessonId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No planned lesson id found in the live payload.",
+      };
+    }
+
+    const plannedLesson = await api.getPlannedLesson(plannedLessonId);
+
+    return {
+      ok: true,
+      plannedLessonId: String(plannedLessonId),
+      keys: Object.keys(plannedLesson.PlannedLesson ?? {}),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runPlannedLessonAttachmentCheck(api) {
+  try {
+    const payload = await api.listPlannedLessons();
+    const attachmentId = findHomeworkAssignmentAttachmentId(
+      payload.PlannedLessons,
+    );
+
+    if (attachmentId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No planned lesson attachment id found in live payload.",
+      };
+    }
+
+    const attachment = await api.getPlannedLessonAttachment(attachmentId);
+
+    return {
+      ok: true,
+      attachmentId: String(attachmentId),
+      ...summarizeBinaryResponse(attachment),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runRealizationDetailCheck(api) {
+  try {
+    const payload = await api.listRealizations();
+    const realizationId = findEntityId(payload.Realizations);
+
+    if (realizationId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No realization id found in the live payload.",
+      };
+    }
+
+    const realization = await api.getRealization(realizationId);
+
+    return {
+      ok: true,
+      realizationId: String(realizationId),
+      keys: Object.keys(realization.Realization ?? {}),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runJustificationsListCheck(api) {
+  try {
+    const payload = await api.listJustifications();
+
+    return {
+      ok: true,
+      count: Array.isArray(payload.Justifications)
+        ? payload.Justifications.length
+        : 0,
+    };
+  } catch (error) {
+    if (isApiStatus(error, 403)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "Justifications are disabled or unreadable for this account.",
+      };
+    }
+
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runJustificationDetailCheck(api) {
+  try {
+    const payload = await api.listJustifications();
+    const justificationId = findEntityId(payload.Justifications);
+
+    if (justificationId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No justification id found in the live payload.",
+      };
+    }
+
+    const justification = await api.getJustification(justificationId);
+
+    return {
+      ok: true,
+      justificationId: String(justificationId),
+      keys: Object.keys(justification.Justification ?? {}),
+    };
+  } catch (error) {
+    if (isApiStatus(error, 403)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason:
+          "Justification details are disabled or unreadable for this account.",
+      };
+    }
+
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runAuthPhotoDetailCheck(api) {
+  try {
+    const payload = await api.listAuthPhotos();
+    const photoId = findAuthPhotoId(payload);
+
+    if (photoId === null) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No auth photo id found in the live payload.",
+      };
+    }
+
+    const photo = await api.getAuthPhoto(photoId);
+
+    return {
+      ok: true,
+      photoId: String(photoId),
+      hasContent: typeof photo?.data?.photo?.content === "string",
+      keys: Object.keys(photo?.data?.photo ?? {}),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runAuthUserInfoCheck(api) {
+  try {
+    const tokenInfo = await api.getAuthTokenInfo();
+    const userIdentifier = tokenInfo.UserIdentifier;
+
+    if (typeof userIdentifier !== "string") {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No auth user identifier found in token info.",
+      };
+    }
+
+    const userInfo = await api.getAuthUserInfo(userIdentifier);
+
+    return {
+      ok: true,
+      userIdentifier,
+      keys: Object.keys(userInfo).filter(
+        (key) => key !== "Resources" && key !== "Url",
+      ),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runAuthClassroomCheck(api) {
+  try {
+    const tokenInfo = await api.getAuthTokenInfo();
+    const classroomId = tokenInfo.IdentifierOfClassOfStudentAssignedWithUser;
+
+    if (typeof classroomId !== "string" && typeof classroomId !== "number") {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "No auth classroom id found in token info.",
+      };
+    }
+
+    const classroom = await api.getAuthClassroom(classroomId);
+
+    return {
+      ok: true,
+      classroomId: String(classroomId),
+      keys: Object.keys(classroom).filter(
+        (key) => key !== "Resources" && key !== "Url",
+      ),
+    };
+  } catch (error) {
+    if (isApiStatus(error, 404)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason:
+          "Auth classroom endpoint returned 404 for the current classroom id.",
+      };
+    }
+
     return {
       ok: false,
       error: serializeError(error),
@@ -739,6 +1048,32 @@ const sdkChecks = [
     (api) => api.getVirtualClasses(),
     "VirtualClasses",
   ),
+  arrayCheck("lessons", (api) => api.listLessons(), "Lessons"),
+  arrayCheck(
+    "plannedLessons",
+    (api) => api.listPlannedLessons(),
+    "PlannedLessons",
+  ),
+  arrayCheck("realizations", (api) => api.listRealizations(), "Realizations"),
+  objectCheck("luckyNumber", (api) => api.getLuckyNumber(), "LuckyNumber"),
+  objectCheck(
+    "notificationCenter",
+    (api) => api.getNotificationCenter(),
+    "NotificationCenter",
+  ),
+  objectCheck(
+    "pushConfigurations",
+    (api) => api.getPushConfigurations(),
+    "settings",
+  ),
+  arrayCheck(
+    "parentTeacherConferences",
+    (api) => api.listParentTeacherConferences(),
+    "ParentTeacherConferences",
+  ),
+  keysCheck("systemData", (api) => api.getSystemData()),
+  objectCheck("authPhotos", (api) => api.listAuthPhotos(), "data"),
+  keysCheck("authTokenInfo", (api) => api.getAuthTokenInfo()),
   arrayCheck("messages", (api) => api.listMessages(), "Messages"),
   countCheck(
     "unreadMessages",
@@ -792,6 +1127,15 @@ export async function runSdkMatrix(env = process.env) {
     );
     const behaviourSystemProposal = await runBehaviourSystemProposalCheck(api);
     const timetableEntry = await runTimetableEntryCheck(api);
+    const lessonDetail = await runLessonDetailCheck(api);
+    const plannedLessonDetail = await runPlannedLessonDetailCheck(api);
+    const plannedLessonAttachment = await runPlannedLessonAttachmentCheck(api);
+    const realizationDetail = await runRealizationDetailCheck(api);
+    const justifications = await runJustificationsListCheck(api);
+    const justificationDetail = await runJustificationDetailCheck(api);
+    const authPhotoDetail = await runAuthPhotoDetailCheck(api);
+    const authUserInfo = await runAuthUserInfoCheck(api);
+    const authClassroom = await runAuthClassroomCheck(api);
     const messageDetail = await runMessageDetailCheck(api);
     const messageReceiverGroupDetail =
       await runMessageReceiverGroupDetailCheck(api);
@@ -806,6 +1150,15 @@ export async function runSdkMatrix(env = process.env) {
       ...checkEntries,
       ["behaviourSystemProposal", behaviourSystemProposal],
       ["timetableEntry", timetableEntry],
+      ["lessonDetail", lessonDetail],
+      ["plannedLessonDetail", plannedLessonDetail],
+      ["plannedLessonAttachment", plannedLessonAttachment],
+      ["realizationDetail", realizationDetail],
+      ["justifications", justifications],
+      ["justificationDetail", justificationDetail],
+      ["authPhotoDetail", authPhotoDetail],
+      ["authUserInfo", authUserInfo],
+      ["authClassroom", authClassroom],
       ["messageDetail", messageDetail],
       ["messageReceiverGroupDetail", messageReceiverGroupDetail],
       ["schoolNoticeDetail", schoolNoticeDetail],

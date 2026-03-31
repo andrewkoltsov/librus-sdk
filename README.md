@@ -58,10 +58,14 @@ More examples:
 npm run cli -- me --child <id-or-login>
 npm run cli -- attendance list --child <id-or-login>
 npm run cli -- homework list --child <id-or-login>
+npm run cli -- lessons list --child <id-or-login>
+npm run cli -- lucky-number get --child <id-or-login>
 npm run cli -- messages list --child <id-or-login>
 npm run cli -- timetable week --child <id-or-login> --week-start 2026-03-30
 npm run cli -- announcements list --child <id-or-login>
 npm run cli -- notes list --child <id-or-login>
+npm run cli -- justifications conferences --child <id-or-login>
+npm run cli -- auth photo --child <id-or-login> --id <photo-id> --output ./photo.jpg
 ```
 
 `HomeWork.LessonNo` mirrors the live Librus payload and may be `string`, `number`, or `null`. `HomeWork.Subject` may be omitted entirely or returned as `null`.
@@ -115,7 +119,9 @@ console.log(children);
 
 `await session.forChild(child).getHomeWorks()` preserves the API's `HomeWork.LessonNo` value as `string`, `number`, or `null`, and leaves `HomeWork.Subject` absent when the API omits it.
 
-The SDK also exposes higher-value widget GET coverage for timetable, messages, announcements, notes, and school/class metadata, plus the earlier grade, attendance-type, homework-assignment, and homework-category reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)` and `getMessageAttachment(id)` return `{ data, contentType, contentDisposition }`.
+The SDK also exposes widget-derived GET coverage for timetable, messages, announcements, notes, school/class metadata, lessons, lucky number, notification settings, justifications, parent-teacher conferences, system data, and auth-related reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)`, `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return `{ data, contentType, contentDisposition }`.
+
+`getAuthPhoto(id)` mirrors the live API and returns JSON with the photo payload under `data.photo`, including base64 content in `data.photo.content`. The CLI `auth photo --output <path>` command decodes that content to a file and still writes JSON metadata to stdout.
 
 ## OpenAPI
 
@@ -136,4 +142,4 @@ import { generateOpenApiDocument } from "librus-sdk";
 const openApi = generateOpenApiDocument({ version: "0.2.2" });
 ```
 
-All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code.
+All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then emit JSON metadata describing the saved output.
