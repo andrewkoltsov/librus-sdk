@@ -24,6 +24,20 @@ function withJsonFormat(argv: string[]): string[] {
   return [...argv, "--format", "json"];
 }
 
+function formatLocalDateTime(timestamp: number): string {
+  const date = new Date(timestamp);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ]
+    .join("-")
+    .concat(
+      ` ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`,
+    );
+}
+
 function createCommandContext(
   method: string,
   response: unknown,
@@ -390,5 +404,88 @@ describe("runCli high-value commands", () => {
     expect(getOutput().stdout).toContain("Child");
     expect(getOutput().stdout).toContain("Messages");
     expect(getOutput().stdout).toContain("Metadata");
+  });
+
+  it("formats message dates and body text in text output", async () => {
+    const rawBody =
+      "Szanowni Pa\\u0144stwo,\\u003Cbr\\u003E\\u003Cbr\\u003Ewysy\\u0142am grafik obiad\\u00f3w.\\u003Cbr\\u003E\\u003Cbr\\u003EPozdrawiam\\u003Cbr\\u003EAleksandra Wojtasik";
+    const { context, getOutput } = createCommandContext("getMessage", {
+      Message: {
+        Id: 17,
+        ReadDate: 1757068051,
+        SendDate: "1757314190000",
+        Body: rawBody,
+      },
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Messages/17",
+    });
+
+    const exitCode = await runCli(
+      [
+        "node",
+        "librus",
+        "messages",
+        "get",
+        "--child",
+        "child-login",
+        "--id",
+        "17",
+      ],
+      context,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(getOutput().stderr).toBe("");
+    expect(getOutput().stdout).toContain(
+      formatLocalDateTime(1757068051 * 1000),
+    );
+    expect(getOutput().stdout).toContain(formatLocalDateTime(1757314190000));
+    expect(getOutput().stdout).toContain("Szanowni Państwo,");
+    expect(getOutput().stdout).toContain("wysyłam grafik obiadów.");
+    expect(getOutput().stdout).toContain("Pozdrawiam");
+    expect(getOutput().stdout).not.toContain("1757068051");
+    expect(getOutput().stdout).not.toContain("1757314190000");
+    expect(getOutput().stdout).not.toContain("\\u0144");
+    expect(getOutput().stdout).not.toContain("<br>");
+  });
+
+  it("keeps raw message dates and body text in json output", async () => {
+    const rawBody =
+      "Szanowni Pa\\u0144stwo,\\u003Cbr\\u003E\\u003Cbr\\u003Ewysy\\u0142am grafik obiad\\u00f3w.\\u003Cbr\\u003E\\u003Cbr\\u003EPozdrawiam\\u003Cbr\\u003EAleksandra Wojtasik";
+    const { context, getOutput } = createCommandContext("getMessage", {
+      Message: {
+        Id: 17,
+        ReadDate: 1757068051,
+        SendDate: "1757314190000",
+        Body: rawBody,
+      },
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Messages/17",
+    });
+
+    const exitCode = await runCli(
+      withJsonFormat([
+        "node",
+        "librus",
+        "messages",
+        "get",
+        "--child",
+        "child-login",
+        "--id",
+        "17",
+      ]),
+      context,
+    );
+    const output = parseJson<{
+      data: {
+        Message: { Body: string; ReadDate: number; SendDate: string };
+      };
+    }>(getOutput().stdout);
+
+    expect(exitCode).toBe(0);
+    expect(getOutput().stderr).toBe("");
+    expect(output.data.Message.ReadDate).toBe(1757068051);
+    expect(output.data.Message.SendDate).toBe("1757314190000");
+    expect(output.data.Message.Body).toBe(rawBody);
   });
 });

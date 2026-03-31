@@ -142,4 +142,4 @@ import { generateOpenApiDocument } from "librus-sdk";
 const openApi = generateOpenApiDocument({ version: "0.3.0" });
 ```
 
-Leaf commands write structured text to stdout by default. Pass `--format json` for stable machine-readable output. Errors follow the selected format on stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then report metadata describing the saved output.
+Leaf commands write structured text to stdout by default. Pass `--format json` for stable machine-readable output. In text output, epoch-style `*Date` fields render in local `YYYY-MM-DD HH:mm:ss` format, and escaped message bodies decode Polish characters while turning `<br>` tags into terminal line breaks. Errors follow the selected format on stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then report metadata describing the saved output.
