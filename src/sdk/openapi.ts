@@ -15,6 +15,13 @@ import {
   attendancesResponseSchema,
 } from "./validation/synergia/attendance.js";
 import {
+  authClassroomResponseSchema,
+  authPhotoResponseSchema,
+  authPhotosResponseSchema,
+  authTokenInfoResponseSchema,
+  authUserInfoResponseSchema,
+} from "./validation/synergia/auth.js";
+import {
   behaviourGradePointsResponseSchema,
   behaviourGradeTypesResponseSchema,
   behaviourGradesResponseSchema,
@@ -43,6 +50,20 @@ import {
   homeworkCategoriesResponseSchema,
 } from "./validation/synergia/homework.js";
 import { homeworkAssignmentsResponseSchema } from "./validation/synergia/homeworkAssignments.js";
+import {
+  justificationResponseSchema,
+  justificationsResponseSchema,
+  parentTeacherConferencesResponseSchema,
+  systemDataResponseSchema,
+} from "./validation/synergia/justifications.js";
+import {
+  lessonResponseSchema,
+  lessonsResponseSchema,
+  plannedLessonResponseSchema,
+  plannedLessonsResponseSchema,
+  realizationResponseSchema,
+  realizationsResponseSchema,
+} from "./validation/synergia/lessons.js";
 import { synergiaMeResponseSchema } from "./validation/synergia/me.js";
 import {
   messageReceiverGroupResponseSchema,
@@ -51,6 +72,11 @@ import {
   messagesResponseSchema,
   unreadMessagesResponseSchema,
 } from "./validation/synergia/messages.js";
+import {
+  luckyNumberResponseSchema,
+  notificationCenterResponseSchema,
+  pushConfigurationsResponseSchema,
+} from "./validation/synergia/notifications.js";
 import {
   noteCategoriesResponseSchema,
   noteResponseSchema,
@@ -176,6 +202,11 @@ const openApiSchemaDefinitions = {
   TextGradesResponse: textGradesResponseSchema,
   AttendancesResponse: attendancesResponseSchema,
   AttendanceTypesResponse: attendanceTypesResponseSchema,
+  AuthPhotosResponse: authPhotosResponseSchema,
+  AuthPhotoResponse: authPhotoResponseSchema,
+  AuthUserInfoResponse: authUserInfoResponseSchema,
+  AuthTokenInfoResponse: authTokenInfoResponseSchema,
+  AuthClassroomResponse: authClassroomResponseSchema,
   TimetablesResponse: timetablesResponseSchema,
   TimetableEntryResponse: timetableEntryResponseSchema,
   CalendarsResponse: calendarsResponseSchema,
@@ -185,6 +216,19 @@ const openApiSchemaDefinitions = {
   TeacherFreeDaysResponse: teacherFreeDaysResponseSchema,
   SubstitutionResponse: substitutionResponseSchema,
   VirtualClassesResponse: virtualClassesResponseSchema,
+  LessonsResponse: lessonsResponseSchema,
+  LessonResponse: lessonResponseSchema,
+  PlannedLessonsResponse: plannedLessonsResponseSchema,
+  PlannedLessonResponse: plannedLessonResponseSchema,
+  RealizationsResponse: realizationsResponseSchema,
+  RealizationResponse: realizationResponseSchema,
+  LuckyNumberResponse: luckyNumberResponseSchema,
+  NotificationCenterResponse: notificationCenterResponseSchema,
+  PushConfigurationsResponse: pushConfigurationsResponseSchema,
+  JustificationsResponse: justificationsResponseSchema,
+  JustificationResponse: justificationResponseSchema,
+  ParentTeacherConferencesResponse: parentTeacherConferencesResponseSchema,
+  SystemDataResponse: systemDataResponseSchema,
   MessagesResponse: messagesResponseSchema,
   MessageResponse: messageResponseSchema,
   UnreadMessagesResponse: unreadMessagesResponseSchema,
@@ -235,6 +279,28 @@ const tagDescriptions = [
   {
     name: "timetable",
     description: "Timetable, calendar, and substitution endpoints.",
+  },
+  {
+    name: "lessons",
+    description: "Lessons, planned lessons, realizations, and attachments.",
+  },
+  {
+    name: "notifications",
+    description:
+      "Lucky number, notification center, and push-configuration endpoints.",
+  },
+  {
+    name: "justifications",
+    description:
+      "Justifications, parent-teacher conferences, and related administrative reads.",
+  },
+  {
+    name: "system",
+    description: "System metadata endpoints.",
+  },
+  {
+    name: "auth",
+    description: "Auth-prefixed photo, user, token, and classroom reads.",
   },
   {
     name: "messages",
@@ -575,6 +641,236 @@ const operations: readonly OpenApiOperationDefinition[] = [
     summary: "List virtual classes",
     tag: "timetable",
     response: { kind: "json", schemaName: "VirtualClassesResponse" },
+  },
+  {
+    path: "/Lessons",
+    operationId: "listLessons",
+    summary: "List lessons",
+    tag: "lessons",
+    response: { kind: "json", schemaName: "LessonsResponse" },
+  },
+  {
+    path: "/Lessons/{lessonId}",
+    operationId: "getLesson",
+    summary: "Get a lesson by id",
+    tag: "lessons",
+    parameters: [
+      {
+        name: "lessonId",
+        in: "path",
+        required: true,
+        description: "Lesson identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "LessonResponse" },
+  },
+  {
+    path: "/PlannedLessons",
+    operationId: "listPlannedLessons",
+    summary: "List planned lessons",
+    tag: "lessons",
+    response: { kind: "json", schemaName: "PlannedLessonsResponse" },
+  },
+  {
+    path: "/PlannedLessons/{plannedLessonId}",
+    operationId: "getPlannedLesson",
+    summary: "Get a planned lesson by id",
+    tag: "lessons",
+    parameters: [
+      {
+        name: "plannedLessonId",
+        in: "path",
+        required: true,
+        description: "Planned lesson identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "PlannedLessonResponse" },
+  },
+  {
+    path: "/PlannedLessons/Attachment/{attachmentId}",
+    operationId: "getPlannedLessonAttachment",
+    summary: "Download a planned-lesson attachment",
+    tag: "lessons",
+    parameters: [
+      {
+        name: "attachmentId",
+        in: "path",
+        required: true,
+        description: "Attachment identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: {
+      kind: "binary",
+      description:
+        "Attachment payload. The live API may return a more specific content type.",
+    },
+  },
+  {
+    path: "/Realizations",
+    operationId: "listRealizations",
+    summary: "List lesson realizations",
+    tag: "lessons",
+    response: { kind: "json", schemaName: "RealizationsResponse" },
+  },
+  {
+    path: "/Realizations/{realizationId}",
+    operationId: "getRealization",
+    summary: "Get a realization by id",
+    tag: "lessons",
+    parameters: [
+      {
+        name: "realizationId",
+        in: "path",
+        required: true,
+        description: "Realization identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "RealizationResponse" },
+  },
+  {
+    path: "/LuckyNumbers",
+    operationId: "getLuckyNumber",
+    summary: "Get the lucky number",
+    tag: "notifications",
+    parameters: [
+      {
+        name: "forDay",
+        in: "query",
+        required: false,
+        description: "Optional day in `YYYY-MM-DD` format.",
+        schema: { type: "string", format: "date" },
+      },
+    ],
+    response: { kind: "json", schemaName: "LuckyNumberResponse" },
+  },
+  {
+    path: "/NotificationCenter",
+    operationId: "getNotificationCenter",
+    summary: "Get notification center data",
+    tag: "notifications",
+    response: { kind: "json", schemaName: "NotificationCenterResponse" },
+  },
+  {
+    path: "/PushConfigurations",
+    operationId: "getPushConfigurations",
+    summary: "Get push notification configuration",
+    tag: "notifications",
+    response: { kind: "json", schemaName: "PushConfigurationsResponse" },
+  },
+  {
+    path: "/Justifications",
+    operationId: "listJustifications",
+    summary: "List justifications",
+    tag: "justifications",
+    parameters: [
+      {
+        name: "dateFrom",
+        in: "query",
+        required: false,
+        description: "Optional lower date bound in `YYYY-MM-DD` format.",
+        schema: { type: "string", format: "date" },
+      },
+    ],
+    response: { kind: "json", schemaName: "JustificationsResponse" },
+  },
+  {
+    path: "/Justifications/{justificationId}",
+    operationId: "getJustification",
+    summary: "Get a justification by id",
+    tag: "justifications",
+    parameters: [
+      {
+        name: "justificationId",
+        in: "path",
+        required: true,
+        description: "Justification identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "JustificationResponse" },
+  },
+  {
+    path: "/ParentTeacherConferences",
+    operationId: "listParentTeacherConferences",
+    summary: "List parent-teacher conferences",
+    tag: "justifications",
+    response: {
+      kind: "json",
+      schemaName: "ParentTeacherConferencesResponse",
+    },
+  },
+  {
+    path: "/SystemData",
+    operationId: "getSystemData",
+    summary: "Get system metadata",
+    tag: "system",
+    response: { kind: "json", schemaName: "SystemDataResponse" },
+  },
+  {
+    path: "/Auth/Photos",
+    operationId: "listAuthPhotos",
+    summary: "List auth photo payloads",
+    tag: "auth",
+    response: { kind: "json", schemaName: "AuthPhotosResponse" },
+  },
+  {
+    path: "/Auth/Photos/{photoId}",
+    operationId: "getAuthPhoto",
+    summary: "Get an auth photo by id",
+    tag: "auth",
+    parameters: [
+      {
+        name: "photoId",
+        in: "path",
+        required: true,
+        description: "Photo identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "AuthPhotoResponse" },
+  },
+  {
+    path: "/Auth/UserInfo/{userId}",
+    operationId: "getAuthUserInfo",
+    summary: "Get auth-scoped user info by id",
+    tag: "auth",
+    parameters: [
+      {
+        name: "userId",
+        in: "path",
+        required: true,
+        description: "User identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "AuthUserInfoResponse" },
+  },
+  {
+    path: "/Auth/TokenInfo",
+    operationId: "getAuthTokenInfo",
+    summary: "Get auth token information",
+    tag: "auth",
+    response: { kind: "json", schemaName: "AuthTokenInfoResponse" },
+  },
+  {
+    path: "/Auth/Classrooms/{classroomId}",
+    operationId: "getAuthClassroom",
+    summary: "Get an auth-scoped classroom by id",
+    tag: "auth",
+    parameters: [
+      {
+        name: "classroomId",
+        in: "path",
+        required: true,
+        description: "Classroom identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: { kind: "json", schemaName: "AuthClassroomResponse" },
   },
   {
     path: "/Messages",

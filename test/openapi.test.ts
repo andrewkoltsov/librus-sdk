@@ -74,11 +74,47 @@ describe("generateOpenApiDocument", () => {
     ]);
   });
 
+  it("covers the full current supporting-feature GET surface", () => {
+    const document = getGeneratedDocument();
+    const requiredPaths = [
+      "/Lessons",
+      "/Lessons/{lessonId}",
+      "/PlannedLessons",
+      "/PlannedLessons/{plannedLessonId}",
+      "/PlannedLessons/Attachment/{attachmentId}",
+      "/Realizations",
+      "/Realizations/{realizationId}",
+      "/LuckyNumbers",
+      "/NotificationCenter",
+      "/PushConfigurations",
+      "/Justifications",
+      "/Justifications/{justificationId}",
+      "/ParentTeacherConferences",
+      "/SystemData",
+      "/Auth/Photos",
+      "/Auth/Photos/{photoId}",
+      "/Auth/UserInfo/{userId}",
+      "/Auth/TokenInfo",
+      "/Auth/Classrooms/{classroomId}",
+    ];
+
+    // The client currently exposes 78 GET methods; week/day share one OpenAPI path.
+    expect(Object.keys(document.paths)).toHaveLength(77);
+
+    for (const path of requiredPaths) {
+      expect(document.paths[path]).toBeDefined();
+    }
+  });
+
   it("marks attachment endpoints as binary downloads", () => {
     const document = getGeneratedDocument();
     const messageAttachment = getOperation(
       document,
       "/Messages/Attachment/{attachmentId}",
+    );
+    const plannedLessonAttachment = getOperation(
+      document,
+      "/PlannedLessons/Attachment/{attachmentId}",
     );
     const homeworkAttachment = getOperation(
       document,
@@ -86,6 +122,21 @@ describe("generateOpenApiDocument", () => {
     );
 
     expect((messageAttachment.responses as { 200: JsonObject })["200"]).toEqual(
+      expect.objectContaining({
+        content: {
+          "application/octet-stream": {
+            schema: {
+              type: "string",
+              format: "binary",
+            },
+          },
+        },
+      }),
+    );
+
+    expect(
+      (plannedLessonAttachment.responses as { 200: JsonObject })["200"],
+    ).toEqual(
       expect.objectContaining({
         content: {
           "application/octet-stream": {
