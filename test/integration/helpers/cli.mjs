@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { selectTargetChildren, summarizeChild } from "./children.mjs";
@@ -72,6 +74,78 @@ function findEntityId(items) {
   }
 
   return null;
+}
+
+function extractAttachmentIdCandidate(value) {
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const candidate = extractAttachmentIdCandidate(item);
+
+      if (candidate !== null) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  if ("Id" in value) {
+    const { Id } = value;
+
+    if (typeof Id === "string" || typeof Id === "number") {
+      return Id;
+    }
+  }
+
+  for (const nested of Object.values(value)) {
+    const candidate = extractAttachmentIdCandidate(nested);
+
+    if (candidate !== null) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function findAttachmentId(items) {
+  if (!Array.isArray(items)) {
+    return null;
+  }
+
+  for (const item of items) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(item)) {
+      if (!/attachment/i.test(key)) {
+        continue;
+      }
+
+      const candidate = extractAttachmentIdCandidate(value);
+
+      if (candidate !== null) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function findAuthPhotoId(payload) {
+  const id = payload?.data?.photo?.id ?? payload?.data?.photo?.Id;
+
+  return typeof id === "string" || typeof id === "number" ? id : null;
 }
 
 function countTimetableEntries(timetable) {
@@ -234,7 +308,111 @@ function summarizeSuccess(args, payload) {
     };
   }
 
+  if (commandName === "lessons") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count:
+        subcommandName === "list"
+          ? (payload.data?.Lessons?.length ?? 0)
+          : subcommandName === "planned-list"
+            ? (payload.data?.PlannedLessons?.length ?? 0)
+            : subcommandName === "realizations-list"
+              ? (payload.data?.Realizations?.length ?? 0)
+              : 0,
+      keys:
+        subcommandName === "get"
+          ? Object.keys(payload.data?.Lesson ?? {})
+          : subcommandName === "planned-get"
+            ? Object.keys(payload.data?.PlannedLesson ?? {})
+            : subcommandName === "realizations-get"
+              ? Object.keys(payload.data?.Realization ?? {})
+              : [],
+      bytes:
+        subcommandName === "planned-attachment"
+          ? (payload.data?.bytes ?? 0)
+          : undefined,
+    };
+  }
+
+  if (commandName === "lucky-number") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      keys: Object.keys(payload.data?.LuckyNumber ?? {}),
+    };
+  }
+
+  if (commandName === "notifications") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      keys:
+        subcommandName === "center"
+          ? Object.keys(payload.data?.NotificationCenter ?? {})
+          : Object.keys(payload.data?.settings ?? {}),
+    };
+  }
+
+  if (commandName === "justifications") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      count:
+        subcommandName === "list"
+          ? (payload.data?.Justifications?.length ?? 0)
+          : subcommandName === "conferences"
+            ? (payload.data?.ParentTeacherConferences?.length ?? 0)
+            : 0,
+      keys:
+        subcommandName === "get"
+          ? Object.keys(payload.data?.Justification ?? {})
+          : subcommandName === "system-data"
+            ? Object.keys(payload.data ?? {}).filter(
+                (key) => key !== "Resources" && key !== "Url",
+              )
+            : [],
+    };
+  }
+
+  if (commandName === "auth") {
+    return {
+      ok: true,
+      child: payload.child ? summarizeChild(payload.child) : null,
+      keys:
+        subcommandName === "photos"
+          ? Object.keys(payload.data?.data ?? {})
+          : subcommandName === "user-info" ||
+              subcommandName === "token-info" ||
+              subcommandName === "classroom"
+            ? Object.keys(payload.data ?? {}).filter(
+                (key) => key !== "Resources" && key !== "Url",
+              )
+            : [],
+      bytes:
+        subcommandName === "photo" ? (payload.data?.bytes ?? 0) : undefined,
+    };
+  }
+
   return { ok: true };
+}
+
+function summarizeOrSkipCliStatus(result, status, reason) {
+  if (
+    result.exitCode !== 0 &&
+    result.payload?.error?.details?.status === status
+  ) {
+    return {
+      command: result.command,
+      exitCode: 0,
+      ok: true,
+      skipped: true,
+      reason,
+      parseError: result.parseError,
+    };
+  }
+
+  return summarizeCliResult(result);
 }
 
 export function runCliCommand(args, env = process.env) {
@@ -309,156 +487,424 @@ export function runCliMatrix(env = process.env) {
   const targetResults = [];
   const currentDay = getCurrentDay();
   const currentWeekStart = getCurrentWeekStart();
+  const downloadDir = mkdtempSync(join(tmpdir(), "librus-sdk-cli-"));
 
-  for (const child of targetChildren) {
-    const childArgs = [
-      ["me", "--child", String(child.id)],
-      ["grades", "list", "--child", String(child.id)],
-      ["attendance", "list", "--child", String(child.id)],
-      ["homework", "list", "--child", String(child.id)],
-      ["messages", "list", "--child", String(child.id)],
-      ["messages", "unread", "--child", String(child.id)],
-      ["timetable", "day", "--child", String(child.id), "--day", currentDay],
-      [
-        "timetable",
-        "week",
-        "--child",
-        String(child.id),
-        "--week-start",
-        currentWeekStart,
-      ],
-      ["announcements", "list", "--child", String(child.id)],
-      ["notes", "list", "--child", String(child.id)],
-    ];
+  try {
+    for (const child of targetChildren) {
+      const childCommandResults = new Map();
+      const childArgs = [
+        ["me", "--child", String(child.id)],
+        ["grades", "list", "--child", String(child.id)],
+        ["attendance", "list", "--child", String(child.id)],
+        ["homework", "list", "--child", String(child.id)],
+        ["messages", "list", "--child", String(child.id)],
+        ["messages", "unread", "--child", String(child.id)],
+        ["timetable", "day", "--child", String(child.id), "--day", currentDay],
+        [
+          "timetable",
+          "week",
+          "--child",
+          String(child.id),
+          "--week-start",
+          currentWeekStart,
+        ],
+        ["announcements", "list", "--child", String(child.id)],
+        ["notes", "list", "--child", String(child.id)],
+        ["lessons", "list", "--child", String(child.id)],
+        ["lessons", "planned-list", "--child", String(child.id)],
+        ["lessons", "realizations-list", "--child", String(child.id)],
+        ["lucky-number", "get", "--child", String(child.id)],
+        ["notifications", "center", "--child", String(child.id)],
+        ["notifications", "push-configurations", "--child", String(child.id)],
+        ["justifications", "conferences", "--child", String(child.id)],
+        ["justifications", "system-data", "--child", String(child.id)],
+        ["auth", "photos", "--child", String(child.id)],
+        ["auth", "token-info", "--child", String(child.id)],
+      ];
 
-    for (const args of childArgs) {
-      targetResults.push(summarizeCliResult(runCliCommand(args, env)));
-    }
+      for (const args of childArgs) {
+        const result = runCliCommand(args, env);
 
-    const messagesList = runCliCommand(
-      ["messages", "list", "--child", String(child.id)],
-      env,
-    );
-    const messageId = findEntityId(messagesList.payload?.data?.Messages);
+        childCommandResults.set(args.join("\u0000"), result);
+        targetResults.push(summarizeCliResult(result));
+      }
 
-    targetResults.push(
-      messageId === null
-        ? skippedCliResult(
-            ["messages", "get", "--child", String(child.id), "--id", "<id>"],
-            "No message id found in the live messages payload.",
-          )
-        : summarizeCliResult(
-            runCliCommand(
-              [
-                "messages",
-                "get",
-                "--child",
-                String(child.id),
-                "--id",
-                String(messageId),
-              ],
-              env,
+      const messagesList = childCommandResults.get(
+        ["messages", "list", "--child", String(child.id)].join("\u0000"),
+      );
+      const messageId = findEntityId(messagesList.payload?.data?.Messages);
+
+      targetResults.push(
+        messageId === null
+          ? skippedCliResult(
+              ["messages", "get", "--child", String(child.id), "--id", "<id>"],
+              "No message id found in the live messages payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "messages",
+                  "get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(messageId),
+                ],
+                env,
+              ),
             ),
-          ),
-    );
+      );
 
-    const timetableDay = runCliCommand(
-      ["timetable", "day", "--child", String(child.id), "--day", currentDay],
-      env,
-    );
-    const timetableEntryId = findTimetableEntryId(
-      timetableDay.payload?.data?.Timetable,
-    );
+      const timetableDay = childCommandResults.get(
+        [
+          "timetable",
+          "day",
+          "--child",
+          String(child.id),
+          "--day",
+          currentDay,
+        ].join("\u0000"),
+      );
+      const timetableEntryId = findTimetableEntryId(
+        timetableDay.payload?.data?.Timetable,
+      );
 
-    targetResults.push(
-      timetableEntryId === null
-        ? skippedCliResult(
-            ["timetable", "entry", "--child", String(child.id), "--id", "<id>"],
-            "No timetable entry id found in the current day payload.",
-          )
-        : summarizeCliResult(
-            runCliCommand(
+      targetResults.push(
+        timetableEntryId === null
+          ? skippedCliResult(
               [
                 "timetable",
                 "entry",
                 "--child",
                 String(child.id),
                 "--id",
-                String(timetableEntryId),
+                "<id>",
               ],
-              env,
+              "No timetable entry id found in the current day payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "timetable",
+                  "entry",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(timetableEntryId),
+                ],
+                env,
+              ),
             ),
-          ),
-    );
+      );
 
-    const announcementsList = runCliCommand(
-      ["announcements", "list", "--child", String(child.id)],
-      env,
-    );
-    const announcementId = findEntityId(
-      announcementsList.payload?.data?.SchoolNotices,
-    );
+      const announcementsList = childCommandResults.get(
+        ["announcements", "list", "--child", String(child.id)].join("\u0000"),
+      );
+      const announcementId = findEntityId(
+        announcementsList.payload?.data?.SchoolNotices,
+      );
 
-    targetResults.push(
-      announcementId === null
-        ? skippedCliResult(
-            [
-              "announcements",
-              "get",
-              "--child",
-              String(child.id),
-              "--id",
-              "<id>",
-            ],
-            "No school notice id found in the live payload.",
-          )
-        : summarizeCliResult(
-            runCliCommand(
+      targetResults.push(
+        announcementId === null
+          ? skippedCliResult(
               [
                 "announcements",
                 "get",
                 "--child",
                 String(child.id),
                 "--id",
-                String(announcementId),
+                "<id>",
               ],
-              env,
+              "No school notice id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "announcements",
+                  "get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(announcementId),
+                ],
+                env,
+              ),
             ),
-          ),
-    );
+      );
 
-    const notesList = runCliCommand(
-      ["notes", "list", "--child", String(child.id)],
-      env,
-    );
-    const noteId = findEntityId(notesList.payload?.data?.Notes);
+      const notesList = childCommandResults.get(
+        ["notes", "list", "--child", String(child.id)].join("\u0000"),
+      );
+      const noteId = findEntityId(notesList.payload?.data?.Notes);
 
-    targetResults.push(
-      noteId === null
-        ? skippedCliResult(
-            ["notes", "get", "--child", String(child.id), "--id", "<id>"],
-            "No note id found in the live payload.",
-          )
-        : summarizeCliResult(
-            runCliCommand(
+      targetResults.push(
+        noteId === null
+          ? skippedCliResult(
+              ["notes", "get", "--child", String(child.id), "--id", "<id>"],
+              "No note id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "notes",
+                  "get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(noteId),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      const lessonsList = childCommandResults.get(
+        ["lessons", "list", "--child", String(child.id)].join("\u0000"),
+      );
+      const lessonId = findEntityId(lessonsList.payload?.data?.Lessons);
+
+      targetResults.push(
+        lessonId === null
+          ? skippedCliResult(
+              ["lessons", "get", "--child", String(child.id), "--id", "<id>"],
+              "No lesson id found in the live lessons payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "lessons",
+                  "get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(lessonId),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      const plannedLessonsList = childCommandResults.get(
+        ["lessons", "planned-list", "--child", String(child.id)].join("\u0000"),
+      );
+      const plannedLessonId = findEntityId(
+        plannedLessonsList.payload?.data?.PlannedLessons,
+      );
+      const plannedAttachmentId = findAttachmentId(
+        plannedLessonsList.payload?.data?.PlannedLessons,
+      );
+
+      targetResults.push(
+        plannedLessonId === null
+          ? skippedCliResult(
               [
-                "notes",
+                "lessons",
+                "planned-get",
+                "--child",
+                String(child.id),
+                "--id",
+                "<id>",
+              ],
+              "No planned lesson id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "lessons",
+                  "planned-get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(plannedLessonId),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      targetResults.push(
+        plannedAttachmentId === null
+          ? skippedCliResult(
+              [
+                "lessons",
+                "planned-attachment",
+                "--child",
+                String(child.id),
+                "--id",
+                "<id>",
+                "--output",
+                "<path>",
+              ],
+              "No planned lesson attachment id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "lessons",
+                  "planned-attachment",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(plannedAttachmentId),
+                  "--output",
+                  join(downloadDir, `planned-${child.id}.bin`),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      const realizationsList = childCommandResults.get(
+        ["lessons", "realizations-list", "--child", String(child.id)].join(
+          "\u0000",
+        ),
+      );
+      const realizationId = findEntityId(
+        realizationsList.payload?.data?.Realizations,
+      );
+
+      targetResults.push(
+        realizationId === null
+          ? skippedCliResult(
+              [
+                "lessons",
+                "realizations-get",
+                "--child",
+                String(child.id),
+                "--id",
+                "<id>",
+              ],
+              "No realization id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "lessons",
+                  "realizations-get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(realizationId),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      const justificationsList = runCliCommand(
+        ["justifications", "list", "--child", String(child.id)],
+        env,
+      );
+      targetResults.push(
+        summarizeOrSkipCliStatus(
+          justificationsList,
+          403,
+          "Justifications are disabled or unreadable for this account.",
+        ),
+      );
+
+      const justificationId = findEntityId(
+        justificationsList.payload?.data?.Justifications,
+      );
+      targetResults.push(
+        justificationId === null
+          ? skippedCliResult(
+              [
+                "justifications",
                 "get",
                 "--child",
                 String(child.id),
                 "--id",
-                String(noteId),
+                "<id>",
               ],
-              env,
+              "No justification id found in the live payload.",
+            )
+          : summarizeOrSkipCliStatus(
+              runCliCommand(
+                [
+                  "justifications",
+                  "get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(justificationId),
+                ],
+                env,
+              ),
+              403,
+              "Justification details are disabled or unreadable for this account.",
             ),
-          ),
-    );
-  }
+      );
 
-  return {
-    ok: [...results, ...targetResults].every((result) => result.ok),
-    availableChildren: linkedChildren.map(summarizeChild),
-    targetChildren: targetChildren.map(summarizeChild),
-    results: [...results, ...targetResults],
-  };
+      const authPhotos = childCommandResults.get(
+        ["auth", "photos", "--child", String(child.id)].join("\u0000"),
+      );
+      const authPhotoId = findAuthPhotoId(authPhotos.payload?.data);
+
+      targetResults.push(
+        authPhotoId === null
+          ? skippedCliResult(
+              ["auth", "photo", "--child", String(child.id), "--id", "<id>"],
+              "No auth photo id found in the live payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "auth",
+                  "photo",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(authPhotoId),
+                  "--output",
+                  join(downloadDir, `photo-${child.id}.jpg`),
+                ],
+                env,
+              ),
+            ),
+      );
+
+      const authTokenInfo = childCommandResults.get(
+        ["auth", "token-info", "--child", String(child.id)].join("\u0000"),
+      );
+      const userIdentifier = authTokenInfo.payload?.data?.UserIdentifier;
+
+      targetResults.push(
+        typeof userIdentifier !== "string"
+          ? skippedCliResult(
+              [
+                "auth",
+                "user-info",
+                "--child",
+                String(child.id),
+                "--id",
+                "<id>",
+              ],
+              "No auth user identifier found in token info.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "auth",
+                  "user-info",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  userIdentifier,
+                ],
+                env,
+              ),
+            ),
+      );
+    }
+
+    return {
+      ok: [...results, ...targetResults].every((result) => result.ok),
+      availableChildren: linkedChildren.map(summarizeChild),
+      targetChildren: targetChildren.map(summarizeChild),
+      results: [...results, ...targetResults],
+    };
+  } finally {
+    rmSync(downloadDir, { recursive: true, force: true });
+  }
 }

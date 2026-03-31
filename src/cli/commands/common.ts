@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import type { Command } from "commander";
 
 import {
@@ -15,6 +16,7 @@ export interface CliContext {
   stdout: CliOutput;
   stderr: CliOutput;
   createSession: () => LibrusSession;
+  writeFile?: (path: string, data: Uint8Array) => void;
 }
 
 export function configureCommand(
@@ -77,5 +79,78 @@ export function formatCliError(error: unknown): {
   return {
     code: "INTERNAL_ERROR",
     message: "Unexpected error",
+  };
+}
+
+export interface CliDownloadResult {
+  bytes: number;
+  contentDisposition: string | null;
+  contentType: string | null;
+  path: string;
+}
+
+function writeFile(
+  context: CliContext,
+  path: string,
+  data: Uint8Array,
+): CliDownloadResult {
+  (context.writeFile ?? writeFileSync)(path, data);
+
+  return {
+    bytes: data.byteLength,
+    contentDisposition: null,
+    contentType: null,
+    path,
+  };
+}
+
+function decodeBase64Payload(content: string): {
+  bytes: Uint8Array;
+  contentType: string | null;
+} {
+  const dataUrlMatch = /^data:([^;,]+);base64,([\s\S]+)$/.exec(content);
+  const contentType = dataUrlMatch?.[1] ?? null;
+  const base64 = dataUrlMatch?.[2] ?? content;
+
+  return {
+    bytes: Uint8Array.from(Buffer.from(base64, "base64")),
+    contentType,
+  };
+}
+
+export function writeBinaryDownload(
+  context: CliContext,
+  path: string,
+  data: {
+    contentDisposition: string | null;
+    contentType: string | null;
+    data: ArrayBuffer;
+  },
+): CliDownloadResult {
+  const result = writeFile(context, path, new Uint8Array(data.data));
+
+  return {
+    ...result,
+    contentDisposition: data.contentDisposition,
+    contentType: data.contentType,
+  };
+}
+
+export function writeBase64Download(
+  context: CliContext,
+  path: string,
+  content: string,
+  metadata: {
+    contentDisposition?: string | null;
+    contentType?: string | null;
+  } = {},
+): CliDownloadResult {
+  const decoded = decodeBase64Payload(content);
+  const result = writeFile(context, path, decoded.bytes);
+
+  return {
+    ...result,
+    contentDisposition: metadata.contentDisposition ?? null,
+    contentType: metadata.contentType ?? decoded.contentType,
   };
 }
