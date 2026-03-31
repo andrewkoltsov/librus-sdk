@@ -13,12 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - SDK GET coverage for supporting lessons, lucky number, notification settings, justifications, parent-teacher conferences, system data, and auth-related endpoints.
 - CLI commands for `messages`, `timetable`, `announcements`, and `notes`.
 - CLI commands for `lessons`, `lucky-number`, `notifications`, `justifications`, and `auth`.
+- CLI download commands that write files to `--output` paths and emit JSON metadata to stdout instead of raw bytes.
+- Auth photo CLI download support that decodes the live API's base64 JSON content before writing the output file.
 - Public `SynergiaBinaryResult` export for attachment-style SDK methods such as `getHomeworkAssignmentAttachment(id)`.
-
-### Changed
-
-- CLI download commands now write files to `--output` paths and emit JSON metadata to stdout instead of raw bytes.
-- Auth photo support follows the live API's JSON response shape, with CLI download support decoding the returned base64 content.
 
 ## [0.2.2] - 2026-03-29
 

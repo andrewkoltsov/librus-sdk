@@ -491,6 +491,7 @@ export function runCliMatrix(env = process.env) {
 
   try {
     for (const child of targetChildren) {
+      const childCommandResults = new Map();
       const childArgs = [
         ["me", "--child", String(child.id)],
         ["grades", "list", "--child", String(child.id)],
@@ -522,12 +523,14 @@ export function runCliMatrix(env = process.env) {
       ];
 
       for (const args of childArgs) {
-        targetResults.push(summarizeCliResult(runCliCommand(args, env)));
+        const result = runCliCommand(args, env);
+
+        childCommandResults.set(args.join("\u0000"), result);
+        targetResults.push(summarizeCliResult(result));
       }
 
-      const messagesList = runCliCommand(
-        ["messages", "list", "--child", String(child.id)],
-        env,
+      const messagesList = childCommandResults.get(
+        ["messages", "list", "--child", String(child.id)].join("\u0000"),
       );
       const messageId = findEntityId(messagesList.payload?.data?.Messages);
 
@@ -552,9 +555,15 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const timetableDay = runCliCommand(
-        ["timetable", "day", "--child", String(child.id), "--day", currentDay],
-        env,
+      const timetableDay = childCommandResults.get(
+        [
+          "timetable",
+          "day",
+          "--child",
+          String(child.id),
+          "--day",
+          currentDay,
+        ].join("\u0000"),
       );
       const timetableEntryId = findTimetableEntryId(
         timetableDay.payload?.data?.Timetable,
@@ -588,9 +597,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const announcementsList = runCliCommand(
-        ["announcements", "list", "--child", String(child.id)],
-        env,
+      const announcementsList = childCommandResults.get(
+        ["announcements", "list", "--child", String(child.id)].join("\u0000"),
       );
       const announcementId = findEntityId(
         announcementsList.payload?.data?.SchoolNotices,
@@ -624,9 +632,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const notesList = runCliCommand(
-        ["notes", "list", "--child", String(child.id)],
-        env,
+      const notesList = childCommandResults.get(
+        ["notes", "list", "--child", String(child.id)].join("\u0000"),
       );
       const noteId = findEntityId(notesList.payload?.data?.Notes);
 
@@ -651,9 +658,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const lessonsList = runCliCommand(
-        ["lessons", "list", "--child", String(child.id)],
-        env,
+      const lessonsList = childCommandResults.get(
+        ["lessons", "list", "--child", String(child.id)].join("\u0000"),
       );
       const lessonId = findEntityId(lessonsList.payload?.data?.Lessons);
 
@@ -678,9 +684,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const plannedLessonsList = runCliCommand(
-        ["lessons", "planned-list", "--child", String(child.id)],
-        env,
+      const plannedLessonsList = childCommandResults.get(
+        ["lessons", "planned-list", "--child", String(child.id)].join("\u0000"),
       );
       const plannedLessonId = findEntityId(
         plannedLessonsList.payload?.data?.PlannedLessons,
@@ -749,9 +754,10 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const realizationsList = runCliCommand(
-        ["lessons", "realizations-list", "--child", String(child.id)],
-        env,
+      const realizationsList = childCommandResults.get(
+        ["lessons", "realizations-list", "--child", String(child.id)].join(
+          "\u0000",
+        ),
       );
       const realizationId = findEntityId(
         realizationsList.payload?.data?.Realizations,
@@ -830,9 +836,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const authPhotos = runCliCommand(
-        ["auth", "photos", "--child", String(child.id)],
-        env,
+      const authPhotos = childCommandResults.get(
+        ["auth", "photos", "--child", String(child.id)].join("\u0000"),
       );
       const authPhotoId = findAuthPhotoId(authPhotos.payload?.data);
 
@@ -859,9 +864,8 @@ export function runCliMatrix(env = process.env) {
             ),
       );
 
-      const authTokenInfo = runCliCommand(
-        ["auth", "token-info", "--child", String(child.id)],
-        env,
+      const authTokenInfo = childCommandResults.get(
+        ["auth", "token-info", "--child", String(child.id)].join("\u0000"),
       );
       const userIdentifier = authTokenInfo.payload?.data?.UserIdentifier;
 
