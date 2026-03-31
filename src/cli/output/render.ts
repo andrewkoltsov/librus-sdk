@@ -14,6 +14,15 @@ const MIN_LABEL_WIDTH = 8;
 const MAX_LABEL_WIDTH = 24;
 
 type CliUiInstance = ReturnType<typeof cliui>;
+interface ScalarFormatContext {
+  label?: string;
+}
+
+interface ScalarEntry {
+  formattedValue: string;
+  isBlock: boolean;
+  label: string;
+}
 
 export function renderTextSections(
   sections: CliTextSection[],
@@ -36,7 +45,12 @@ export function renderTextSections(
   return `${ui.toString().trimEnd()}\n`;
 }
 
-function appendValue(ui: CliUiInstance, value: unknown, indent: number): void {
+function appendValue(
+  ui: CliUiInstance,
+  value: unknown,
+  indent: number,
+  context: ScalarFormatContext = {},
+): void {
   if (Array.isArray(value)) {
     appendArray(ui, value, indent);
     return;
@@ -47,7 +61,7 @@ function appendValue(ui: CliUiInstance, value: unknown, indent: number): void {
     return;
   }
 
-  appendLine(ui, `${indentation(indent)}${formatScalar(value)}`);
+  appendLine(ui, `${indentation(indent)}${formatScalar(value, context)}`);
 }
 
 function appendArray(
@@ -93,12 +107,28 @@ function appendObject(
   );
 
   if (scalarEntries.length > 0) {
-    const labelWidth = getLabelWidth(
-      scalarEntries.map(([label]) => label.length),
+    const preparedEntries = scalarEntries.map(([label, entryValue]) =>
+      prepareScalarEntry(label, entryValue),
     );
+    const inlineEntries = preparedEntries.filter((entry) => !entry.isBlock);
+    const labelWidth =
+      inlineEntries.length > 0
+        ? getLabelWidth(inlineEntries.map((entry) => entry.label.length))
+        : MIN_LABEL_WIDTH;
 
-    for (const [label, entryValue] of scalarEntries) {
-      appendKeyValueRow(ui, indent, label, entryValue, labelWidth);
+    for (const entry of preparedEntries) {
+      if (entry.isBlock) {
+        appendBlockScalar(ui, indent, entry.label, entry.formattedValue);
+        continue;
+      }
+
+      appendKeyValueRow(
+        ui,
+        indent,
+        entry.label,
+        entry.formattedValue,
+        labelWidth,
+      );
     }
   }
 
@@ -112,7 +142,7 @@ function appendKeyValueRow(
   ui: CliUiInstance,
   indent: number,
   label: string,
-  value: unknown,
+  formattedValue: string,
   labelWidth: number,
 ): void {
   ui.div(
@@ -121,9 +151,27 @@ function appendKeyValueRow(
       width: indent + labelWidth + 2,
     },
     {
-      text: formatScalar(value),
+      text: formattedValue,
     },
   );
+}
+
+function appendBlockScalar(
+  ui: CliUiInstance,
+  indent: number,
+  label: string,
+  formattedValue: string,
+): void {
+  appendLine(ui, `${indentation(indent)}${label}:`);
+
+  for (const line of formattedValue.split("\n")) {
+    if (line.length === 0) {
+      appendLine(ui, "");
+      continue;
+    }
+
+    appendLine(ui, `${indentation(indent + INDENT_SIZE)}${line}`);
+  }
 }
 
 function appendLine(ui: CliUiInstance, text: string): void {
@@ -155,7 +203,16 @@ function isScalar(value: unknown): boolean {
   );
 }
 
-function formatScalar(value: unknown): string {
+function formatScalar(
+  value: unknown,
+  context: ScalarFormatContext = {},
+): string {
+  const formattedDate = formatDateScalar(value, context.label);
+
+  if (formattedDate !== null) {
+    return formattedDate;
+  }
+
   if (value === null) {
     return "null";
   }
@@ -165,6 +222,12 @@ function formatScalar(value: unknown): string {
   }
 
   if (typeof value === "string") {
+    const formattedBody = formatBodyScalar(value, context.label);
+
+    if (formattedBody !== null) {
+      return formattedBody;
+    }
+
     if (value.length === 0) {
       return '""';
     }
@@ -185,4 +248,121 @@ function formatScalar(value: unknown): string {
   }
 
   return JSON.stringify(value);
+}
+
+function prepareScalarEntry(label: string, value: unknown): ScalarEntry {
+  const formattedValue = formatScalar(value, { label });
+
+  return {
+    formattedValue,
+    isBlock: formattedValue.includes("\n"),
+    label,
+  };
+}
+
+function formatDateScalar(
+  value: unknown,
+  label: string | undefined,
+): string | null {
+  if (!label?.endsWith("Date")) {
+    return null;
+  }
+
+  const timestamp = normalizeUnixTimestamp(value);
+
+  if (timestamp === null) {
+    return null;
+  }
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return formatLocalDateTime(date);
+}
+
+function normalizeUnixTimestamp(value: unknown): number | null {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) {
+      return null;
+    }
+
+    return normalizeTimestampNumber(value);
+  }
+
+  if (typeof value === "bigint") {
+    return normalizeTimestampNumber(Number(value));
+  }
+
+  if (typeof value !== "string" || !/^-?\d+$/.test(value)) {
+    return null;
+  }
+
+  return normalizeTimestampNumber(Number(value));
+}
+
+function normalizeTimestampNumber(value: number): number | null {
+  const digits = Math.abs(value).toString().length;
+
+  if (digits === 10) {
+    return value * 1000;
+  }
+
+  if (digits === 13) {
+    return value;
+  }
+
+  return null;
+}
+
+function formatLocalDateTime(date: Date): string {
+  return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())]
+    .join("-")
+    .concat(
+      ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+    );
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function formatBodyScalar(
+  value: string,
+  label: string | undefined,
+): string | null {
+  if (label !== "Body") {
+    return null;
+  }
+
+  const decodedValue = hasJsonEscapes(value)
+    ? decodeJsonEscapedString(value)
+    : value;
+  const withLineBreaks = decodedValue.replace(/<br\s*\/?>/gi, "\n");
+
+  if (decodedValue !== value || withLineBreaks !== decodedValue) {
+    return withLineBreaks;
+  }
+
+  return null;
+}
+
+function hasJsonEscapes(value: string): boolean {
+  return /\\u[0-9a-fA-F]{4}|\\["\\/bfnrt]/.test(value);
+}
+
+function decodeJsonEscapedString(value: string): string {
+  const escaped = value
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t");
+
+  try {
+    return JSON.parse(`"${escaped}"`) as string;
+  } catch {
+    return value;
+  }
 }

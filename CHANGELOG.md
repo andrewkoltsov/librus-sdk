@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- CLI text output now renders epoch-style `*Date` fields as local `YYYY-MM-DD HH:mm:ss` values and decodes escaped message bodies into readable terminal text with line breaks.
+
 ## [0.3.0] - 2026-03-31
 
 ### Added
