@@ -23,16 +23,22 @@ Guidance for coding agents working in this repository.
 - Run tests with `npm test`.
 - Run the CLI locally with `npm run cli -- <command>`.
 - `master` is protected. Do not commit directly to `master`.
-- Start every change on a separate branch created from `master`. Use a short descriptive branch name for each task.
-- Before creating a new branch, check out `master` and update it from `origin/master` with a fast-forward-only pull.
-- Do not create new work branches from another feature branch or from a stale local `master`.
+- For parallel work, prefer a separate `git worktree` for each active feature so changes do not interfere with each other.
+- Give each mergeable line of work its own branch with a short descriptive name.
+- Prefer creating new feature branches from an up-to-date `master`.
+- Before creating a feature branch that is expected to merge directly into `master`, check out `master` and update it from `origin/master` with a fast-forward-only pull.
+- When work depends on in-flight changes from another feature branch, a short-lived dependent branch may be created from that branch. Keep the dependency explicit and rebase or retarget once the parent branch lands.
+- Do not create new work branches from a stale base branch, whether that base is `master` or another feature branch.
 
 Useful examples:
 
 ```bash
 git checkout master
 git pull --ff-only origin master
-git checkout -b codex/my-change
+git worktree add ../librus-sdk-my-change -b codex/my-change master
+
+# Stacked branch when the work intentionally depends on another feature branch.
+git worktree add ../librus-sdk-child-change -b codex/child-change codex/parent-change
 
 npm run cli -- children list
 npm run cli -- me --child <id-or-login>
@@ -66,6 +72,6 @@ npm run cli -- grades list --child <id-or-login>
 ## Change guidance
 
 - Preserve the current portal-based flow unless the task explicitly requires architectural change.
-- All code and documentation changes should be made on separate branches cut from an up-to-date `master`, not on `master`.
+- All code and documentation changes should be made outside `master`. Prefer one worktree per active feature and one branch per mergeable change. Prefer branches cut from an up-to-date `master`, but allow short-lived dependent branches when the work is intentionally stacked.
 - Keep public SDK exports intentional and update `README.md` when user-facing CLI or SDK behavior changes.
 - Update `CHANGELOG.md` for notable user-facing changes.
