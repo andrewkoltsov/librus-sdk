@@ -21,7 +21,8 @@
     ".": {
       "types": "./dist/sdk/index.d.ts",
       "import": "./dist/sdk/index.js"
-    }
+    },
+    "./openapi.json": "./openapi.json"
   },
   "engines": {
     "node": ">=20"
@@ -31,6 +32,8 @@
     "cli": "tsx src/cli/main.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "openapi:check": "tsx ./scripts/generate-openapi.ts --check",
+    "openapi:generate": "tsx ./scripts/generate-openapi.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:check": "node ./scripts/pack-check.mjs",
@@ -48,6 +51,7 @@
   },
   "files": [
     "dist",
+    "openapi.json",
     "README.md",
     "LICENSE"
   ],
@@ -59,6 +63,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@valibot/to-json-schema": "^1.6.0",
     "commander": "^14.0.0",
     "dotenv": "^17.2.3",
     "fetch-cookie": "^3.1.0",

@@ -37,6 +37,8 @@ npx librus children list
 npx librus grades list --child <id-or-login>
 ```
 
+The package also ships a generated [`openapi.json`](./openapi.json) for the SDK-supported child-scoped `https://api.librus.pl/3.0` surface, so non-TypeScript consumers can generate clients in other languages. It is also exported as `librus-sdk/openapi.json`.
+
 ## Local development
 
 ```bash
@@ -44,6 +46,7 @@ npm install
 npm run lint
 npm run format:check
 npm run build
+npm run openapi:generate
 npm run pack:check
 npm run cli -- children list
 npm run cli -- grades list --child <id-or-login>
@@ -119,5 +122,24 @@ console.log(children);
 The SDK also exposes widget-derived GET coverage for timetable, messages, announcements, notes, school/class metadata, lessons, lucky number, notification settings, justifications, parent-teacher conferences, system data, and auth-related reads. Attachment methods such as `getHomeworkAssignmentAttachment(id)`, `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return `{ data, contentType, contentDisposition }`.
 
 `getAuthPhoto(id)` mirrors the live API and returns JSON with the photo payload under `data.photo`, including base64 content in `data.photo.content`. The CLI `auth photo --output <path>` command decodes that content to a file and still writes JSON metadata to stdout.
+
+## OpenAPI
+
+`openapi.json` is generated from the SDK's supported Synergia GET endpoints and the shared valibot response schemas. The document is best-effort and intentionally covers only the child-scoped `api.librus.pl/3.0` requests, not the `portal.librus.pl` login flow.
+
+Regenerate or verify the file locally with:
+
+```bash
+npm run openapi:generate
+npm run openapi:check
+```
+
+You can also generate the document programmatically:
+
+```ts
+import { generateOpenApiDocument } from "librus-sdk";
+
+const openApi = generateOpenApiDocument({ version: "0.2.2" });
+```
 
 All commands write JSON to stdout by default. Errors are written as JSON to stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then emit JSON metadata describing the saved output.

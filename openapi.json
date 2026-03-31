@@ -1,0 +1,3331 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Librus Synergia API (SDK-supported subset)",
+    "version": "0.2.2",
+    "description": "Best-effort OpenAPI document generated from the SDK's supported child-scoped Synergia GET surface. Authentication starts on portal.librus.pl; this document covers the subsequent bearer-token calls against api.librus.pl/3.0."
+  },
+  "servers": [
+    {
+      "url": "https://api.librus.pl/3.0",
+      "description": "Child-scoped Librus Synergia API base URL."
+    }
+  ],
+  "tags": [
+    {
+      "name": "account",
+      "description": "Account and profile data for the currently selected child."
+    },
+    {
+      "name": "grades",
+      "description": "Grades, averages, categories, comments, and related grade views."
+    },
+    {
+      "name": "attendance",
+      "description": "Attendance records and attendance-type dictionaries."
+    },
+    {
+      "name": "timetable",
+      "description": "Timetable, calendar, and substitution endpoints."
+    },
+    {
+      "name": "lessons",
+      "description": "Lessons, planned lessons, realizations, and attachments."
+    },
+    {
+      "name": "notifications",
+      "description": "Lucky number, notification center, and push-configuration endpoints."
+    },
+    {
+      "name": "justifications",
+      "description": "Justifications, parent-teacher conferences, and related administrative reads."
+    },
+    { "name": "system", "description": "System metadata endpoints." },
+    {
+      "name": "auth",
+      "description": "Auth-prefixed photo, user, token, and classroom reads."
+    },
+    {
+      "name": "messages",
+      "description": "Inbox, message metadata, receiver groups, and attachments."
+    },
+    {
+      "name": "announcements",
+      "description": "School notices exposed by the child-scoped Synergia API."
+    },
+    { "name": "notes", "description": "Behaviour notes and note categories." },
+    {
+      "name": "school",
+      "description": "School, class, subject, classroom, and user metadata."
+    },
+    {
+      "name": "homework",
+      "description": "Homework lists, homework assignments, categories, and attachments."
+    }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/Me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Get the current child-scoped account context",
+        "tags": ["account"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SynergiaMeResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Grades": {
+      "get": {
+        "operationId": "getGrades",
+        "summary": "List standard grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GradesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Grades/Averages": {
+      "get": {
+        "operationId": "getGradeAverages",
+        "summary": "List grade averages",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeAveragesResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "Optional subject identifier filter.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Grades/Categories": {
+      "get": {
+        "operationId": "getGradeCategories",
+        "summary": "List grade categories",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Grades/Comments": {
+      "get": {
+        "operationId": "getGradeComments",
+        "summary": "List grade comments",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeCommentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades": {
+      "get": {
+        "operationId": "getBehaviourGrades",
+        "summary": "List behaviour grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourGradesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades/Types": {
+      "get": {
+        "operationId": "getBehaviourGradeTypes",
+        "summary": "List behaviour grade types",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourGradeTypesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades/Points": {
+      "get": {
+        "operationId": "getBehaviourGradePoints",
+        "summary": "List behaviour grade points",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourGradePointsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades/Points/Categories": {
+      "get": {
+        "operationId": "getBehaviourPointCategories",
+        "summary": "List behaviour point categories",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourPointCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades/Points/Comments": {
+      "get": {
+        "operationId": "getBehaviourPointComments",
+        "summary": "List behaviour point comments",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourPointCommentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/BehaviourGrades/SystemProposal": {
+      "get": {
+        "operationId": "getBehaviourSystemProposal",
+        "summary": "Get the behaviour system proposal",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviourSystemProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveGrades": {
+      "get": {
+        "operationId": "getDescriptiveGrades",
+        "summary": "List descriptive grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveGradesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveGrades/Comments": {
+      "get": {
+        "operationId": "getDescriptiveGradeComments",
+        "summary": "List descriptive grade comments",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveGradeCommentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveGrades/Skills": {
+      "get": {
+        "operationId": "getDescriptiveGradeSkills",
+        "summary": "List descriptive grade skills",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveGradeSkillsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveGrades/Text": {
+      "get": {
+        "operationId": "getDescriptiveGradeText",
+        "summary": "List descriptive grade text entries",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveGradeTextResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "gradeGroupId",
+            "in": "query",
+            "required": false,
+            "description": "Optional descriptive grade group identifier filter.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/DescriptiveGrades/Text/Categories": {
+      "get": {
+        "operationId": "getDescriptiveGradeTextCategories",
+        "summary": "List descriptive grade text categories",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveGradeTextCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveTextGrades": {
+      "get": {
+        "operationId": "getDescriptiveTextGrades",
+        "summary": "List descriptive text grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveTextGradesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/DescriptiveTextGrades/Skills": {
+      "get": {
+        "operationId": "getDescriptiveTextGradeSkills",
+        "summary": "List descriptive text grade skills",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescriptiveTextGradeSkillsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/PointGrades": {
+      "get": {
+        "operationId": "getPointGrades",
+        "summary": "List point-based grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PointGradesResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "Optional subject identifier filter.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/PointGrades/Averages": {
+      "get": {
+        "operationId": "getPointGradeAverages",
+        "summary": "List point-grade averages",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointGradeAveragesResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "Optional subject identifier filter.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/PointGrades/Categories": {
+      "get": {
+        "operationId": "getPointGradeCategories",
+        "summary": "List point-grade categories",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointGradeCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/PointGrades/Comments": {
+      "get": {
+        "operationId": "getPointGradeComments",
+        "summary": "List point-grade comments",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointGradeCommentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/TextGrades": {
+      "get": {
+        "operationId": "getTextGrades",
+        "summary": "List text grades",
+        "tags": ["grades"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TextGradesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Attendances": {
+      "get": {
+        "operationId": "getAttendances",
+        "summary": "List attendance entries",
+        "tags": ["attendance"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AttendancesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Attendances/Types": {
+      "get": {
+        "operationId": "getAttendanceTypes",
+        "summary": "List attendance types",
+        "tags": ["attendance"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceTypesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Timetables": {
+      "get": {
+        "operationId": "getTimetables",
+        "summary": "Get timetable data for a week start or specific day",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TimetablesResponse" }
+              }
+            }
+          }
+        },
+        "description": "Provide exactly one of `weekStart` or `day` to mirror the supported SDK calls.",
+        "parameters": [
+          {
+            "name": "weekStart",
+            "in": "query",
+            "required": false,
+            "description": "Week start date in `YYYY-MM-DD` format.",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "Specific day in `YYYY-MM-DD` format.",
+            "schema": { "type": "string", "format": "date" }
+          }
+        ]
+      }
+    },
+    "/TimetableEntries/{entryId}": {
+      "get": {
+        "operationId": "getTimetableEntry",
+        "summary": "Get a timetable entry by id",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableEntryResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "description": "Timetable entry identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Calendars": {
+      "get": {
+        "operationId": "getCalendars",
+        "summary": "List calendar entries",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CalendarsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Calendars/ClassFreeDays": {
+      "get": {
+        "operationId": "getClassFreeDays",
+        "summary": "List class free days",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassFreeDaysResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Calendars/ClassFreeDays/Types": {
+      "get": {
+        "operationId": "getClassFreeDayTypes",
+        "summary": "List class free-day types",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassFreeDayTypesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Calendars/SchoolFreeDays": {
+      "get": {
+        "operationId": "getSchoolFreeDays",
+        "summary": "List school free days",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolFreeDaysResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Calendars/TeacherFreeDays": {
+      "get": {
+        "operationId": "getTeacherFreeDays",
+        "summary": "List teacher free days",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherFreeDaysResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Calendars/Substitutions/{substitutionId}": {
+      "get": {
+        "operationId": "getSubstitution",
+        "summary": "Get a substitution by id",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstitutionResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "substitutionId",
+            "in": "path",
+            "required": true,
+            "description": "Substitution identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/VirtualClasses": {
+      "get": {
+        "operationId": "getVirtualClasses",
+        "summary": "List virtual classes",
+        "tags": ["timetable"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualClassesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Lessons": {
+      "get": {
+        "operationId": "listLessons",
+        "summary": "List lessons",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LessonsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Lessons/{lessonId}": {
+      "get": {
+        "operationId": "getLesson",
+        "summary": "Get a lesson by id",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LessonResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "description": "Lesson identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/PlannedLessons": {
+      "get": {
+        "operationId": "listPlannedLessons",
+        "summary": "List planned lessons",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlannedLessonsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/PlannedLessons/{plannedLessonId}": {
+      "get": {
+        "operationId": "getPlannedLesson",
+        "summary": "Get a planned lesson by id",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlannedLessonResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plannedLessonId",
+            "in": "path",
+            "required": true,
+            "description": "Planned lesson identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/PlannedLessons/Attachment/{attachmentId}": {
+      "get": {
+        "operationId": "getPlannedLessonAttachment",
+        "summary": "Download a planned-lesson attachment",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Attachment payload. The live API may return a more specific content type.",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "description": "Attachment identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Realizations": {
+      "get": {
+        "operationId": "listRealizations",
+        "summary": "List lesson realizations",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealizationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Realizations/{realizationId}": {
+      "get": {
+        "operationId": "getRealization",
+        "summary": "Get a realization by id",
+        "tags": ["lessons"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RealizationResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "realizationId",
+            "in": "path",
+            "required": true,
+            "description": "Realization identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/LuckyNumbers": {
+      "get": {
+        "operationId": "getLuckyNumber",
+        "summary": "Get the lucky number",
+        "tags": ["notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LuckyNumberResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "forDay",
+            "in": "query",
+            "required": false,
+            "description": "Optional day in `YYYY-MM-DD` format.",
+            "schema": { "type": "string", "format": "date" }
+          }
+        ]
+      }
+    },
+    "/NotificationCenter": {
+      "get": {
+        "operationId": "getNotificationCenter",
+        "summary": "Get notification center data",
+        "tags": ["notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationCenterResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/PushConfigurations": {
+      "get": {
+        "operationId": "getPushConfigurations",
+        "summary": "Get push notification configuration",
+        "tags": ["notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushConfigurationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Justifications": {
+      "get": {
+        "operationId": "listJustifications",
+        "summary": "List justifications",
+        "tags": ["justifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JustificationsResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "description": "Optional lower date bound in `YYYY-MM-DD` format.",
+            "schema": { "type": "string", "format": "date" }
+          }
+        ]
+      }
+    },
+    "/Justifications/{justificationId}": {
+      "get": {
+        "operationId": "getJustification",
+        "summary": "Get a justification by id",
+        "tags": ["justifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JustificationResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "justificationId",
+            "in": "path",
+            "required": true,
+            "description": "Justification identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/ParentTeacherConferences": {
+      "get": {
+        "operationId": "listParentTeacherConferences",
+        "summary": "List parent-teacher conferences",
+        "tags": ["justifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentTeacherConferencesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SystemData": {
+      "get": {
+        "operationId": "getSystemData",
+        "summary": "Get system metadata",
+        "tags": ["system"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemDataResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Auth/Photos": {
+      "get": {
+        "operationId": "listAuthPhotos",
+        "summary": "List auth photo payloads",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthPhotosResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Auth/Photos/{photoId}": {
+      "get": {
+        "operationId": "getAuthPhoto",
+        "summary": "Get an auth photo by id",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthPhotoResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "photoId",
+            "in": "path",
+            "required": true,
+            "description": "Photo identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Auth/UserInfo/{userId}": {
+      "get": {
+        "operationId": "getAuthUserInfo",
+        "summary": "Get auth-scoped user info by id",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserInfoResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "User identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Auth/TokenInfo": {
+      "get": {
+        "operationId": "getAuthTokenInfo",
+        "summary": "Get auth token information",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenInfoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Auth/Classrooms/{classroomId}": {
+      "get": {
+        "operationId": "getAuthClassroom",
+        "summary": "Get an auth-scoped classroom by id",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthClassroomResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "classroomId",
+            "in": "path",
+            "required": true,
+            "description": "Classroom identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Messages": {
+      "get": {
+        "operationId": "listMessages",
+        "summary": "List messages",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessagesResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "afterId",
+            "in": "query",
+            "required": false,
+            "description": "Return messages after this message id.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          },
+          {
+            "name": "alternativeBody",
+            "in": "query",
+            "required": false,
+            "description": "Request the alternative message-body representation.",
+            "schema": { "type": "boolean", "default": true }
+          },
+          {
+            "name": "changeNewLine",
+            "in": "query",
+            "required": false,
+            "description": "Widget-style newline handling flag.",
+            "schema": { "type": "integer", "default": 1 }
+          }
+        ]
+      }
+    },
+    "/Messages/{messageId}": {
+      "get": {
+        "operationId": "getMessage",
+        "summary": "Get a message by id",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "description": "Message identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Messages/Unread": {
+      "get": {
+        "operationId": "getUnreadMessages",
+        "summary": "Get the unread message count",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadMessagesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Messages/User/{userId}": {
+      "get": {
+        "operationId": "listMessagesForUser",
+        "summary": "List messages for a specific user",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessagesResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "User identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Messages/ReceiversGroup": {
+      "get": {
+        "operationId": "listMessageReceiverGroups",
+        "summary": "List message receiver groups",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageReceiverGroupsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Messages/ReceiversGroup/{groupId}": {
+      "get": {
+        "operationId": "getMessageReceiverGroup",
+        "summary": "Get a message receiver group by id",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageReceiverGroupResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "description": "Receiver-group identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Messages/Attachment/{attachmentId}": {
+      "get": {
+        "operationId": "getMessageAttachment",
+        "summary": "Download a message attachment",
+        "tags": ["messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Attachment payload. The live API may return a more specific content type.",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "description": "Attachment identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/SchoolNotices": {
+      "get": {
+        "operationId": "listSchoolNotices",
+        "summary": "List school notices",
+        "tags": ["announcements"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolNoticesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SchoolNotices/{noticeId}": {
+      "get": {
+        "operationId": "getSchoolNotice",
+        "summary": "Get a school notice by id",
+        "tags": ["announcements"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolNoticeResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "noticeId",
+            "in": "path",
+            "required": true,
+            "description": "School notice identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Notes": {
+      "get": {
+        "operationId": "listNotes",
+        "summary": "List notes",
+        "tags": ["notes"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Notes/{noteId}": {
+      "get": {
+        "operationId": "getNote",
+        "summary": "Get a note by id",
+        "tags": ["notes"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoteResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "description": "Note identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Notes/Categories": {
+      "get": {
+        "operationId": "listNoteCategories",
+        "summary": "List note categories",
+        "tags": ["notes"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Schools": {
+      "get": {
+        "operationId": "getSchool",
+        "summary": "Get the current school metadata",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SchoolResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Schools/{schoolId}": {
+      "get": {
+        "operationId": "getSchoolById",
+        "summary": "Get school metadata by id",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SchoolResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "description": "School identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Classes": {
+      "get": {
+        "operationId": "getClass",
+        "summary": "Get the current class metadata",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ClassResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Classrooms/{classroomId}": {
+      "get": {
+        "operationId": "getClassroom",
+        "summary": "Get classroom metadata by id",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ClassroomResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "classroomId",
+            "in": "path",
+            "required": true,
+            "description": "Classroom identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Subjects": {
+      "get": {
+        "operationId": "listSubjects",
+        "summary": "List subjects",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SubjectsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Subjects/{subjectId}": {
+      "get": {
+        "operationId": "getSubject",
+        "summary": "Get subject metadata by id",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SubjectResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subjectId",
+            "in": "path",
+            "required": true,
+            "description": "Subject identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/Users": {
+      "get": {
+        "operationId": "listUsers",
+        "summary": "List users",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UsersResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Users/{userId}": {
+      "get": {
+        "operationId": "getUser",
+        "summary": "Get user metadata by id",
+        "tags": ["school"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "User identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/HomeWorks": {
+      "get": {
+        "operationId": "getHomeWorks",
+        "summary": "List homework entries",
+        "tags": ["homework"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HomeWorksResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/HomeWorkAssignments": {
+      "get": {
+        "operationId": "getHomeworkAssignments",
+        "summary": "List homework assignments",
+        "tags": ["homework"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeworkAssignmentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/HomeWorkAssignments/Attachment/{attachmentId}": {
+      "get": {
+        "operationId": "getHomeworkAssignmentAttachment",
+        "summary": "Download a homework-assignment attachment",
+        "tags": ["homework"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Attachment payload. The live API may return a more specific content type.",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "description": "Attachment identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/HomeWorks/Categories": {
+      "get": {
+        "operationId": "getHomeworkCategories",
+        "summary": "List homework categories",
+        "tags": ["homework"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeworkCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Child-scoped bearer token returned by the Librus family portal flow."
+      }
+    },
+    "schemas": {
+      "ApiRef": {
+        "type": "object",
+        "properties": {
+          "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+          "Url": { "type": "string" }
+        },
+        "required": ["Id", "Url"]
+      },
+      "ApiRefOrJson": {
+        "anyOf": [
+          { "$ref": "#/components/schemas/ApiRef" },
+          { "$ref": "#/components/schemas/UnknownRecord" }
+        ]
+      },
+      "UnknownRecord": { "type": "object", "additionalProperties": {} },
+      "NullableUnknownRecord": {
+        "anyOf": [
+          { "$ref": "#/components/schemas/UnknownRecord" },
+          { "enum": [null] }
+        ]
+      },
+      "SynergiaResponseEnvelope": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" }
+        },
+        "required": ["Resources", "Url"]
+      },
+      "SynergiaStatusResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Status": { "type": "string" },
+          "Code": { "type": "string" },
+          "Message": { "type": "string" },
+          "MessagePL": { "type": "string" }
+        },
+        "required": ["Resources", "Url", "Status"]
+      },
+      "SynergiaEntity": { "type": "object", "properties": {}, "required": [] },
+      "SynergiaEntityList": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/SynergiaEntity" }
+      },
+      "SynergiaMeResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Me": {
+            "type": "object",
+            "properties": {
+              "Account": { "$ref": "#/components/schemas/UnknownRecord" },
+              "Class": { "$ref": "#/components/schemas/NullableUnknownRecord" },
+              "Refresh": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "number" },
+                  { "type": "string" }
+                ]
+              },
+              "User": { "$ref": "#/components/schemas/UnknownRecord" }
+            },
+            "required": ["Account", "Class", "Refresh", "User"]
+          }
+        },
+        "required": ["Resources", "Url", "Me"]
+      },
+      "GradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddDate": { "type": "string" },
+                "AddedBy": { "$ref": "#/components/schemas/ApiRef" },
+                "Category": { "$ref": "#/components/schemas/ApiRef" },
+                "Date": { "type": "string" },
+                "Grade": { "type": "string" },
+                "Id": { "type": "number" },
+                "IsConstituent": { "type": "boolean" },
+                "IsFinal": { "type": "boolean" },
+                "IsFinalProposition": { "type": "boolean" },
+                "IsSemester": { "type": "boolean" },
+                "IsSemesterProposition": { "type": "boolean" },
+                "Lesson": { "$ref": "#/components/schemas/ApiRef" },
+                "Semester": { "type": "number" },
+                "Student": { "$ref": "#/components/schemas/ApiRef" },
+                "Subject": { "$ref": "#/components/schemas/ApiRef" }
+              },
+              "required": [
+                "AddDate",
+                "AddedBy",
+                "Category",
+                "Date",
+                "Grade",
+                "Id",
+                "IsConstituent",
+                "IsFinal",
+                "IsFinalProposition",
+                "IsSemester",
+                "IsSemesterProposition",
+                "Lesson",
+                "Semester",
+                "Student",
+                "Subject"
+              ]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "GradeAveragesResponse": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+              "Url": { "type": "string" },
+              "Averages": { "$ref": "#/components/schemas/SynergiaEntityList" }
+            },
+            "required": ["Resources", "Url", "Averages"]
+          },
+          { "$ref": "#/components/schemas/SynergiaStatusResponse" }
+        ]
+      },
+      "GradeCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      },
+      "GradeCommentsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Comments": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Comments"]
+      },
+      "BehaviourGradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "BehaviourGradeTypesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Types": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Types"]
+      },
+      "BehaviourGradePointsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "BehaviourPointCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      },
+      "BehaviourPointCommentsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Comments": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Comments"]
+      },
+      "BehaviourSystemProposalResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "BehaviourGradesSystemProposal": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/SynergiaEntityList" },
+              { "$ref": "#/components/schemas/SynergiaEntity" },
+              { "enum": [null] }
+            ]
+          }
+        },
+        "required": ["Resources", "Url", "BehaviourGradesSystemProposal"]
+      },
+      "DescriptiveGradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "DescriptiveGradeCommentsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Comments": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Comments"]
+      },
+      "DescriptiveGradeSkillsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Skills": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Skills"]
+      },
+      "DescriptiveGradeTextResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "DescriptiveGradeTextCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      },
+      "DescriptiveTextGradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "DescriptiveTextGradeSkillsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Skills": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Skills"]
+      },
+      "PointGradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "PointGradeAveragesResponse": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+              "Url": { "type": "string" },
+              "Averages": { "$ref": "#/components/schemas/SynergiaEntityList" }
+            },
+            "required": ["Resources", "Url", "Averages"]
+          },
+          { "$ref": "#/components/schemas/SynergiaStatusResponse" }
+        ]
+      },
+      "PointGradeCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      },
+      "PointGradeCommentsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Comments": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Comments"]
+      },
+      "TextGradesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Grades": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Grades"]
+      },
+      "AttendancesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Attendances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddDate": { "type": "string" },
+                "AddedBy": { "$ref": "#/components/schemas/ApiRef" },
+                "Date": { "type": "string" },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Lesson": { "$ref": "#/components/schemas/ApiRef" },
+                "LessonNo": { "type": "number" },
+                "Semester": { "type": "number" },
+                "Student": { "$ref": "#/components/schemas/ApiRef" },
+                "Trip": { "$ref": "#/components/schemas/ApiRef" },
+                "Type": { "$ref": "#/components/schemas/ApiRef" }
+              },
+              "required": [
+                "AddDate",
+                "AddedBy",
+                "Date",
+                "Id",
+                "Lesson",
+                "LessonNo",
+                "Semester",
+                "Student",
+                "Type"
+              ]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Attendances"]
+      },
+      "AttendanceTypesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Types": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Types"]
+      },
+      "AuthPhotosResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "awaitingPhoto": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/UnknownRecord" },
+                  { "enum": [null] }
+                ]
+              },
+              "photo": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "content": { "type": "string" },
+                      "fileName": { "type": "string" },
+                      "id": {
+                        "anyOf": [{ "type": "string" }, { "type": "number" }]
+                      },
+                      "Id": {
+                        "anyOf": [{ "type": "string" }, { "type": "number" }]
+                      }
+                    },
+                    "required": []
+                  },
+                  { "enum": [null] }
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": []
+          }
+        },
+        "required": ["Resources", "Url", "data"]
+      },
+      "AuthPhotoResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "awaitingPhoto": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/UnknownRecord" },
+                  { "enum": [null] }
+                ]
+              },
+              "photo": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "content": { "type": "string" },
+                      "fileName": { "type": "string" },
+                      "id": {
+                        "anyOf": [{ "type": "string" }, { "type": "number" }]
+                      },
+                      "Id": {
+                        "anyOf": [{ "type": "string" }, { "type": "number" }]
+                      }
+                    },
+                    "required": []
+                  },
+                  { "enum": [null] }
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": []
+          }
+        },
+        "required": ["Resources", "Url", "data"]
+      },
+      "AuthUserInfoResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "AccountNumericIdentifier": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "IdentifierOfClassOfStudentAssignedWithUser": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "IdentifierOfStudentAssignedWithUser": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "KindergartenGraduationYear": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "Login": { "type": "string" },
+          "SchoolId": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+          "UserIdentifier": { "type": "string" },
+          "UserNumericIdentifier": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "UserSchoolClassId": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "UserState": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "UserType": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+        },
+        "required": ["Resources", "Url"]
+      },
+      "AuthTokenInfoResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "IdentifierOfClassOfStudentAssignedWithUser": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "IdentifierOfStudentAssignedWithUser": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "SchoolId": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+          "SchoolNodeName": { "type": "string" },
+          "Scopes": { "type": "array", "items": {} },
+          "UserIdentifier": { "type": "string" },
+          "UserType": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+        },
+        "required": ["Resources", "Url"]
+      },
+      "AuthClassroomResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" }
+        },
+        "required": ["Resources", "Url"]
+      },
+      "TimetablesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Timetable": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "Class": {
+                      "anyOf": [
+                        { "$ref": "#/components/schemas/ApiRefOrJson" },
+                        { "enum": [null] }
+                      ]
+                    },
+                    "Lesson": {
+                      "anyOf": [
+                        { "$ref": "#/components/schemas/ApiRef" },
+                        { "enum": [null] }
+                      ]
+                    },
+                    "Subject": {
+                      "anyOf": [
+                        { "$ref": "#/components/schemas/ApiRefOrJson" },
+                        { "enum": [null] }
+                      ]
+                    },
+                    "Teacher": {
+                      "anyOf": [
+                        { "$ref": "#/components/schemas/ApiRefOrJson" },
+                        { "enum": [null] }
+                      ]
+                    },
+                    "TimetableEntry": {
+                      "anyOf": [
+                        { "$ref": "#/components/schemas/ApiRef" },
+                        { "enum": [null] }
+                      ]
+                    }
+                  },
+                  "required": []
+                }
+              }
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Timetable"]
+      },
+      "TimetableEntryResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "TimetableEntry": {
+            "type": "object",
+            "properties": {
+              "DateFrom": { "type": "string" },
+              "DateTo": { "type": "string" },
+              "DayOfTheWeek": {
+                "anyOf": [{ "type": "string" }, { "type": "number" }]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Lesson": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "LessonNo": {
+                "anyOf": [{ "type": "string" }, { "type": "number" }]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "TimetableEntry"]
+      },
+      "CalendarsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Calendars": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Calendars"]
+      },
+      "ClassFreeDaysResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "ClassFreeDays": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "ClassFreeDays"]
+      },
+      "ClassFreeDayTypesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Types": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Types"]
+      },
+      "SchoolFreeDaysResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "SchoolFreeDays": {
+            "$ref": "#/components/schemas/SynergiaEntityList"
+          }
+        },
+        "required": ["Resources", "Url", "SchoolFreeDays"]
+      },
+      "TeacherFreeDaysResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "TeacherFreeDays": {
+            "$ref": "#/components/schemas/SynergiaEntityList"
+          }
+        },
+        "required": ["Resources", "Url", "TeacherFreeDays"]
+      },
+      "SubstitutionResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Substitution": {
+            "type": "object",
+            "properties": {
+              "Classroom": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Lesson": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Subject": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Teacher": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Substitution"]
+      },
+      "VirtualClassesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "VirtualClasses": {
+            "$ref": "#/components/schemas/SynergiaEntityList"
+          }
+        },
+        "required": ["Resources", "Url", "VirtualClasses"]
+      },
+      "LessonsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Lessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Classroom": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Subject": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Teacher": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Lessons"]
+      },
+      "LessonResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Lesson": {
+            "type": "object",
+            "properties": {
+              "Classroom": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Subject": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Teacher": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Lesson"]
+      },
+      "PlannedLessonsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "PlannedLessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Attachment": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Classroom": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Subject": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Teacher": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "PlannedLessons"]
+      },
+      "PlannedLessonResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "PlannedLesson": {
+            "type": "object",
+            "properties": {
+              "Attachment": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "enum": [null] }
+                ]
+              },
+              "Classroom": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Subject": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Teacher": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "PlannedLesson"]
+      },
+      "RealizationsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Realizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Classroom": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Subject": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Teacher": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Realizations"]
+      },
+      "RealizationResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Realization": {
+            "type": "object",
+            "properties": {
+              "Classroom": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Subject": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Teacher": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Realization"]
+      },
+      "LuckyNumberResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "LuckyNumber": {
+            "type": "object",
+            "properties": {
+              "LuckyNumber": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "enum": [null] }
+                ]
+              },
+              "LuckyNumberDay": {
+                "anyOf": [{ "type": "string" }, { "enum": [null] }]
+              }
+            },
+            "required": []
+          }
+        },
+        "required": ["Resources", "Url", "LuckyNumber"]
+      },
+      "NotificationCenterResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "NotificationCenter": { "$ref": "#/components/schemas/UnknownRecord" }
+        },
+        "required": ["Resources", "Url", "NotificationCenter"]
+      },
+      "PushConfigurationsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "settings": { "$ref": "#/components/schemas/UnknownRecord" },
+          "version": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+        },
+        "required": ["Resources", "Url", "settings", "version"]
+      },
+      "JustificationsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Justifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddedBy": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Student": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Justifications"]
+      },
+      "JustificationResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Justification": {
+            "type": "object",
+            "properties": {
+              "AddedBy": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Student": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRefOrJson" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Justification"]
+      },
+      "ParentTeacherConferencesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "ParentTeacherConferences": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UnknownRecord" }
+          }
+        },
+        "required": ["Resources", "Url", "ParentTeacherConferences"]
+      },
+      "SystemDataResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Date": { "type": "string" },
+          "Time": { "type": "string" }
+        },
+        "required": ["Resources", "Url", "Date", "Time"]
+      },
+      "MessagesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Receiver": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ApiRef" }
+                    },
+                    { "enum": [null] }
+                  ]
+                },
+                "Receivers": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ApiRef" }
+                    },
+                    { "enum": [null] }
+                  ]
+                },
+                "Sender": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Messages"]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Message": {
+            "type": "object",
+            "properties": {
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Receiver": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ApiRef" }
+                  },
+                  { "enum": [null] }
+                ]
+              },
+              "Receivers": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ApiRef" }
+                  },
+                  { "enum": [null] }
+                ]
+              },
+              "Sender": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Message"]
+      },
+      "UnreadMessagesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "UnreadMessages": { "type": "number" }
+        },
+        "required": ["Resources", "Url", "UnreadMessages"]
+      },
+      "MessageReceiverGroupsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "ReceiversGroup": {
+            "$ref": "#/components/schemas/SynergiaEntityList"
+          }
+        },
+        "required": ["Resources", "Url", "ReceiversGroup"]
+      },
+      "MessageReceiverGroupResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "ReceiversGroup": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/SynergiaEntityList" },
+              { "$ref": "#/components/schemas/SynergiaEntity" },
+              { "enum": [null] }
+            ]
+          }
+        },
+        "required": ["Resources", "Url", "ReceiversGroup"]
+      },
+      "SchoolNoticesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "SchoolNotices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddedBy": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                },
+                "EndDate": {
+                  "anyOf": [{ "type": "string" }, { "enum": [null] }]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "StartDate": {
+                  "anyOf": [{ "type": "string" }, { "enum": [null] }]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "SchoolNotices"]
+      },
+      "SchoolNoticeResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "SchoolNotice": {
+            "type": "object",
+            "properties": {
+              "AddedBy": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "EndDate": {
+                "anyOf": [{ "type": "string" }, { "enum": [null] }]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "StartDate": {
+                "anyOf": [{ "type": "string" }, { "enum": [null] }]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "SchoolNotice"]
+      },
+      "NotesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Notes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddedBy": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Category": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+                "Student": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Teacher": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRef" },
+                    { "enum": [null] }
+                  ]
+                }
+              },
+              "required": ["Id"]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "Notes"]
+      },
+      "NoteResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Note": {
+            "type": "object",
+            "properties": {
+              "AddedBy": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Category": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+              "Student": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              },
+              "Teacher": {
+                "anyOf": [
+                  { "$ref": "#/components/schemas/ApiRef" },
+                  { "enum": [null] }
+                ]
+              }
+            },
+            "required": ["Id"]
+          }
+        },
+        "required": ["Resources", "Url", "Note"]
+      },
+      "NoteCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      },
+      "SchoolResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "School": { "$ref": "#/components/schemas/SynergiaEntity" }
+        },
+        "required": ["Resources", "Url", "School"]
+      },
+      "ClassResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Class": { "$ref": "#/components/schemas/SynergiaEntity" }
+        },
+        "required": ["Resources", "Url", "Class"]
+      },
+      "ClassroomResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Classroom": { "$ref": "#/components/schemas/SynergiaEntity" }
+        },
+        "required": ["Resources", "Url", "Classroom"]
+      },
+      "SubjectsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Subjects": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Subjects"]
+      },
+      "SubjectResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Subject": { "$ref": "#/components/schemas/SynergiaEntity" }
+        },
+        "required": ["Resources", "Url", "Subject"]
+      },
+      "UsersResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Users": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Users"]
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "User": { "$ref": "#/components/schemas/SynergiaEntity" }
+        },
+        "required": ["Resources", "Url", "User"]
+      },
+      "HomeWorksResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "HomeWorks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "AddDate": { "type": "string" },
+                "Category": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Class": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Content": { "type": "string" },
+                "CreatedBy": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Date": { "type": "string" },
+                "Id": { "type": "number" },
+                "LessonNo": {
+                  "anyOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "enum": [null] }
+                  ]
+                },
+                "Subject": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/ApiRefOrJson" },
+                    { "enum": [null] }
+                  ]
+                },
+                "TimeFrom": {
+                  "anyOf": [{ "type": "string" }, { "enum": [null] }]
+                },
+                "TimeTo": {
+                  "anyOf": [{ "type": "string" }, { "enum": [null] }]
+                }
+              },
+              "required": [
+                "AddDate",
+                "Category",
+                "Class",
+                "Content",
+                "CreatedBy",
+                "Date",
+                "Id",
+                "LessonNo",
+                "TimeFrom",
+                "TimeTo"
+              ]
+            }
+          }
+        },
+        "required": ["Resources", "Url", "HomeWorks"]
+      },
+      "HomeworkAssignmentsResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "HomeWorkAssignments": {
+            "$ref": "#/components/schemas/SynergiaEntityList"
+          }
+        },
+        "required": ["Resources", "Url", "HomeWorkAssignments"]
+      },
+      "HomeworkCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "Resources": { "$ref": "#/components/schemas/UnknownRecord" },
+          "Url": { "type": "string" },
+          "Categories": { "$ref": "#/components/schemas/SynergiaEntityList" }
+        },
+        "required": ["Resources", "Url", "Categories"]
+      }
+    }
+  }
+}

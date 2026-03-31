@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CLI download commands that write files to `--output` paths and emit JSON metadata to stdout instead of raw bytes.
 - Auth photo CLI download support that decodes the live API's base64 JSON content before writing the output file.
 - Public `SynergiaBinaryResult` export for attachment-style SDK methods such as `getHomeworkAssignmentAttachment(id)`.
+- Generated `openapi.json` for the SDK-supported child-scoped Synergia GET surface, plus a public `generateOpenApiDocument()` helper and npm regeneration scripts.
 
 ## [0.2.2] - 2026-03-29
 
