@@ -139,7 +139,7 @@ You can also generate the document programmatically:
 ```ts
 import { generateOpenApiDocument } from "librus-sdk";
 
-const openApi = generateOpenApiDocument({ version: "0.2.2" });
+const openApi = generateOpenApiDocument({ version: "0.3.0" });
 ```
 
 Leaf commands write structured text to stdout by default. Pass `--format json` for stable machine-readable output. Errors follow the selected format on stderr and return a non-zero exit code. Download commands such as `lessons planned-attachment` and `auth photo` write the requested file and then report metadata describing the saved output.

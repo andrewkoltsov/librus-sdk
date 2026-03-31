@@ -1,6 +1,6 @@
 {
   "name": "librus-sdk",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "TypeScript SDK and CLI for the Librus family portal flow.",
   "author": "Andrey Koltsov",
   "repository": {
