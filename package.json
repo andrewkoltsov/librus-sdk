@@ -40,7 +40,7 @@
     "report:integration": "npm run build && node --env-file=.env.integration.local test/integration/report-all.mjs",
     "report:integration:cli": "npm run build && node --env-file=.env.integration.local test/integration/report-cli.mjs",
     "report:integration:sdk": "npm run build && node --env-file=.env.integration.local test/integration/report-sdk.mjs",
-    "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run pack:check",
+    "validate": "npm run lint && npm run format:check && npm run build && npm run test:coverage && npm run pack:check",
     "prepublishOnly": "npm run validate",
     "prepare": "husky",
     "test": "vitest run",

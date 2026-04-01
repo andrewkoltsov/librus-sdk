@@ -335,11 +335,8 @@ notes, and badge-homepage guidance are documented in
 
 ```bash
 npm install
-npm run lint
-npm run format:check
-npm run build
+npm run validate
 npm run openapi:generate
-npm run pack:check
 npm run cli -- children list
 npm run cli -- grades list --child <id-or-login>
 ```
@@ -360,6 +357,41 @@ npm run cli -- justifications conferences --child <id-or-login>
 npm run cli -- auth photo --child <id-or-login> --id <photo-id> --output ./photo.jpg
 ```
 
+### Testing And Dynamic Analysis
+
+The required pre-merge verification command for this repository is:
+
+```bash
+npm run validate
+```
+
+`npm run validate` runs the same canonical checks used by the CI validation
+gate:
+
+- `npm run lint`
+- `npm run format:check`
+- `npm run build`
+- `npm run test:coverage`
+- `npm run pack:check`
+
+Behavior changes should add or update focused Vitest coverage in the closest
+relevant suite under `test/`.
+
+This repository's dynamic-analysis evidence is the automated Vitest test suite
+plus coverage checks. That evidence comes from `npm run test:coverage` locally
+and the `Validation gate` CI job in
+[`./.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+
+For Best Practices and repository-policy purposes, this project does not rely on
+fuzzing or browser scanning as its dynamic-analysis evidence.
+
+Current CI jobs:
+
+- `Validation gate`: runs the required `npm run validate` path before merge.
+- `Dependency vulnerability gate`: fails on high or critical npm advisories.
+- `Trivy scan (informational)`: publishes vulnerability and secret-scan results
+  for review.
+
 ## Live Integration Tests
 
 This repo also includes optional live integration tests for the built SDK and
@@ -368,6 +400,7 @@ CLI artifacts in `dist`.
 They are intended for local manual verification only:
 
 - they require real Librus credentials
+- they are manual-only and not required for ordinary merges
 - they are not part of `npm test`
 - they are not part of `npm run validate`
 - they are not run in CI or release automation
