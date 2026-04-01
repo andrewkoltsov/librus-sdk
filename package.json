@@ -64,9 +64,7 @@
   "license": "MIT",
   "dependencies": {
     "@valibot/to-json-schema": "^1.6.0",
-    "cliui": "^9.0.1",
     "commander": "^14.0.0",
-    "dotenv": "^17.2.3",
     "fetch-cookie": "^3.1.0",
     "parse5": "^8.0.0",
     "tough-cookie": "^6.0.1",

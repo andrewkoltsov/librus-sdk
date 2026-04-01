@@ -34,6 +34,8 @@ The release workflow in
 - confirm the pushed tag matches `package.json`
 - require the tagged commit to be reachable from `origin/master`
 - publish to npm if that version is not already present
+- verify the published npm package still exposes provenance attestations and
+  registry signatures after `npm publish --provenance`
 - create the GitHub Release from the matching `CHANGELOG.md` section
 
 ## Release Notes Policy
@@ -69,6 +71,17 @@ continues to publish to npmjs only.
 6. Push the tag to GitHub.
 7. Verify that the release workflow publishes the package and creates the
    GitHub Release.
+8. Confirm the workflow's published-package verification step succeeds.
+
+## Maintainer Continuity
+
+- Keep `.github/CODEOWNERS` aligned with the trusted GitHub maintainers who can
+  review and land changes.
+- Keep at least two trusted maintainers on GitHub and npm before enforcing an
+  approving-review requirement on `master`, so branch protection does not
+  deadlock releases.
+- After maintainers change, re-check `master` branch protection so the required
+  status checks still include the CI validation gate and CodeQL analysis.
 
 ## Homepage Value For Badge Evidence
 

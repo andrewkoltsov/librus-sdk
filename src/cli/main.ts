@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { config as loadDotEnv } from "dotenv";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
@@ -137,10 +136,31 @@ export function isCliEntryPoint(
   }
 }
 
+export function loadCliEnvironment(path = ".env"): void {
+  try {
+    process.loadEnvFile(path);
+  } catch (error) {
+    if (isMissingEnvFileError(error)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function isMissingEnvFileError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    error.code === "ENOENT"
+  );
+}
+
 const isEntryPoint = isCliEntryPoint();
 
 if (isEntryPoint) {
-  loadDotEnv({ quiet: true });
+  loadCliEnvironment();
   const exitCode = await runCli(process.argv, createDefaultCliContext());
   process.exitCode = exitCode;
 }

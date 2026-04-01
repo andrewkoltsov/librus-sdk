@@ -17,6 +17,39 @@ function formatLocalDateTime(timestamp: number): string {
 }
 
 describe("renderTextSections", () => {
+  it("renders wrapped scalar values and nested collections consistently", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Response",
+          value: {
+            Summary:
+              "This is a deliberately long summary value that should wrap cleanly in text mode.",
+            Children: [
+              {
+                Login: "child-login",
+                StudentName: "Child Name",
+              },
+            ],
+          },
+        },
+      ],
+      { width: 44 },
+    );
+
+    expect(output).toMatchInlineSnapshot(`
+      "Response
+        Summary:  This is a deliberately long
+                  summary value that should wrap
+                  cleanly in text mode.
+        Children
+          -
+            Login:       child-login
+            StudentName: Child Name
+      "
+    `);
+  });
+
   it("formats unix *Date fields in nested message payloads", () => {
     const output = renderTextSections(
       [
@@ -59,5 +92,30 @@ describe("renderTextSections", () => {
     expect(output).toContain("Aleksandra Wojtasik");
     expect(output).not.toContain("\\u0144");
     expect(output).not.toContain("<br>");
+  });
+
+  it("keeps multiline block values readable when wrapping is required", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Message",
+          value: {
+            Body: "First paragraph stays readable.\n\nSecond paragraph also wraps across lines cleanly.",
+          },
+        },
+      ],
+      { width: 34 },
+    );
+
+    expect(output).toMatchInlineSnapshot(`
+      "Message
+        Body:
+          First paragraph stays
+          readable.
+
+          Second paragraph also wraps
+          across lines cleanly.
+      "
+    `);
   });
 });

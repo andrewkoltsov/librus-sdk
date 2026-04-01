@@ -12,7 +12,11 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import { isCliEntryPoint, runCli } from "../src/cli/main.js";
+import {
+  isCliEntryPoint,
+  loadCliEnvironment,
+  runCli,
+} from "../src/cli/main.js";
 import {
   LibrusSdkError,
   type ChildAccount,
@@ -328,5 +332,48 @@ describe("isCliEntryPoint", () => {
         pathToFileURL(missingEntryPath).href,
       ),
     ).toBe(true);
+  });
+});
+
+describe("loadCliEnvironment", () => {
+  it("loads .env files through Node's built-in helper", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-env-"));
+    const previousCwd = process.cwd();
+    const previousValue = process.env.LIBRUS_CLI_ENV_TEST;
+
+    writeFileSync(join(tempDir, ".env"), "LIBRUS_CLI_ENV_TEST=loaded-value\n", {
+      encoding: "utf8",
+    });
+    delete process.env.LIBRUS_CLI_ENV_TEST;
+    process.chdir(tempDir);
+
+    try {
+      loadCliEnvironment();
+      expect(process.env.LIBRUS_CLI_ENV_TEST).toBe("loaded-value");
+    } finally {
+      process.chdir(previousCwd);
+
+      if (previousValue === undefined) {
+        delete process.env.LIBRUS_CLI_ENV_TEST;
+      } else {
+        process.env.LIBRUS_CLI_ENV_TEST = previousValue;
+      }
+
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores missing .env files", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-missing-env-"));
+    const previousCwd = process.cwd();
+
+    process.chdir(tempDir);
+
+    try {
+      expect(() => loadCliEnvironment()).not.toThrow();
+    } finally {
+      process.chdir(previousCwd);
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
