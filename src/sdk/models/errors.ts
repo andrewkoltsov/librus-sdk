@@ -2,6 +2,7 @@ export interface LibrusErrorDetails {
   endpoint?: string;
   issues?: string[];
   status?: number;
+  timeoutMs?: number;
   matches?: Array<Record<string, string | number>>;
   [key: string]: unknown;
 }
@@ -40,6 +41,16 @@ export class LibrusConfigurationError extends LibrusSdkError {
   constructor(message: string) {
     super("CONFIGURATION_ERROR", message);
     this.name = "LibrusConfigurationError";
+  }
+}
+
+export class LibrusNetworkTimeoutError extends LibrusSdkError {
+  constructor(endpoint: string, timeoutMs: number) {
+    super("NETWORK_TIMEOUT", `Librus request timed out after ${timeoutMs}ms.`, {
+      endpoint,
+      timeoutMs,
+    });
+    this.name = "LibrusNetworkTimeoutError";
   }
 }
 

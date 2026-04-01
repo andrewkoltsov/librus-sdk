@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
+import { expectJsonGetRequest } from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
 
@@ -113,13 +114,7 @@ describe("SynergiaApiClient announcement, note, and metadata methods", () => {
 
     await call(client);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it("parses school notices with targeted fields", async () => {

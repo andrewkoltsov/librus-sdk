@@ -6,6 +6,11 @@ import type {
   MessagesResponse,
 } from "../src/sdk/models/synergia/messages.js";
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
+import {
+  expectBinaryGetRequest,
+  expectJsonGetRequest,
+  expectNthJsonGetRequest,
+} from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
 
@@ -186,13 +191,7 @@ describe("SynergiaApiClient message methods", () => {
 
     await call(client);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it.each(parseCases)(
@@ -206,13 +205,7 @@ describe("SynergiaApiClient message methods", () => {
       const response = await call(client);
 
       assert(response);
-      expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      });
+      expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
     },
   );
 
@@ -235,14 +228,9 @@ describe("SynergiaApiClient message methods", () => {
       'attachment; filename="message.pdf"',
     );
     expect(result.contentType).toBe("application/pdf");
-    expect(fetchMock).toHaveBeenCalledWith(
+    expectBinaryGetRequest(
+      fetchMock,
       `${apiBaseUrl}/Messages/Attachment/attachment%2F12`,
-      {
-        method: "GET",
-        headers: {
-          authorization: "Bearer token",
-        },
-      },
     );
   });
 
@@ -275,28 +263,12 @@ describe("SynergiaApiClient message methods", () => {
         hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
       },
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(
+    expectNthJsonGetRequest(
+      fetchMock,
       1,
       `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
-      {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      },
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      `${apiBaseUrl}/Auth/TokenInfo`,
-      {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      },
-    );
+    expectNthJsonGetRequest(fetchMock, 2, `${apiBaseUrl}/Auth/TokenInfo`);
   });
 
   it("explains when the token advertises the messages scope but access stays forbidden", async () => {

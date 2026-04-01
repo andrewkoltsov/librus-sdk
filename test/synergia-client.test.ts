@@ -3,7 +3,50 @@ import { describe, expect, it, vi } from "vitest";
 import { LibrusSdkError } from "../src/sdk/models/errors.js";
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
 
+function createAbortAwareHangingFetch() {
+  return vi.fn<typeof fetch>((_input, init) => {
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener(
+        "abort",
+        () => {
+          reject(new DOMException("This operation was aborted", "AbortError"));
+        },
+        { once: true },
+      );
+    });
+  });
+}
+
+function expectTokenGetRequest(
+  fetchMock: ReturnType<typeof vi.fn<typeof fetch>>,
+  expectedUrl: string,
+): void {
+  const [url, init] = fetchMock.mock.calls[0] ?? [];
+
+  expect(url).toBe(expectedUrl);
+  expect(init).toMatchObject({
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      authorization: "Bearer token",
+    },
+  });
+  expect(init?.signal).toBeInstanceOf(AbortSignal);
+}
+
 describe("SynergiaApiClient", () => {
+  it("fails fast for invalid requestTimeoutMs values", () => {
+    expect(() => {
+      new SynergiaApiClient("token", {
+        requestTimeoutMs: 0,
+      });
+    }).toThrowError(
+      expect.objectContaining({
+        code: "CONFIGURATION_ERROR",
+      }),
+    );
+  });
+
   it("returns a maintenance-specific error for 503 maintenance responses", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
@@ -26,13 +69,7 @@ describe("SynergiaApiClient", () => {
         status: 503,
       },
     });
-    expect(fetchMock).toHaveBeenCalledWith("https://api.librus.pl/3.0/Me", {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectTokenGetRequest(fetchMock, "https://api.librus.pl/3.0/Me");
   });
 
   it("fails with a validation error when the response payload is malformed", async () => {
@@ -69,13 +106,7 @@ describe("SynergiaApiClient", () => {
       );
     }
 
-    expect(fetchMock).toHaveBeenCalledWith("https://api.librus.pl/3.0/Grades", {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectTokenGetRequest(fetchMock, "https://api.librus.pl/3.0/Grades");
   });
 
   it("accepts attendance payloads with string or numeric ids and without a Trip field", async () => {
@@ -130,16 +161,7 @@ describe("SynergiaApiClient", () => {
     expect(response.Attendances[0]?.Trip).toBeUndefined();
     expect(response.Attendances[1]?.Id).toBe("2");
     expect(response.Attendances[1]?.Trip).toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.librus.pl/3.0/Attendances",
-      {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      },
-    );
+    expectTokenGetRequest(fetchMock, "https://api.librus.pl/3.0/Attendances");
   });
 
   it("accepts homework payloads with mixed lesson numbers and missing subjects", async () => {
@@ -213,15 +235,34 @@ describe("SynergiaApiClient", () => {
     expect(Object.hasOwn(response.HomeWorks[1]!, "Subject")).toBe(false);
     expect(response.HomeWorks[1]?.Subject).toBeUndefined();
     expect(response.HomeWorks[2]?.Subject).toBeNull();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.librus.pl/3.0/HomeWorks",
-      {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
+    expectTokenGetRequest(fetchMock, "https://api.librus.pl/3.0/HomeWorks");
+  });
+
+  it("times out hanging child-scoped requests with a secret-safe error", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const fetchMock = createAbortAwareHangingFetch();
+      const client = new SynergiaApiClient("token", {
+        fetch: fetchMock,
+        requestTimeoutMs: 5,
+      });
+      const requestPromise = client.getGrades();
+      const requestExpectation = expect(requestPromise).rejects.toMatchObject({
+        code: "NETWORK_TIMEOUT",
+        message: "Librus request timed out after 5ms.",
+        details: {
+          endpoint: "https://api.librus.pl/3.0/Grades",
+          timeoutMs: 5,
         },
-      },
-    );
+      });
+
+      await vi.advanceTimersByTimeAsync(5);
+
+      await requestExpectation;
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

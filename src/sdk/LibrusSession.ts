@@ -14,12 +14,17 @@ import {
   type PortalMe,
   type SynergiaAccountsResponse,
 } from "./models/index.js";
+import {
+  parseRequestTimeoutMsFromEnv,
+  validateOptionalRequestTimeoutMs,
+} from "./requestTimeout.js";
 
 export interface LibrusSessionOptions {
   credentials: PortalCredentials;
   portalClient?: PortalClient;
   portalClientOptions?: PortalClientOptions;
   synergiaClientOptions?: SynergiaApiClientOptions;
+  requestTimeoutMs?: number;
 }
 
 export class LibrusSession {
@@ -29,10 +34,34 @@ export class LibrusSession {
   private accountsCache?: SynergiaAccountsResponse;
 
   constructor(options: LibrusSessionOptions) {
+    const requestTimeoutMs = validateOptionalRequestTimeoutMs(
+      options.requestTimeoutMs,
+    );
+    const portalClientOptions =
+      options.portalClientOptions?.requestTimeoutMs !== undefined ||
+      requestTimeoutMs === undefined
+        ? options.portalClientOptions
+        : options.portalClientOptions
+          ? {
+              ...options.portalClientOptions,
+              requestTimeoutMs,
+            }
+          : { requestTimeoutMs };
+    const synergiaClientOptions =
+      options.synergiaClientOptions?.requestTimeoutMs !== undefined ||
+      requestTimeoutMs === undefined
+        ? options.synergiaClientOptions
+        : options.synergiaClientOptions
+          ? {
+              ...options.synergiaClientOptions,
+              requestTimeoutMs,
+            }
+          : { requestTimeoutMs };
+
     this.credentials = options.credentials;
     this.portalClient =
-      options.portalClient ?? new PortalClient(options.portalClientOptions);
-    this.synergiaClientOptions = options.synergiaClientOptions;
+      options.portalClient ?? new PortalClient(portalClientOptions);
+    this.synergiaClientOptions = synergiaClientOptions;
   }
 
   static fromEnv(env: NodeJS.ProcessEnv = process.env): LibrusSession {
@@ -45,9 +74,18 @@ export class LibrusSession {
       );
     }
 
-    return new LibrusSession({
+    const requestTimeoutMs = parseRequestTimeoutMsFromEnv(
+      env.LIBRUS_TIMEOUT_MS,
+    );
+    const sessionOptions: LibrusSessionOptions = {
       credentials: { email, password },
-    });
+    };
+
+    if (requestTimeoutMs !== undefined) {
+      sessionOptions.requestTimeoutMs = requestTimeoutMs;
+    }
+
+    return new LibrusSession(sessionOptions);
   }
 
   async login(): Promise<void> {

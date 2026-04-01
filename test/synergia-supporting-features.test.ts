@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
+import {
+  expectBinaryGetRequest,
+  expectJsonGetRequest,
+} from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
 
@@ -157,13 +161,7 @@ describe("SynergiaApiClient supporting feature methods", () => {
 
     await call(client);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it("downloads planned lesson attachments as binary payloads", async () => {
@@ -185,14 +183,9 @@ describe("SynergiaApiClient supporting feature methods", () => {
       'attachment; filename="planned.pdf"',
     );
     expect(result.contentType).toBe("application/pdf");
-    expect(fetchMock).toHaveBeenCalledWith(
+    expectBinaryGetRequest(
+      fetchMock,
       `${apiBaseUrl}/PlannedLessons/Attachment/planned%2F4`,
-      {
-        method: "GET",
-        headers: {
-          authorization: "Bearer token",
-        },
-      },
     );
   });
 

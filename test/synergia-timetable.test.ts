@@ -6,6 +6,7 @@ import type {
   TimetablesResponse,
 } from "../src/sdk/models/synergia/timetable.js";
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
+import { expectJsonGetRequest } from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
 
@@ -188,13 +189,7 @@ describe("SynergiaApiClient timetable methods", () => {
 
     await call(client);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it.each(parseCases)(
@@ -208,13 +203,7 @@ describe("SynergiaApiClient timetable methods", () => {
       const response = await call(client);
 
       assert(response);
-      expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      });
+      expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
     },
   );
 });
