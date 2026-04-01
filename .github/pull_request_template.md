@@ -8,11 +8,8 @@ required local checks, and when docs or changelog updates are expected.
 
 ## Verification
 
-- [ ] `npm run lint`
-- [ ] `npm run format:check`
-- [ ] `npm run build`
-- [ ] `npm test`
-- [ ] `npm run pack:check`
+- [ ] `npm run validate`
+- [ ] manual verification noted below if applicable
 
 ## Notes
 

@@ -38,16 +38,20 @@ Install dependencies before running checks:
 npm install
 ```
 
-Run this full verification set before opening or updating a pull request unless
-you explain why a specific check was skipped:
+Run the canonical verification command before opening or updating a pull request
+unless you explain why it was skipped:
 
 ```bash
-npm run lint
-npm run format:check
-npm run build
-npm test
-npm run pack:check
+npm run validate
 ```
+
+`npm run validate` runs:
+
+- `npm run lint`
+- `npm run format:check`
+- `npm run build`
+- `npm run test:coverage`
+- `npm run pack:check`
 
 You can run the CLI locally with:
 
@@ -58,6 +62,8 @@ npm run cli -- <command>
 ## Tests, Docs, And Changelog Expectations
 
 - Behavior changes should include focused Vitest coverage near the closest existing suite in `test/`.
+- `npm test` remains available as the quick unit-test path, but `npm run validate` is the required merge gate.
+- Live integration tests are manual-only, require local credentials, and stay outside `npm run validate`, CI, and release automation unless a task explicitly calls for that verification.
 - Avoid tests that require live credentials or network access unless the change explicitly calls for manual verification.
 - User-facing SDK or CLI changes should update [`README.md`](./README.md).
 - User-facing SDK or CLI changes should also update [`CHANGELOG.md`](./CHANGELOG.md).
