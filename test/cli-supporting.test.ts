@@ -635,6 +635,203 @@ describe("supporting CLI commands", () => {
     expect(output.error.code).toBe("RESPONSE_VALIDATION_FAILED");
   });
 
+  it.each([
+    {
+      expectedContentType: "image/jpeg",
+      fileName: "photo.JPEG",
+      name: "jpeg file names",
+    },
+    {
+      expectedContentType: "image/png",
+      fileName: "photo.png",
+      name: "png file names",
+    },
+    {
+      expectedContentType: "image/gif",
+      fileName: "photo.gif",
+      name: "gif file names",
+    },
+    {
+      expectedContentType: "image/webp",
+      fileName: "photo.webp",
+      name: "webp file names",
+    },
+    {
+      expectedContentType: null,
+      fileName: "photo.bin",
+      name: "unknown file extensions",
+    },
+    {
+      expectedContentType: null,
+      fileName: undefined,
+      name: "missing file names",
+    },
+  ])(
+    "infers auth photo content type for $name",
+    async ({ expectedContentType, fileName }) => {
+      let stdout = "";
+      const child = createChild();
+      const resolveChild = vi.fn().mockResolvedValue(child);
+      const photo: {
+        content: string;
+        fileName?: string;
+        id: string;
+      } = {
+        content: Buffer.from([4, 5, 6]).toString("base64"),
+        id: "photo-1",
+      };
+
+      if (fileName !== undefined) {
+        photo.fileName = fileName;
+      }
+
+      const getAuthPhoto = vi.fn().mockResolvedValue({
+        data: {
+          status: true,
+          photo,
+        },
+        Resources: {},
+        Url: "https://api.librus.pl/3.0/Auth/Photos/photo-1",
+      });
+      const forChild = vi.fn().mockResolvedValue({ getAuthPhoto });
+
+      const exitCode = await runCli(
+        withJsonFormat([
+          "node",
+          "librus",
+          "auth",
+          "photo",
+          "--child",
+          "child-login",
+          "--id",
+          "photo-1",
+          "--output",
+          "/tmp/photo-download",
+        ]),
+        {
+          stdout: { write: (chunk) => (stdout += chunk) },
+          stderr: { write: () => undefined },
+          outputWidth: 80,
+          createSession: () =>
+            ({
+              resolveChild,
+              forChild,
+            }) as never,
+          writeFile: () => undefined,
+        },
+      );
+
+      expect(exitCode).toBe(0);
+      expect(
+        parseJson<{ data: { contentType: string | null } }>(stdout).data,
+      ).toMatchObject({
+        contentType: expectedContentType,
+      });
+    },
+  );
+
+  it("renders auth photo download details in text mode", async () => {
+    let stdout = "";
+    let stderr = "";
+    const child = createChild();
+    const resolveChild = vi.fn().mockResolvedValue(child);
+    const getAuthPhoto = vi.fn().mockResolvedValue({
+      data: {
+        status: true,
+        photo: {
+          id: "photo-1",
+          fileName: "photo.png",
+          content: Buffer.from([4, 5, 6]).toString("base64"),
+        },
+      },
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Auth/Photos/photo-1",
+    });
+    const forChild = vi.fn().mockResolvedValue({ getAuthPhoto });
+
+    const exitCode = await runCli(
+      [
+        "node",
+        "librus",
+        "auth",
+        "photo",
+        "--child",
+        "child-login",
+        "--id",
+        "photo-1",
+        "--output",
+        "/tmp/photo.png",
+      ],
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
+        createSession: () =>
+          ({
+            resolveChild,
+            forChild,
+          }) as never,
+        writeFile: () => undefined,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(stdout).toContain("Child");
+    expect(stdout).toContain("Saved File");
+    expect(stdout).toContain("contentType:");
+    expect(stdout).toContain("image/png");
+    expect(stdout).toContain("/tmp/photo.png");
+  });
+
+  it("fails when the auth photo response does not contain a photo object", async () => {
+    let stderr = "";
+    const child = createChild();
+    const resolveChild = vi.fn().mockResolvedValue(child);
+    const getAuthPhoto = vi.fn().mockResolvedValue({
+      data: {
+        status: true,
+        photo: null,
+      },
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Auth/Photos/photo-1",
+    });
+    const forChild = vi.fn().mockResolvedValue({ getAuthPhoto });
+
+    const exitCode = await runCli(
+      withJsonFormat([
+        "node",
+        "librus",
+        "auth",
+        "photo",
+        "--child",
+        "child-login",
+        "--id",
+        "photo-1",
+        "--output",
+        "/tmp/photo.jpg",
+      ]),
+      {
+        stdout: { write: () => undefined },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
+        createSession: () =>
+          ({
+            resolveChild,
+            forChild,
+          }) as never,
+        writeFile: () => undefined,
+      },
+    );
+
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(output.error.code).toBe("RESPONSE_VALIDATION_FAILED");
+  });
+
   it.each(usageFailureCases)("$name", async ({ argv, expectedMessage }) => {
     let stderr = "";
 

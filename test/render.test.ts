@@ -17,6 +17,27 @@ function formatLocalDateTime(timestamp: number): string {
 }
 
 describe("renderTextSections", () => {
+  it("renders top-level scalar sections and preserves scalar formatting", () => {
+    const output = renderTextSections(
+      [
+        { title: "Empty", value: "" },
+        { title: "Nothing", value: null },
+        { title: "Missing", value: undefined },
+        { title: "Whitespace", value: " padded\tvalue " },
+        { title: "Flag", value: true },
+        { title: "Count", value: 99n },
+      ],
+      { width: 40 },
+    );
+
+    expect(output).toContain('  ""');
+    expect(output).toContain("  null");
+    expect(output).toContain("  undefined");
+    expect(output).toContain('  " padded\\tvalue "');
+    expect(output).toContain("  true");
+    expect(output).toContain("  99");
+  });
+
   it("renders wrapped scalar values and nested collections consistently", () => {
     const output = renderTextSections(
       [
@@ -46,6 +67,43 @@ describe("renderTextSections", () => {
           -
             Login:       child-login
             StudentName: Child Name
+      "
+    `);
+  });
+
+  it("renders objects that only contain complex values", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Complex",
+          value: {
+            Items: [
+              { Id: 1, Name: "One" },
+              { Id: 2, Name: "Two" },
+            ],
+            Nested: {
+              Child: {
+                Login: "child-login",
+              },
+            },
+          },
+        },
+      ],
+      { width: 44 },
+    );
+
+    expect(output).toMatchInlineSnapshot(`
+      "Complex
+        Items
+          -
+            Id:       1
+            Name:     One
+          -
+            Id:       2
+            Name:     Two
+        Nested
+          Child
+            Login:    child-login
       "
     `);
   });
@@ -94,6 +152,30 @@ describe("renderTextSections", () => {
     expect(output).not.toContain("<br>");
   });
 
+  it("keeps plain body text inline and preserves invalid date-like values", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Message",
+          value: {
+            Body: "Short body without markup",
+            ReadDate: "not-a-timestamp",
+            SendDate: 123.5,
+            UpdateDate: "123456789012",
+          },
+        },
+      ],
+      { width: 120 },
+    );
+
+    expect(output).toContain("Body:");
+    expect(output).toContain("Short body without markup");
+    expect(output).not.toContain("Body:\n");
+    expect(output).toContain("not-a-timestamp");
+    expect(output).toContain("123.5");
+    expect(output).toContain("123456789012");
+  });
+
   it("keeps multiline block values readable when wrapping is required", () => {
     const output = renderTextSections(
       [
@@ -115,6 +197,31 @@ describe("renderTextSections", () => {
 
           Second paragraph also wraps
           across lines cleanly.
+      "
+    `);
+  });
+
+  it("wraps long unbroken tokens without requiring spaces", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Tokens",
+          value: {
+            LongToken: "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+          },
+        },
+      ],
+      { width: 20 },
+    );
+
+    expect(output).toMatchInlineSnapshot(`
+      "Tokens
+        LongToken: ABCDEFG
+                   HIJKLMN
+                   OPQRSTU
+                   VWXYZ12
+                   3456789
+                   0
       "
     `);
   });
