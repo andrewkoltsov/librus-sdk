@@ -370,10 +370,15 @@ describe("runCli high-value commands", () => {
             forChild: async () => {
               throw new LibrusSdkError(
                 "API_REQUEST_FAILED",
-                "Synergia API request failed",
+                'Messages are unavailable for this child account because the token does not advertise the required "messages" scope.',
                 {
                   endpoint: "https://api.librus.pl/3.0/Messages",
-                  status: 401,
+                  status: 403,
+                  feature: "messages",
+                  requiredScope: "messages",
+                  scopePresent: false,
+                  tokenScopes: ["grades", "attendance"],
+                  hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
                 },
               );
             },
@@ -383,6 +388,10 @@ describe("runCli high-value commands", () => {
 
     expect(exitCode).toBe(1);
     expect(stderr).toContain("API_REQUEST_FAILED");
+    expect(stderr).toContain("requiredScope");
+    expect(stderr).toContain("scopePresent");
+    expect(stderr).toContain("tokenScopes");
+    expect(stderr).toContain("auth token-info");
     expect(stderr).not.toContain("token-secret");
     expect(stderr).not.toContain("Bearer ");
   });

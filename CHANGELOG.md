@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-01
+
+### Fixed
+
+- Message endpoint `403` failures now include message-specific diagnostics and an `auth token-info` troubleshooting hint instead of the generic Synergia API error text alone.
+
 ## [0.3.1] - 2026-03-31
 
 ### Fixed

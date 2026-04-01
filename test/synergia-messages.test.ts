@@ -16,6 +16,13 @@ function jsonResponse(payload: unknown): Response {
   });
 }
 
+function errorResponse(status: number, payload: unknown = {}): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 function envelope(
   path: string,
   body: Record<string, unknown>,
@@ -237,5 +244,111 @@ describe("SynergiaApiClient message methods", () => {
         },
       },
     );
+  });
+
+  it("adds missing-scope diagnostics to message 403 responses", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(403, { Error: "Forbidden" }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          envelope("/Auth/TokenInfo", {
+            UserIdentifier: "LID-123",
+            Scopes: ["grades", "attendance"],
+          }),
+        ),
+      );
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+
+    await expect(client.listMessages()).rejects.toMatchObject({
+      code: "API_REQUEST_FAILED",
+      message:
+        'Messages are unavailable for this child account because the token does not advertise the required "messages" scope.',
+      details: {
+        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        status: 403,
+        feature: "messages",
+        requiredScope: "messages",
+        scopePresent: false,
+        tokenScopes: ["grades", "attendance"],
+        hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
+      },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: "Bearer token",
+        },
+      },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `${apiBaseUrl}/Auth/TokenInfo`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: "Bearer token",
+        },
+      },
+    );
+  });
+
+  it("explains when the token advertises the messages scope but access stays forbidden", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(403, { Error: "Forbidden" }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          envelope("/Auth/TokenInfo", {
+            UserIdentifier: "LID-123",
+            Scopes: ["Messages", "Grades"],
+          }),
+        ),
+      );
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+
+    await expect(client.listMessages()).rejects.toMatchObject({
+      code: "API_REQUEST_FAILED",
+      message:
+        'Messages are unavailable for this child account even though the token advertises the required "messages" scope.',
+      details: {
+        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        status: 403,
+        feature: "messages",
+        requiredScope: "messages",
+        scopePresent: true,
+        tokenScopes: ["Messages", "Grades"],
+        hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
+      },
+    });
+  });
+
+  it("keeps the original 403 when token-info diagnostics are unavailable", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(403, { Error: "Forbidden" }))
+      .mockResolvedValueOnce(errorResponse(503, { Error: "Unavailable" }));
+
+    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+
+    await expect(client.listMessages()).rejects.toMatchObject({
+      code: "API_REQUEST_FAILED",
+      message:
+        "Messages are unavailable for this child account. Librus returned 403 for the requested message endpoint.",
+      details: {
+        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        status: 403,
+        feature: "messages",
+        requiredScope: "messages",
+        hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
+      },
+    });
   });
 });

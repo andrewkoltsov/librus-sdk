@@ -1,4 +1,5 @@
 import type { FetchLike } from "../models/common.js";
+import { LibrusApiError } from "../models/errors.js";
 import type {
   SchoolNoticeResponse,
   SchoolNoticesResponse,
@@ -209,6 +210,10 @@ export interface SynergiaApiClientOptions {
 
 type SynergiaId = string | number;
 
+const MESSAGES_SCOPE = "messages";
+const MESSAGES_SCOPE_HINT =
+  "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.";
+
 export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;
   private readonly apiBaseUrl: string;
@@ -248,6 +253,88 @@ export class SynergiaApiClient {
       path,
       options,
     );
+  }
+
+  private async withMessageAccessDiagnostics<T>(
+    request: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await request();
+    } catch (error) {
+      if (!(error instanceof LibrusApiError) || error.details?.status !== 403) {
+        throw error;
+      }
+
+      const diagnostics = await this.getMessageAccessDiagnostics();
+      const enhancedError = new LibrusApiError(
+        error.details.endpoint ?? "unknown",
+        error.details.status,
+        this.getMessageAccessErrorMessage(diagnostics.scopePresent),
+      );
+
+      Object.assign(enhancedError.details ?? {}, diagnostics);
+      throw enhancedError;
+    }
+  }
+
+  private async getMessageAccessDiagnostics(): Promise<{
+    feature: "messages";
+    hint: string;
+    requiredScope: "messages";
+    scopePresent?: boolean;
+    tokenScopes?: string[];
+  }> {
+    const diagnostics: {
+      feature: "messages";
+      hint: string;
+      requiredScope: "messages";
+      scopePresent?: boolean;
+      tokenScopes?: string[];
+    } = {
+      feature: "messages",
+      hint: MESSAGES_SCOPE_HINT,
+      requiredScope: MESSAGES_SCOPE,
+    };
+
+    try {
+      const tokenInfo = await this.getAuthTokenInfo();
+      const tokenScopes = this.getTokenScopes(tokenInfo);
+
+      if (tokenScopes) {
+        diagnostics.tokenScopes = tokenScopes;
+        diagnostics.scopePresent = tokenScopes.some(
+          (scope) => scope.toLowerCase() === MESSAGES_SCOPE,
+        );
+      }
+    } catch {
+      return diagnostics;
+    }
+
+    return diagnostics;
+  }
+
+  private getTokenScopes(
+    tokenInfo: AuthTokenInfoResponse,
+  ): string[] | undefined {
+    if (!Array.isArray(tokenInfo.Scopes)) {
+      return undefined;
+    }
+
+    return tokenInfo.Scopes.filter(
+      (scope): scope is string => typeof scope === "string",
+    );
+  }
+
+  private getMessageAccessErrorMessage(scopePresent?: boolean): string {
+    if (scopePresent === false) {
+      return 'Messages are unavailable for this child account because the token does not advertise the required "messages" scope.';
+    }
+
+    if (scopePresent === true) {
+      return 'Messages are unavailable for this child account even though the token advertises the required "messages" scope.';
+    }
+
+    return "Messages are unavailable for this child account. Librus returned 403 for the requested message endpoint.";
   }
 
   getMe(): Promise<SynergiaMeResponse> {
@@ -585,52 +672,64 @@ export class SynergiaApiClient {
   listMessages(options: ListMessagesOptions = {}): Promise<MessagesResponse> {
     const { afterId, alternativeBody = true, changeNewLine = 1 } = options;
 
-    return this.getJson("/Messages", messagesResponseSchema, {
-      query: {
-        afterId,
-        alternativeBody,
-        changeNewLine,
-      },
-    });
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson("/Messages", messagesResponseSchema, {
+        query: {
+          afterId,
+          alternativeBody,
+          changeNewLine,
+        },
+      }),
+    );
   }
 
   getMessage(id: SynergiaId): Promise<MessageResponse> {
-    return this.getJson(
-      `/Messages/${encodeURIComponent(String(id))}`,
-      messageResponseSchema,
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson(
+        `/Messages/${encodeURIComponent(String(id))}`,
+        messageResponseSchema,
+      ),
     );
   }
 
   getUnreadMessages(): Promise<UnreadMessagesResponse> {
-    return this.getJson("/Messages/Unread", unreadMessagesResponseSchema);
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson("/Messages/Unread", unreadMessagesResponseSchema),
+    );
   }
 
   listMessagesForUser(userId: SynergiaId): Promise<MessagesResponse> {
-    return this.getJson(
-      `/Messages/User/${encodeURIComponent(String(userId))}`,
-      messagesResponseSchema,
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson(
+        `/Messages/User/${encodeURIComponent(String(userId))}`,
+        messagesResponseSchema,
+      ),
     );
   }
 
   listMessageReceiverGroups(): Promise<MessageReceiverGroupsResponse> {
-    return this.getJson(
-      "/Messages/ReceiversGroup",
-      messageReceiverGroupsResponseSchema,
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson(
+        "/Messages/ReceiversGroup",
+        messageReceiverGroupsResponseSchema,
+      ),
     );
   }
 
   getMessageReceiverGroup(
     id: SynergiaId,
   ): Promise<MessageReceiverGroupResponse> {
-    return this.getJson(
-      `/Messages/ReceiversGroup/${encodeURIComponent(String(id))}`,
-      messageReceiverGroupResponseSchema,
+    return this.withMessageAccessDiagnostics(() =>
+      this.getJson(
+        `/Messages/ReceiversGroup/${encodeURIComponent(String(id))}`,
+        messageReceiverGroupResponseSchema,
+      ),
     );
   }
 
   getMessageAttachment(id: SynergiaId): Promise<SynergiaBinaryResult> {
-    return this.getBinary(
-      `/Messages/Attachment/${encodeURIComponent(String(id))}`,
+    return this.withMessageAccessDiagnostics(() =>
+      this.getBinary(`/Messages/Attachment/${encodeURIComponent(String(id))}`),
     );
   }
 

@@ -281,6 +281,28 @@ Current codes emitted by the SDK and CLI:
 | `CLI_USAGE_ERROR`            | The CLI arguments were invalid, incomplete, or used unsupported values.    |
 | `INTERNAL_ERROR`             | Unexpected non-SDK error wrapper used by the CLI fallback path.            |
 
+### Troubleshooting
+
+`messages` reads can fail with HTTP `403` even when other child-scoped
+endpoints such as `grades list` still work. This appears to depend on the
+current child account's effective message access rather than on the overall
+portal login flow.
+
+When a `/Messages` request returns `API_REQUEST_FAILED` with `status: 403`, the
+SDK and CLI now add diagnostics under `error.details`:
+
+- `feature: "messages"`
+- `requiredScope: "messages"`
+- `scopePresent` when `Auth/TokenInfo` exposes scopes for the same child token
+- `tokenScopes` when those scopes are readable
+- `hint` pointing to `librus auth token-info --child <id-or-login>`
+
+Use the auth helper directly when you need to compare child tokens:
+
+```bash
+npx librus auth token-info --child <id-or-login>
+```
+
 ### OpenAPI
 
 `openapi.json` is generated from the SDK's supported Synergia GET endpoints and
@@ -300,7 +322,7 @@ You can also generate the document programmatically:
 ```ts
 import { generateOpenApiDocument } from "librus-sdk";
 
-const openApi = generateOpenApiDocument({ version: "0.3.1" });
+const openApi = generateOpenApiDocument({ version: "0.3.2" });
 ```
 
 ### Release And Versioning Policy
