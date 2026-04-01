@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { config as loadDotEnv } from "dotenv";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
@@ -137,10 +136,125 @@ export function isCliEntryPoint(
   }
 }
 
+export function loadCliEnvironment(path = ".env"): void {
+  try {
+    if (typeof process.loadEnvFile === "function") {
+      process.loadEnvFile(path);
+      return;
+    }
+
+    loadCliEnvironmentFallback(path);
+  } catch (error) {
+    if (isMissingEnvFileError(error)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function isMissingEnvFileError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    error.code === "ENOENT"
+  );
+}
+
+function loadCliEnvironmentFallback(path: string): void {
+  const envFileContents = readFileSync(path, "utf8");
+
+  for (const [key, value] of parseEnvFileContents(envFileContents)) {
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+function parseEnvFileContents(contents: string): Array<[string, string]> {
+  const entries: Array<[string, string]> = [];
+
+  for (const rawLine of contents.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+
+    if (line.length === 0 || line.startsWith("#")) {
+      continue;
+    }
+
+    const normalizedLine = line.startsWith("export ")
+      ? line.slice("export ".length).trimStart()
+      : line;
+    const separatorIndex = normalizedLine.indexOf("=");
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = normalizedLine.slice(0, separatorIndex).trim();
+
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)) {
+      continue;
+    }
+
+    const rawValue = normalizedLine.slice(separatorIndex + 1);
+    entries.push([key, parseEnvValue(rawValue)]);
+  }
+
+  return entries;
+}
+
+function parseEnvValue(rawValue: string): string {
+  const value = rawValue.trim();
+
+  if (value.length === 0) {
+    return "";
+  }
+
+  if (value.startsWith('"') && value.endsWith('"')) {
+    return decodeDoubleQuotedEnvValue(value.slice(1, -1));
+  }
+
+  if (value.startsWith("'") && value.endsWith("'")) {
+    return value.slice(1, -1);
+  }
+
+  return stripInlineEnvComment(value);
+}
+
+function decodeDoubleQuotedEnvValue(value: string): string {
+  return value.replace(/\\([\\nrt"])/g, (_, escapeSequence: string) => {
+    switch (escapeSequence) {
+      case "n":
+        return "\n";
+      case "r":
+        return "\r";
+      case "t":
+        return "\t";
+      case '"':
+        return '"';
+      case "\\":
+        return "\\";
+      default:
+        return escapeSequence;
+    }
+  });
+}
+
+function stripInlineEnvComment(value: string): string {
+  const commentStart = value.search(/\s#/u);
+
+  if (commentStart === -1) {
+    return value;
+  }
+
+  return value.slice(0, commentStart).trimEnd();
+}
+
 const isEntryPoint = isCliEntryPoint();
 
 if (isEntryPoint) {
-  loadDotEnv({ quiet: true });
+  loadCliEnvironment();
   const exitCode = await runCli(process.argv, createDefaultCliContext());
   process.exitCode = exitCode;
 }

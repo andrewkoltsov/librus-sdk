@@ -82,6 +82,24 @@ jobs:
         if: steps.npm_status.outputs.published != 'true'
         run: npm publish --provenance
 
+      - name: Verify published package attestations
+        env:
+          PACKAGE_NAME: librus-sdk
+          PACKAGE_VERSION: ${{ steps.package_metadata.outputs.version }}
+        run: |
+          for attempt in 1 2 3; do
+            if node ./scripts/verify-published-package.mjs "$PACKAGE_NAME" "$PACKAGE_VERSION"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Published package metadata for $PACKAGE_NAME@$PACKAGE_VERSION did not expose attestations/signatures after 3 attempts." >&2
+              exit 1
+            fi
+
+            sleep 5
+          done
+
       - name: Check whether GitHub Release already exists
         id: release_status
         env:

@@ -12,7 +12,11 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import { isCliEntryPoint, runCli } from "../src/cli/main.js";
+import {
+  isCliEntryPoint,
+  loadCliEnvironment,
+  runCli,
+} from "../src/cli/main.js";
 import {
   LibrusSdkError,
   type ChildAccount,
@@ -328,5 +332,95 @@ describe("isCliEntryPoint", () => {
         pathToFileURL(missingEntryPath).href,
       ),
     ).toBe(true);
+  });
+});
+
+describe("loadCliEnvironment", () => {
+  it("loads .env files through Node's built-in helper", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-env-"));
+    const previousCwd = process.cwd();
+    const previousValue = process.env.LIBRUS_CLI_ENV_TEST;
+
+    writeFileSync(join(tempDir, ".env"), "LIBRUS_CLI_ENV_TEST=loaded-value\n", {
+      encoding: "utf8",
+    });
+    delete process.env.LIBRUS_CLI_ENV_TEST;
+    process.chdir(tempDir);
+
+    try {
+      loadCliEnvironment();
+      expect(process.env.LIBRUS_CLI_ENV_TEST).toBe("loaded-value");
+    } finally {
+      process.chdir(previousCwd);
+
+      if (previousValue === undefined) {
+        delete process.env.LIBRUS_CLI_ENV_TEST;
+      } else {
+        process.env.LIBRUS_CLI_ENV_TEST = previousValue;
+      }
+
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores missing .env files", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-missing-env-"));
+    const previousCwd = process.cwd();
+
+    process.chdir(tempDir);
+
+    try {
+      expect(() => loadCliEnvironment()).not.toThrow();
+    } finally {
+      process.chdir(previousCwd);
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back when process.loadEnvFile is unavailable", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "librus-sdk-fallback-env-"));
+    const previousCwd = process.cwd();
+    const previousValue = process.env.LIBRUS_CLI_ENV_TEST;
+    const originalLoadEnvFile = process.loadEnvFile?.bind(process);
+
+    writeFileSync(
+      join(tempDir, ".env"),
+      [
+        "LIBRUS_CLI_ENV_TEST=loaded-from-fallback",
+        "EXISTING_VAR=file-value",
+        'QUOTED_VALUE="line one\\nline two"',
+      ].join("\n"),
+      { encoding: "utf8" },
+    );
+    delete process.env.LIBRUS_CLI_ENV_TEST;
+    process.env.EXISTING_VAR = "preserve-existing";
+    process.chdir(tempDir);
+    Object.defineProperty(process, "loadEnvFile", {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      loadCliEnvironment();
+      expect(process.env.LIBRUS_CLI_ENV_TEST).toBe("loaded-from-fallback");
+      expect(process.env.EXISTING_VAR).toBe("preserve-existing");
+      expect(process.env.QUOTED_VALUE).toBe("line one\nline two");
+    } finally {
+      process.chdir(previousCwd);
+      Object.defineProperty(process, "loadEnvFile", {
+        configurable: true,
+        value: originalLoadEnvFile,
+      });
+
+      if (previousValue === undefined) {
+        delete process.env.LIBRUS_CLI_ENV_TEST;
+      } else {
+        process.env.LIBRUS_CLI_ENV_TEST = previousValue;
+      }
+
+      delete process.env.QUOTED_VALUE;
+      delete process.env.EXISTING_VAR;
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

@@ -1,5 +1,3 @@
-import cliui from "cliui";
-
 export interface CliTextSection {
   title: string;
   value: unknown;
@@ -13,7 +11,6 @@ const INDENT_SIZE = 2;
 const MIN_LABEL_WIDTH = 8;
 const MAX_LABEL_WIDTH = 24;
 
-type CliUiInstance = ReturnType<typeof cliui>;
 interface ScalarFormatContext {
   label?: string;
 }
@@ -28,74 +25,82 @@ export function renderTextSections(
   sections: CliTextSection[],
   options: RenderTextSectionsOptions,
 ): string {
-  const ui = cliui({
-    width: options.width,
-    wrap: true,
-  });
+  const lines: string[] = [];
 
   sections.forEach((section, index) => {
     if (index > 0) {
-      ui.div("");
+      lines.push("");
     }
 
-    ui.div({ text: section.title });
-    appendValue(ui, section.value, INDENT_SIZE);
+    lines.push(section.title);
+    appendValue(lines, section.value, INDENT_SIZE, options.width);
   });
 
-  return `${ui.toString().trimEnd()}\n`;
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 function appendValue(
-  ui: CliUiInstance,
+  lines: string[],
   value: unknown,
   indent: number,
+  width: number,
   context: ScalarFormatContext = {},
 ): void {
   if (Array.isArray(value)) {
-    appendArray(ui, value, indent);
+    appendArray(lines, value, indent, width);
     return;
   }
 
   if (isRenderableObject(value)) {
-    appendObject(ui, value, indent);
+    appendObject(lines, value, indent, width);
     return;
   }
 
-  appendLine(ui, `${indentation(indent)}${formatScalar(value, context)}`);
+  appendWrappedText(lines, formatScalar(value, context), {
+    firstPrefix: indentation(indent),
+    continuationPrefix: indentation(indent),
+    width,
+  });
 }
 
 function appendArray(
-  ui: CliUiInstance,
+  lines: string[],
   items: unknown[],
   indent: number,
+  width: number,
 ): void {
   if (items.length === 0) {
-    appendLine(ui, `${indentation(indent)}[]`);
+    appendLine(lines, `${indentation(indent)}[]`);
     return;
   }
 
   for (const item of items) {
     if (isScalar(item)) {
-      appendLine(ui, `${indentation(indent)}- ${formatScalar(item)}`);
+      appendWrappedText(lines, formatScalar(item), {
+        firstPrefix: `${indentation(indent)}- `,
+        continuationPrefix: indentation(indent + INDENT_SIZE),
+        width,
+      });
       continue;
     }
 
-    appendLine(ui, `${indentation(indent)}-`);
-    appendValue(ui, item, indent + INDENT_SIZE);
+    appendLine(lines, `${indentation(indent)}-`);
+    appendValue(lines, item, indent + INDENT_SIZE, width);
   }
 }
 
 function appendObject(
-  ui: CliUiInstance,
+  lines: string[],
   value: Record<string, unknown>,
   indent: number,
+  width: number,
 ): void {
   const entries = Object.entries(value).filter(
     ([, entryValue]) => entryValue !== undefined,
   );
 
   if (entries.length === 0) {
-    appendLine(ui, `${indentation(indent)}{}`);
+    appendLine(lines, `${indentation(indent)}{}`);
     return;
   }
 
@@ -118,64 +123,121 @@ function appendObject(
 
     for (const entry of preparedEntries) {
       if (entry.isBlock) {
-        appendBlockScalar(ui, indent, entry.label, entry.formattedValue);
+        appendBlockScalar(
+          lines,
+          indent,
+          entry.label,
+          entry.formattedValue,
+          width,
+        );
         continue;
       }
 
       appendKeyValueRow(
-        ui,
+        lines,
         indent,
         entry.label,
         entry.formattedValue,
         labelWidth,
+        width,
       );
     }
   }
 
   for (const [label, entryValue] of complexEntries) {
-    appendLine(ui, `${indentation(indent)}${label}`);
-    appendValue(ui, entryValue, indent + INDENT_SIZE);
+    appendLine(lines, `${indentation(indent)}${label}`);
+    appendValue(lines, entryValue, indent + INDENT_SIZE, width);
   }
 }
 
 function appendKeyValueRow(
-  ui: CliUiInstance,
+  lines: string[],
   indent: number,
   label: string,
   formattedValue: string,
   labelWidth: number,
+  width: number,
 ): void {
-  ui.div(
-    {
-      text: `${indentation(indent)}${label}:`,
-      width: indent + labelWidth + 2,
-    },
-    {
-      text: formattedValue,
-    },
-  );
+  const valueColumnWidth = indent + labelWidth + 2;
+
+  appendWrappedText(lines, formattedValue, {
+    firstPrefix: `${indentation(indent)}${label}:`.padEnd(valueColumnWidth),
+    continuationPrefix: indentation(valueColumnWidth),
+    width,
+  });
 }
 
 function appendBlockScalar(
-  ui: CliUiInstance,
+  lines: string[],
   indent: number,
   label: string,
   formattedValue: string,
+  width: number,
 ): void {
-  appendLine(ui, `${indentation(indent)}${label}:`);
+  appendLine(lines, `${indentation(indent)}${label}:`);
 
   for (const line of formattedValue.split("\n")) {
     if (line.length === 0) {
-      appendLine(ui, "");
+      appendLine(lines, "");
       continue;
     }
 
-    appendLine(ui, `${indentation(indent + INDENT_SIZE)}${line}`);
+    appendWrappedText(lines, line, {
+      firstPrefix: indentation(indent + INDENT_SIZE),
+      continuationPrefix: indentation(indent + INDENT_SIZE),
+      width,
+    });
   }
 }
 
-function appendLine(ui: CliUiInstance, text: string): void {
-  ui.div({ text });
+function appendLine(lines: string[], text: string): void {
+  lines.push(text);
+}
+
+interface WrapTextOptions {
+  firstPrefix: string;
+  continuationPrefix: string;
+  width: number;
+}
+
+function appendWrappedText(
+  lines: string[],
+  text: string,
+  options: WrapTextOptions,
+): void {
+  let remaining = text;
+  let prefix = options.firstPrefix;
+  let availableWidth = Math.max(options.width - prefix.length, 1);
+
+  if (remaining.length === 0) {
+    appendLine(lines, prefix);
+    return;
+  }
+
+  while (remaining.length > availableWidth) {
+    const wrapIndex = findWrapIndex(remaining, availableWidth);
+
+    appendLine(lines, `${prefix}${remaining.slice(0, wrapIndex).trimEnd()}`);
+    remaining = remaining.slice(wrapIndex).trimStart();
+    prefix = options.continuationPrefix;
+    availableWidth = Math.max(options.width - prefix.length, 1);
+  }
+
+  appendLine(lines, `${prefix}${remaining}`);
+}
+
+function findWrapIndex(text: string, width: number): number {
+  if (text.length <= width) {
+    return text.length;
+  }
+
+  const lastSpace = text.lastIndexOf(" ", width);
+
+  if (lastSpace > 0) {
+    return lastSpace;
+  }
+
+  return width;
 }
 
 function getLabelWidth(labelLengths: number[]): number {
@@ -342,7 +404,11 @@ function formatBodyScalar(
     : value;
   const withLineBreaks = decodedValue.replace(/<br\s*\/?>/gi, "\n");
 
-  if (decodedValue !== value || withLineBreaks !== decodedValue) {
+  if (
+    decodedValue !== value ||
+    withLineBreaks !== decodedValue ||
+    withLineBreaks.includes("\n")
+  ) {
     return withLineBreaks;
   }
 

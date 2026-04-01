@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Release automation now verifies the published npm package still exposes
+  provenance attestations and registry signatures after
+  `npm publish --provenance`.
+- Repository ownership metadata now includes `.github/CODEOWNERS`, and release
+  docs now spell out maintainer continuity expectations.
+
+### Changed
+
+- CLI startup now uses Node's built-in `.env` file loader instead of shipping
+  `dotenv` as a runtime dependency.
+- CLI text rendering now uses an internal formatter instead of `cliui`,
+  reducing the published runtime dependency footprint while preserving the
+  existing text/json command surface.
+
 ## [0.3.2] - 2026-04-01
 
 ### Fixed
