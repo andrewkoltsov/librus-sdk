@@ -1,37 +1,190 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { LibrusSession } from "../src/sdk/LibrusSession.js";
+import {
+  LibrusConfigurationError,
+  LibrusSession,
+  type ChildAccount,
+} from "../src/sdk/index.js";
 import { PortalClient } from "../src/sdk/portal/PortalClient.js";
 
-function createPortalClientStub(
-  accounts: Array<Record<string, unknown>>,
-): PortalClient {
+function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
   return {
-    isLoggedIn: () => true,
-    login: vi.fn(),
-    getMe: vi.fn(),
-    getSynergiaAccounts: vi.fn().mockResolvedValue({
-      lastModification: 456,
-      accounts,
-    }),
-  } as unknown as PortalClient;
+    id: 101,
+    accountIdentifier: "child-101",
+    group: "parent",
+    login: "child-login",
+    studentName: "Child Name",
+    accessToken: "token-101",
+    state: "active",
+    ...overrides,
+  };
 }
+
+function createPortalClientStub(
+  options: {
+    accounts?: ChildAccount[];
+    isLoggedIn?: boolean;
+    me?: Record<string, unknown>;
+  } = {},
+): {
+  getMe: ReturnType<typeof vi.fn>;
+  getSynergiaAccounts: ReturnType<typeof vi.fn>;
+  login: ReturnType<typeof vi.fn>;
+  portalClient: PortalClient;
+} {
+  const login = vi.fn().mockResolvedValue(undefined);
+  const getMe = vi.fn().mockResolvedValue(
+    options.me ?? {
+      email: "parent@example.com",
+      identifier: 1,
+    },
+  );
+  const getSynergiaAccounts = vi.fn().mockResolvedValue({
+    accounts: options.accounts ?? [],
+    lastModification: 456,
+  });
+
+  return {
+    getMe,
+    getSynergiaAccounts,
+    login,
+    portalClient: {
+      isLoggedIn: () => options.isLoggedIn ?? true,
+      login,
+      getMe,
+      getSynergiaAccounts,
+    } as unknown as PortalClient,
+  };
+}
+
+function readSessionCredentials(session: LibrusSession): {
+  email: string;
+  password: string;
+} {
+  return (
+    session as unknown as {
+      credentials: { email: string; password: string };
+    }
+  ).credentials;
+}
+
+function withTemporaryPortalEnv<T>(
+  env: Partial<
+    Record<
+      | "LIBRUS_EMAIL"
+      | "LIBRUS_PASSWORD"
+      | "LIBRUS_PORTAL_EMAIL"
+      | "LIBRUS_PORTAL_PASSWORD",
+      string | undefined
+    >
+  >,
+  callback: () => T,
+): T {
+  const previous = {
+    LIBRUS_EMAIL: process.env.LIBRUS_EMAIL,
+    LIBRUS_PASSWORD: process.env.LIBRUS_PASSWORD,
+    LIBRUS_PORTAL_EMAIL: process.env.LIBRUS_PORTAL_EMAIL,
+    LIBRUS_PORTAL_PASSWORD: process.env.LIBRUS_PORTAL_PASSWORD,
+  };
+
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) {
+      delete process.env[key];
+      continue;
+    }
+
+    process.env[key] = value;
+  }
+
+  try {
+    return callback();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+        continue;
+      }
+
+      process.env[key] = value;
+    }
+  }
+}
+
+describe("LibrusSession.fromEnv", () => {
+  it("prefers portal-prefixed environment variables", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_EMAIL: "compat@example.com",
+      LIBRUS_PASSWORD: "compat-secret",
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+    });
+
+    expect(readSessionCredentials(session)).toEqual({
+      email: "portal@example.com",
+      password: "portal-secret",
+    });
+  });
+
+  it("falls back to compatibility environment variables", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_EMAIL: "compat@example.com",
+      LIBRUS_PASSWORD: "compat-secret",
+    });
+
+    expect(readSessionCredentials(session)).toEqual({
+      email: "compat@example.com",
+      password: "compat-secret",
+    });
+  });
+
+  it("reads credentials from process.env when no env argument is provided", () => {
+    const session = withTemporaryPortalEnv(
+      {
+        LIBRUS_EMAIL: undefined,
+        LIBRUS_PASSWORD: undefined,
+        LIBRUS_PORTAL_EMAIL: "process@example.com",
+        LIBRUS_PORTAL_PASSWORD: "process-secret",
+      },
+      () => LibrusSession.fromEnv(),
+    );
+
+    expect(readSessionCredentials(session)).toEqual({
+      email: "process@example.com",
+      password: "process-secret",
+    });
+  });
+
+  it("fails when the email is missing", () => {
+    expect(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      }),
+    ).toThrowError(LibrusConfigurationError);
+  });
+
+  it("fails when the password is missing", () => {
+    expect(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      }),
+    ).toThrowError(LibrusConfigurationError);
+  });
+});
 
 describe("LibrusSession.resolveChild", () => {
   it("matches child by id first", async () => {
-    const session = new LibrusSession({
-      credentials: { email: "parent@example.com", password: "secret" },
-      portalClient: createPortalClientStub([
-        {
-          id: 101,
+    const { portalClient } = createPortalClientStub({
+      accounts: [
+        createChild({
           accountIdentifier: "one",
-          group: "parent",
           login: "duplicate",
           studentName: "One",
-          accessToken: "token-1",
-          state: "active",
-        },
-      ]),
+        }),
+      ],
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
     });
 
     const child = await session.resolveChild("101");
@@ -40,19 +193,18 @@ describe("LibrusSession.resolveChild", () => {
   });
 
   it("matches child by exact login", async () => {
-    const session = new LibrusSession({
-      credentials: { email: "parent@example.com", password: "secret" },
-      portalClient: createPortalClientStub([
-        {
-          id: 101,
+    const { portalClient } = createPortalClientStub({
+      accounts: [
+        createChild({
           accountIdentifier: "one",
-          group: "parent",
           login: "child-a",
           studentName: "One",
-          accessToken: "token-1",
-          state: "active",
-        },
-      ]),
+        }),
+      ],
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
     });
 
     const child = await session.resolveChild("child-a");
@@ -61,9 +213,10 @@ describe("LibrusSession.resolveChild", () => {
   });
 
   it("fails when no child matches", async () => {
+    const { portalClient } = createPortalClientStub();
     const session = new LibrusSession({
       credentials: { email: "parent@example.com", password: "secret" },
-      portalClient: createPortalClientStub([]),
+      portalClient,
     });
 
     await expect(session.resolveChild("missing")).rejects.toMatchObject({
@@ -72,28 +225,27 @@ describe("LibrusSession.resolveChild", () => {
   });
 
   it("fails when login matches multiple children", async () => {
-    const session = new LibrusSession({
-      credentials: { email: "parent@example.com", password: "secret" },
-      portalClient: createPortalClientStub([
-        {
+    const { portalClient } = createPortalClientStub({
+      accounts: [
+        createChild({
           id: 101,
           accountIdentifier: "one",
-          group: "parent",
           login: "shared",
           studentName: "One",
           accessToken: "token-1",
-          state: "active",
-        },
-        {
+        }),
+        createChild({
           id: 202,
           accountIdentifier: "two",
-          group: "parent",
           login: "shared",
           studentName: "Two",
           accessToken: "token-2",
-          state: "active",
-        },
-      ]),
+        }),
+      ],
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
     });
 
     await expect(session.resolveChild("shared")).rejects.toMatchObject({
@@ -105,5 +257,90 @@ describe("LibrusSession.resolveChild", () => {
         ],
       },
     });
+  });
+
+  it("logs in before reading portal profile data", async () => {
+    const { getMe, login, portalClient } = createPortalClientStub({
+      isLoggedIn: false,
+      me: {
+        email: "parent@example.com",
+        identifier: 7,
+      },
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+    });
+
+    const me = await session.getPortalMe();
+
+    expect(login).toHaveBeenCalledWith({
+      email: "parent@example.com",
+      password: "secret",
+    });
+    expect(getMe).toHaveBeenCalledTimes(1);
+    expect(me).toMatchObject({
+      email: "parent@example.com",
+      identifier: 7,
+    });
+  });
+
+  it("caches portal child accounts after the first lookup", async () => {
+    const { getSynergiaAccounts, portalClient } = createPortalClientStub({
+      accounts: [createChild()],
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+    });
+
+    const first = await session.getSynergiaAccounts();
+    const second = await session.listChildren();
+
+    expect(getSynergiaAccounts).toHaveBeenCalledTimes(1);
+    expect(first.accounts).toHaveLength(1);
+    expect(second).toHaveLength(1);
+  });
+
+  it("creates a child-scoped API client when given a child object directly", async () => {
+    const child = createChild({
+      accessToken: "child-access-token",
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      expect(url).toBe("https://api.librus.pl/3.0/Grades");
+      expect(init?.headers).toMatchObject({
+        accept: "application/json",
+        authorization: "Bearer child-access-token",
+      });
+
+      return new Response(
+        JSON.stringify({
+          Grades: [],
+          Resources: {},
+          Url: "https://api.librus.pl/3.0/Grades",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      synergiaClientOptions: { fetch: fetchMock },
+    });
+
+    const client = await session.forChild(child);
+    const grades = await client.getGrades();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(grades.Grades).toEqual([]);
   });
 });
