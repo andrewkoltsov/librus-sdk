@@ -55,12 +55,29 @@ export function verifyPublishedPackage(packageName, packageVersion) {
   const packageSpec = packageVersion
     ? `${packageName}@${packageVersion}`
     : packageName;
-  const stdout = execFileSync("npm", ["view", packageSpec, "--json"], {
-    encoding: "utf8",
-  });
+  const stdout = fetchPublishedPackageMetadata(packageSpec);
   const metadata = JSON.parse(stdout);
 
   assertPublishedPackageSecurityMetadata(metadata, packageSpec);
+}
+
+export function fetchPublishedPackageMetadata(packageSpec) {
+  try {
+    return execFileSync("npm", ["view", packageSpec, "--json"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Unknown npm view failure.";
+
+    throw new Error(
+      `Failed to fetch package metadata for ${packageSpec} from npm registry: ${message}`,
+      { cause: error },
+    );
+  }
 }
 
 if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? "")).href) {

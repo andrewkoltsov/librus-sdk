@@ -56,4 +56,20 @@ describe("assertPublishedPackageSecurityMetadata", () => {
       ),
     ).toThrow("missing npm registry signatures");
   });
+
+  it("fails when provenance details are missing", () => {
+    expect(() =>
+      assertPublishedPackageSecurityMetadata(
+        {
+          dist: {
+            attestations: {
+              url: "https://registry.npmjs.org/-/npm/v1/attestations/librus-sdk@0.3.3",
+            },
+            signatures: [{ keyid: "abc", sig: "def" }],
+          },
+        },
+        "librus-sdk@0.3.3",
+      ),
+    ).toThrow("missing provenance details");
+  });
 });
