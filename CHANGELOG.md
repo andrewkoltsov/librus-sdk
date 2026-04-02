@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `npm publish --provenance`.
 - Repository ownership metadata now includes `.github/CODEOWNERS`, and release
   docs now spell out maintainer continuity expectations.
+- Portal and Synergia requests now support explicit timeouts through
+  `requestTimeoutMs` and `LIBRUS_TIMEOUT_MS`.
 
 ### Changed
 
@@ -21,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CLI text rendering now uses an internal formatter instead of `cliui`,
   reducing the published runtime dependency footprint while preserving the
   existing text/json command surface.
+- Hanging SDK and CLI requests now fail predictably with the stable
+  `NETWORK_TIMEOUT` code and secret-safe `{ endpoint, timeoutMs }` details.
 
 ## [0.3.2] - 2026-04-01
 

@@ -242,7 +242,7 @@ describe("runCli", () => {
     });
   });
 
-  it("writes secret-safe timeout errors to stderr in text mode", async () => {
+  it("writes timeout errors to stderr in text mode", async () => {
     let stdout = "";
     let stderr = "";
     const exitCode = await runCli(["node", "librus", "children", "list"], {
@@ -261,8 +261,6 @@ describe("runCli", () => {
     expect(stdout).toBe("");
     expect(stderr).toContain("NETWORK_TIMEOUT");
     expect(stderr).toContain("5000");
-    expect(stderr).not.toContain("super-secret");
-    expect(stderr).not.toContain("token-secret");
   });
 
   it("keeps usage errors as failures", async () => {

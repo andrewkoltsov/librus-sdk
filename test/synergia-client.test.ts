@@ -243,12 +243,17 @@ describe("SynergiaApiClient", () => {
 
     try {
       const fetchMock = createAbortAwareHangingFetch();
-      const client = new SynergiaApiClient("token", {
+      const client = new SynergiaApiClient("token-secret", {
         fetch: fetchMock,
         requestTimeoutMs: 5,
       });
       const requestPromise = client.getGrades();
-      const requestExpectation = expect(requestPromise).rejects.toMatchObject({
+      const requestErrorPromise = requestPromise.catch(
+        (error: unknown) => error,
+      );
+      const requestExpectation = expect(
+        requestErrorPromise,
+      ).resolves.toMatchObject({
         code: "NETWORK_TIMEOUT",
         message: "Librus request timed out after 5ms.",
         details: {
@@ -259,8 +264,12 @@ describe("SynergiaApiClient", () => {
 
       await vi.advanceTimersByTimeAsync(5);
 
+      const requestError = await requestErrorPromise;
+
       await requestExpectation;
       expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(requestError)).not.toContain("token-secret");
+      expect(JSON.stringify(requestError)).not.toContain("Bearer");
     } finally {
       vi.useRealTimers();
     }

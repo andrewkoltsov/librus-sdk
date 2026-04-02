@@ -321,20 +321,27 @@ describe("PortalClient", () => {
         email: "parent@example.com",
         password: "super-secret",
       });
-      const loginExpectation = expect(loginPromise).rejects.toMatchObject({
-        code: "NETWORK_TIMEOUT",
-        message: "Librus request timed out after 5ms.",
-        details: {
-          endpoint: "https://portal.librus.pl/konto-librus/login",
-          timeoutMs: 5,
+      const loginErrorPromise = loginPromise.catch((error: unknown) => error);
+      const loginExpectation = expect(loginErrorPromise).resolves.toMatchObject(
+        {
+          code: "NETWORK_TIMEOUT",
+          message: "Librus request timed out after 5ms.",
+          details: {
+            endpoint: "https://portal.librus.pl/konto-librus/login",
+            timeoutMs: 5,
+          },
         },
-      });
+      );
 
       await vi.advanceTimersByTimeAsync(5);
+
+      const loginError = await loginErrorPromise;
 
       await loginExpectation;
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(client.isLoggedIn()).toBe(false);
+      expect(JSON.stringify(loginError)).not.toContain("super-secret");
+      expect(JSON.stringify(loginError)).not.toContain("parent@example.com");
     } finally {
       vi.useRealTimers();
     }
