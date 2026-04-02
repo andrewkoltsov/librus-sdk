@@ -17,15 +17,15 @@ trusted publishing.
 - The tag name must exactly match the version in `package.json`.
 - The tagged commit must be reachable from `origin/master`.
 - The current repository history follows this convention with tags such as
-  `v0.2.0`, `v0.2.1`, `v0.2.2`, `v0.3.0`, and `v0.3.1`.
+  `v0.2.0`, `v0.2.1`, `v0.2.2`, `v0.3.0`, `v0.3.1`, and `v0.3.2`.
 
 Example:
 
 ```bash
 git checkout master
 git pull --ff-only origin master
-git tag -a v0.3.1 -m "v0.3.1"
-git push origin v0.3.1
+git tag -a v0.4.0 -m "v0.4.0"
+git push origin v0.4.0
 ```
 
 The release workflow in
@@ -49,6 +49,9 @@ The release workflow in
   note generation fails.
 - When a security fix is publicly disclosed, call it out explicitly in the
   release notes for the affected version.
+- Call out public runtime-hardening and other operational behavior changes that
+  affect configuration or failure handling, such as request timeouts or
+  secret-safe error-contract changes, even when they are not security fixes.
 
 ## One-Time Setup
 
