@@ -49,7 +49,8 @@ CLI published from this repository.
 
 ### Environment
 
-`LibrusSession.fromEnv()` and the CLI read credentials from these variables:
+`LibrusSession.fromEnv()` and the CLI read credentials and timeout settings from
+these variables:
 
 | Variable                 | Required | Purpose                                            |
 | ------------------------ | -------- | -------------------------------------------------- |
@@ -57,6 +58,11 @@ CLI published from this repository.
 | `LIBRUS_PORTAL_PASSWORD` | Yes      | Portal login password used for `portal.librus.pl`. |
 | `LIBRUS_EMAIL`           | Fallback | Compatibility alias for `LIBRUS_PORTAL_EMAIL`.     |
 | `LIBRUS_PASSWORD`        | Fallback | Compatibility alias for `LIBRUS_PORTAL_PASSWORD`.  |
+| `LIBRUS_TIMEOUT_MS`      | No       | Positive integer request timeout in milliseconds.  |
+
+If no timeout is configured, portal and child-scoped SDK requests default to
+`30000` milliseconds. Invalid timeout values fail fast with
+`CONFIGURATION_ERROR`.
 
 ### Top-Level SDK Entry Points
 
@@ -94,7 +100,7 @@ console.log(grades);
 Current high-level methods on `LibrusSession`:
 
 - `LibrusSession.fromEnv(env?)`
-- `new LibrusSession({ credentials, portalClient?, portalClientOptions?, synergiaClientOptions? })`
+- `new LibrusSession({ credentials, portalClient?, portalClientOptions?, synergiaClientOptions?, requestTimeoutMs? })`
 - `login()`
 - `getPortalMe()`
 - `getSynergiaAccounts()`
@@ -155,6 +161,7 @@ here rather than promising every helper type as a named top-level export.
 | `portalClient`          | No       | Reuse an existing `PortalClient` instance instead of constructing one internally.    |
 | `portalClientOptions`   | No       | Passed to the internally created `PortalClient` when `portalClient` is not supplied. |
 | `synergiaClientOptions` | No       | Passed to `SynergiaApiClient` instances created by `forChild(...)`.                  |
+| `requestTimeoutMs`      | No       | Session-wide default timeout for internally created portal and child clients.        |
 
 `PortalClient` constructor options (`PortalClientOptions`):
 
@@ -165,13 +172,15 @@ here rather than promising every helper type as a named top-level export.
 | `portalApiBaseUrl` | No       | Portal API base URL. Defaults to `${portalBaseUrl}/api/v3`.                         |
 | `loginPath`        | No       | Login page path. Defaults to `/konto-librus/login`.                                 |
 | `loginActionPath`  | No       | Login form submission path. Defaults to `/konto-librus/login/action`.               |
+| `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.                      |
 
 `SynergiaApiClient` constructor options (`SynergiaApiClientOptions`):
 
-| Property     | Required | Meaning                                                         |
-| ------------ | -------- | --------------------------------------------------------------- |
-| `fetch`      | No       | Custom fetch implementation for child-scoped API requests.      |
-| `apiBaseUrl` | No       | Synergia API base URL. Defaults to `https://api.librus.pl/3.0`. |
+| Property           | Required | Meaning                                                         |
+| ------------------ | -------- | --------------------------------------------------------------- |
+| `fetch`            | No       | Custom fetch implementation for child-scoped API requests.      |
+| `apiBaseUrl`       | No       | Synergia API base URL. Defaults to `https://api.librus.pl/3.0`. |
+| `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.  |
 
 `generateOpenApiDocument()` options (`GenerateOpenApiDocumentOptions`):
 
@@ -186,12 +195,12 @@ here rather than promising every helper type as a named top-level export.
 In addition to the top-level classes above, the package root re-exports the
 model and error modules under `src/sdk/models/`.
 
-| Category                       | Public surface                                                                                                                                        |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Portal and child-account types | `PortalCredentials`, `PortalMe`, `ChildAccount`, `SynergiaAccountsResponse`                                                                           |
-| Shared response helpers        | `ApiRef`, `SynergiaBinaryResult`, other common helper interfaces used by SDK responses                                                                |
-| Synergia response models       | Response and entity interfaces for the supported child-scoped API surface under the `synergia` model barrels                                          |
-| Error classes                  | `LibrusSdkError`, `LibrusApiError`, `LibrusAuthenticationError`, `LibrusConfigurationError`, `LibrusPortalPageError`, `LibrusResponseValidationError` |
+| Category                       | Public surface                                                                                                                                                                     |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Portal and child-account types | `PortalCredentials`, `PortalMe`, `ChildAccount`, `SynergiaAccountsResponse`                                                                                                        |
+| Shared response helpers        | `ApiRef`, `SynergiaBinaryResult`, other common helper interfaces used by SDK responses                                                                                             |
+| Synergia response models       | Response and entity interfaces for the supported child-scoped API surface under the `synergia` model barrels                                                                       |
+| Error classes                  | `LibrusSdkError`, `LibrusApiError`, `LibrusAuthenticationError`, `LibrusConfigurationError`, `LibrusNetworkTimeoutError`, `LibrusPortalPageError`, `LibrusResponseValidationError` |
 
 ### CLI Surface
 
@@ -273,6 +282,7 @@ Current codes emitted by the SDK and CLI:
 | `CONFIGURATION_ERROR`        | Required credentials or other local configuration are missing or invalid.  |
 | `AUTHENTICATION_FAILED`      | Portal login or post-login verification failed.                            |
 | `PORTAL_LOGIN_PAGE_INVALID`  | The portal login page no longer matches the expected CSRF-token structure. |
+| `NETWORK_TIMEOUT`            | A portal or Synergia request exceeded the configured timeout.              |
 | `API_REQUEST_FAILED`         | A portal or Synergia request failed with a non-maintenance HTTP error.     |
 | `SERVICE_MAINTENANCE`        | The Synergia API reported maintenance mode.                                |
 | `RESPONSE_VALIDATION_FAILED` | The live payload no longer matches the validated SDK schema.               |
@@ -302,6 +312,11 @@ Use the auth helper directly when you need to compare child tokens:
 ```bash
 npx librus auth token-info --child <id-or-login>
 ```
+
+For timeout handling, SDK and CLI timeout failures emit `NETWORK_TIMEOUT` with
+secret-safe `details` shaped like `{ endpoint, timeoutMs }`. The endpoint is
+the request URL only; credentials, bearer tokens, and cookie values are not
+included.
 
 ### OpenAPI
 

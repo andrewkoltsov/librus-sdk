@@ -8,6 +8,10 @@ import {
   type PortalMe,
   type SynergiaAccountsResponse,
 } from "../models/index.js";
+import {
+  resolveRequestTimeoutMs,
+  wrapFetchWithTimeout,
+} from "../requestTimeout.js";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   portalMeSchema,
@@ -21,6 +25,7 @@ export interface PortalClientOptions {
   portalApiBaseUrl?: string;
   loginPath?: string;
   loginActionPath?: string;
+  requestTimeoutMs?: number;
 }
 
 export class PortalClient {
@@ -29,11 +34,16 @@ export class PortalClient {
   private readonly portalApiBaseUrl: string;
   private readonly loginPath: string;
   private readonly loginActionPath: string;
+  private readonly requestTimeoutMs: number;
   private loggedIn = false;
 
   constructor(options: PortalClientOptions = {}) {
+    this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     const sessionFetch = createSessionFetch(options.fetch ?? fetch);
-    this.fetchImpl = sessionFetch.fetch;
+    this.fetchImpl = wrapFetchWithTimeout(
+      sessionFetch.fetch,
+      this.requestTimeoutMs,
+    );
     this.portalBaseUrl = options.portalBaseUrl ?? "https://portal.librus.pl";
     this.portalApiBaseUrl =
       options.portalApiBaseUrl ?? `${this.portalBaseUrl}/api/v3`;

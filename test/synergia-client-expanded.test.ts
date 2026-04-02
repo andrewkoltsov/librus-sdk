@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { SynergiaApiClient } from "../src/sdk/synergia/SynergiaApiClient.js";
+import {
+  expectBinaryGetRequest,
+  expectJsonGetRequest,
+} from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
 
@@ -406,13 +410,7 @@ describe("SynergiaApiClient expanded GET methods", () => {
 
     await call(client);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it.each(parseCases)(
@@ -426,13 +424,7 @@ describe("SynergiaApiClient expanded GET methods", () => {
       const response = (await call(client)) as Record<string, unknown>;
 
       assert(response);
-      expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: "Bearer token",
-        },
-      });
+      expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
     },
   );
 
@@ -460,13 +452,7 @@ describe("SynergiaApiClient expanded GET methods", () => {
     const response = (await call(client)) as Record<string, unknown>;
 
     expect(response.Status).toBe("Disabled");
-    expect(fetchMock).toHaveBeenCalledWith(`${apiBaseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: "Bearer token",
-      },
-    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}${path}`);
   });
 
   it("downloads homework assignment attachments as binary results", async () => {
@@ -488,14 +474,9 @@ describe("SynergiaApiClient expanded GET methods", () => {
       'attachment; filename="homework.pdf"',
     );
     expect(result.contentType).toBe("application/pdf");
-    expect(fetchMock).toHaveBeenCalledWith(
+    expectBinaryGetRequest(
+      fetchMock,
       `${apiBaseUrl}/HomeWorkAssignments/Attachment/55`,
-      {
-        method: "GET",
-        headers: {
-          authorization: "Bearer token",
-        },
-      },
     );
   });
 });

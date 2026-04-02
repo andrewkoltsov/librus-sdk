@@ -202,10 +202,15 @@ import {
   getJson as requestGetJson,
 } from "./request.js";
 import type { SynergiaRequestOptions } from "./request.js";
+import {
+  resolveRequestTimeoutMs,
+  wrapFetchWithTimeout,
+} from "../requestTimeout.js";
 
 export interface SynergiaApiClientOptions {
   fetch?: FetchLike;
   apiBaseUrl?: string;
+  requestTimeoutMs?: number;
 }
 
 type SynergiaId = string | number;
@@ -218,10 +223,15 @@ export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;
   private readonly apiBaseUrl: string;
   private readonly accessToken: string;
+  private readonly requestTimeoutMs: number;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
-    this.fetchImpl = options.fetch ?? fetch;
+    this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
+    this.fetchImpl = wrapFetchWithTimeout(
+      options.fetch ?? fetch,
+      this.requestTimeoutMs,
+    );
     this.apiBaseUrl = options.apiBaseUrl ?? "https://api.librus.pl/3.0";
   }
 

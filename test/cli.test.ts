@@ -19,6 +19,7 @@ import {
 } from "../src/cli/main.js";
 import {
   LibrusSdkError,
+  LibrusNetworkTimeoutError,
   type ChildAccount,
   type ChildAccountSummary,
 } from "../src/sdk/index.js";
@@ -203,6 +204,63 @@ describe("runCli", () => {
     expect(stderr).toContain("code:");
     expect(stderr).toContain("CONFIGURATION_ERROR");
     expect(stderr).toContain("message:");
+  });
+
+  it("writes stable timeout errors to stderr for --format json", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "children", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => {
+          throw new LibrusNetworkTimeoutError(
+            "https://portal.librus.pl/konto-librus/login",
+            5000,
+          );
+        },
+        outputWidth: 80,
+      },
+    );
+
+    const output = parseJson<{
+      error: {
+        code: string;
+        message: string;
+        details: { endpoint: string; timeoutMs: number };
+      };
+    }>(stderr);
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(output.error.code).toBe("NETWORK_TIMEOUT");
+    expect(output.error.message).toBe("Librus request timed out after 5000ms.");
+    expect(output.error.details).toEqual({
+      endpoint: "https://portal.librus.pl/konto-librus/login",
+      timeoutMs: 5000,
+    });
+  });
+
+  it("writes timeout errors to stderr in text mode", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus", "children", "list"], {
+      stdout: { write: (chunk) => (stdout += chunk) },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => {
+        throw new LibrusNetworkTimeoutError(
+          "https://portal.librus.pl/konto-librus/login",
+          5000,
+        );
+      },
+      outputWidth: 80,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("NETWORK_TIMEOUT");
+    expect(stderr).toContain("5000");
   });
 
   it("keeps usage errors as failures", async () => {

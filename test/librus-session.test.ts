@@ -68,13 +68,32 @@ function readSessionCredentials(session: LibrusSession): {
   ).credentials;
 }
 
+function readPortalClientRequestTimeoutMs(session: LibrusSession): number {
+  return (
+    session as unknown as {
+      portalClient: {
+        requestTimeoutMs: number;
+      };
+    }
+  ).portalClient.requestTimeoutMs;
+}
+
+function readSynergiaClientRequestTimeoutMs(client: unknown): number {
+  return (
+    client as {
+      requestTimeoutMs: number;
+    }
+  ).requestTimeoutMs;
+}
+
 function withTemporaryPortalEnv<T>(
   env: Partial<
     Record<
       | "LIBRUS_EMAIL"
       | "LIBRUS_PASSWORD"
       | "LIBRUS_PORTAL_EMAIL"
-      | "LIBRUS_PORTAL_PASSWORD",
+      | "LIBRUS_PORTAL_PASSWORD"
+      | "LIBRUS_TIMEOUT_MS",
       string | undefined
     >
   >,
@@ -85,6 +104,7 @@ function withTemporaryPortalEnv<T>(
     LIBRUS_PASSWORD: process.env.LIBRUS_PASSWORD,
     LIBRUS_PORTAL_EMAIL: process.env.LIBRUS_PORTAL_EMAIL,
     LIBRUS_PORTAL_PASSWORD: process.env.LIBRUS_PORTAL_PASSWORD,
+    LIBRUS_TIMEOUT_MS: process.env.LIBRUS_TIMEOUT_MS,
   };
 
   for (const [key, value] of Object.entries(env)) {
@@ -154,6 +174,18 @@ describe("LibrusSession.fromEnv", () => {
     });
   });
 
+  it("reads LIBRUS_TIMEOUT_MS from env and applies it to portal and child clients", async () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      LIBRUS_TIMEOUT_MS: "250",
+    });
+    const childClient = await session.forChild(createChild());
+
+    expect(readPortalClientRequestTimeoutMs(session)).toBe(250);
+    expect(readSynergiaClientRequestTimeoutMs(childClient)).toBe(250);
+  });
+
   it("fails when the email is missing", () => {
     expect(() =>
       LibrusSession.fromEnv({
@@ -168,6 +200,22 @@ describe("LibrusSession.fromEnv", () => {
         LIBRUS_PORTAL_EMAIL: "portal@example.com",
       }),
     ).toThrowError(LibrusConfigurationError);
+  });
+
+  it("fails when LIBRUS_TIMEOUT_MS is invalid", () => {
+    expect(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_PORTAL_EMAIL: "portal@example.com",
+        LIBRUS_PORTAL_PASSWORD: "portal-secret",
+        LIBRUS_TIMEOUT_MS: "0",
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "CONFIGURATION_ERROR",
+        message:
+          "Invalid LIBRUS_TIMEOUT_MS. Expected a positive integer number of milliseconds.",
+      }),
+    );
   });
 });
 
@@ -342,5 +390,51 @@ describe("LibrusSession.resolveChild", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(grades.Grades).toEqual([]);
+  });
+
+  it("applies the session timeout to internally created clients by default", async () => {
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      requestTimeoutMs: 123,
+    });
+    const childClient = await session.forChild(createChild());
+
+    expect(readPortalClientRequestTimeoutMs(session)).toBe(123);
+    expect(readSynergiaClientRequestTimeoutMs(childClient)).toBe(123);
+  });
+
+  it("lets portal and synergia client options override the session timeout", async () => {
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      requestTimeoutMs: 123,
+      portalClientOptions: {
+        fetch: vi.fn<typeof fetch>(),
+        requestTimeoutMs: 456,
+      },
+      synergiaClientOptions: {
+        fetch: vi.fn<typeof fetch>(),
+        requestTimeoutMs: 789,
+      },
+    });
+    const childClient = await session.forChild(createChild());
+
+    expect(readPortalClientRequestTimeoutMs(session)).toBe(456);
+    expect(readSynergiaClientRequestTimeoutMs(childClient)).toBe(789);
+  });
+
+  it("keeps a supplied portal client timeout and still applies the session timeout to child clients", async () => {
+    const portalClient = new PortalClient({
+      fetch: vi.fn<typeof fetch>(),
+      requestTimeoutMs: 456,
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+      requestTimeoutMs: 123,
+    });
+    const childClient = await session.forChild(createChild());
+
+    expect(readPortalClientRequestTimeoutMs(session)).toBe(456);
+    expect(readSynergiaClientRequestTimeoutMs(childClient)).toBe(123);
   });
 });

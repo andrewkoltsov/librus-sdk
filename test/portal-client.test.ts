@@ -30,6 +30,20 @@ function createLoginFetchMock(meResponse: Response | Error) {
   return fetchMock;
 }
 
+function createAbortAwareHangingFetch() {
+  return vi.fn<typeof fetch>((_input, init) => {
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener(
+        "abort",
+        () => {
+          reject(new DOMException("This operation was aborted", "AbortError"));
+        },
+        { once: true },
+      );
+    });
+  });
+}
+
 describe("extractPortalCsrfToken", () => {
   it("extracts the hidden _token value", () => {
     const html =
@@ -87,6 +101,18 @@ describe("extractPortalCsrfToken", () => {
 });
 
 describe("PortalClient", () => {
+  it("fails fast for invalid requestTimeoutMs values", () => {
+    expect(() => {
+      new PortalClient({
+        requestTimeoutMs: 0,
+      });
+    }).toThrowError(
+      expect.objectContaining({
+        code: "CONFIGURATION_ERROR",
+      }),
+    );
+  });
+
   it("returns typed synergia accounts response", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -280,6 +306,45 @@ describe("PortalClient", () => {
       client.login({ email: "parent@example.com", password: "super-secret" }),
     ).rejects.toThrow("network down");
     expect(client.isLoggedIn()).toBe(false);
+  });
+
+  it("times out hanging login-page requests with a secret-safe error", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const fetchMock = createAbortAwareHangingFetch();
+      const client = new PortalClient({
+        fetch: fetchMock,
+        requestTimeoutMs: 5,
+      });
+      const loginPromise = client.login({
+        email: "parent@example.com",
+        password: "super-secret",
+      });
+      const loginErrorPromise = loginPromise.catch((error: unknown) => error);
+      const loginExpectation = expect(loginErrorPromise).resolves.toMatchObject(
+        {
+          code: "NETWORK_TIMEOUT",
+          message: "Librus request timed out after 5ms.",
+          details: {
+            endpoint: "https://portal.librus.pl/konto-librus/login",
+            timeoutMs: 5,
+          },
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(5);
+
+      const loginError = await loginErrorPromise;
+
+      await loginExpectation;
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(client.isLoggedIn()).toBe(false);
+      expect(JSON.stringify(loginError)).not.toContain("super-secret");
+      expect(JSON.stringify(loginError)).not.toContain("parent@example.com");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fails with a secret-safe portal page error when the login form has no CSRF token", async () => {
