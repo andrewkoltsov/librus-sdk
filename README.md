@@ -313,10 +313,12 @@ Use the auth helper directly when you need to compare child tokens:
 npx librus auth token-info --child <id-or-login>
 ```
 
-For timeout handling, SDK and CLI timeout failures emit `NETWORK_TIMEOUT` with
-secret-safe `details` shaped like `{ endpoint, timeoutMs }`. The endpoint is
-the request URL only; credentials, bearer tokens, and cookie values are not
-included.
+For timeout handling, the SDK throws `LibrusNetworkTimeoutError`, and the CLI
+writes the same `NETWORK_TIMEOUT` failure to stderr. With `--format json`,
+stderr includes secret-safe `details` shaped like `{ endpoint, timeoutMs }`.
+With `--format text`, stderr still includes the same stable code and the
+human-facing timeout message. The endpoint is the request URL only;
+credentials, bearer tokens, and cookie values are not included.
 
 ### OpenAPI
 
@@ -337,7 +339,7 @@ You can also generate the document programmatically:
 ```ts
 import { generateOpenApiDocument } from "librus-sdk";
 
-const openApi = generateOpenApiDocument({ version: "0.3.2" });
+const openApi = generateOpenApiDocument({ version: "0.4.0" });
 ```
 
 ### Release And Versioning Policy
