@@ -16,6 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - GitHub Actions workflows now pin third-party and GitHub-hosted actions by
   commit hash, and write-scoped workflow token permissions are limited to the
   jobs that need them.
+- Annotated-tag GitHub Action pins now use the underlying commit SHA so
+  Scorecard result publication keeps working with `publish_results: true`.
+- Dependabot now tracks both npm dependencies and pinned GitHub Actions
+  updates.
+- Test coverage now includes property-based checks for CSRF parsing, endpoint
+  construction, and timeout environment parsing.
 
 ## [0.4.0] - 2026-04-02
 
