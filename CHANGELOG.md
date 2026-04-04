@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Scorecard result publication keeps working with `publish_results: true`.
 - Dependabot now tracks both npm dependencies and pinned GitHub Actions
   updates.
+- Scorecard artifact uploads now use `actions/upload-artifact@v7.0.0` so the
+  workflow no longer relies on a Node.js 20 action runtime on github.com.
 - Test coverage now includes property-based checks for CSRF parsing, endpoint
   construction, and timeout environment parsing.
 
