@@ -30,6 +30,8 @@ supply-chain signals over time.
 
 ## Install
 
+This package requires Node.js 22 or newer.
+
 Install the package from npm:
 
 ```bash

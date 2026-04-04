@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Minimum supported Node.js is now 22.x, CI and CodeQL validation now run on
+  Node 22, and development type definitions now track the Node 22 line.
 - GitHub Actions workflows now pin third-party and GitHub-hosted actions by
   commit hash, and write-scoped workflow token permissions are limited to the
   jobs that need them.
