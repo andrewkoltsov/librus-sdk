@@ -1,5 +1,7 @@
 # librus-sdk
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/andrewkoltsov/librus-sdk/badge)](https://scorecard.dev/viewer/?uri=github.com/andrewkoltsov/librus-sdk)
+
 Fresh TypeScript SDK and CLI for the Librus family portal flow.
 
 This project logs into `portal.librus.pl`, loads linked child accounts from
@@ -20,6 +22,11 @@ Report vulnerabilities privately as described in [`SECURITY.md`](./SECURITY.md).
 
 Never commit, log, or print real credentials, bearer tokens, cookies, or other
 secrets in source files, fixtures, examples, or documentation.
+
+The repository also publishes a weekly
+[OpenSSF Scorecard report](https://scorecard.dev/viewer/?uri=github.com/andrewkoltsov/librus-sdk)
+from GitHub Actions so maintainers can track workflow hardening and other
+supply-chain signals over time.
 
 ## Install
 

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- README now exposes the public OpenSSF Scorecard badge and report link for the
+  repository security posture.
+
+### Changed
+
+- GitHub Actions workflows now pin third-party and GitHub-hosted actions by
+  commit hash, and write-scoped workflow token permissions are limited to the
+  jobs that need them.
+
 ## [0.4.0] - 2026-04-02
 
 ### Added
