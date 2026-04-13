@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- CLI text rendering now decodes escaped message-body sequences without
+  dropping mixed raw backslashes, closing the outstanding CodeQL sanitization
+  finding in the terminal formatter.
+
 ## [0.4.2] - 2026-04-13
 
 ### Fixed

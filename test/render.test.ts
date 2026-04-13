@@ -152,6 +152,45 @@ describe("renderTextSections", () => {
     expect(output).not.toContain("<br>");
   });
 
+  it("decodes JSON escapes without corrupting raw backslashes in the same body", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Message",
+          value: {
+            Body: String.raw`Windows path C:\Temp\reports\nSecond line`,
+          },
+        },
+      ],
+      { width: 120 },
+    );
+
+    expect(output).toContain(String.raw`Windows path C:\Temp\reports`);
+    expect(output).toContain("Second line");
+    expect(output).not.toContain(String.raw`\nSecond line`);
+  });
+
+  it("decodes escaped unicode, whitespace, and quotes in message bodies", () => {
+    const output = renderTextSections(
+      [
+        {
+          title: "Message",
+          value: {
+            Body: String.raw`Unicode: \u0144\nTabbed:\t\"Quoted\"`,
+          },
+        },
+      ],
+      { width: 120 },
+    );
+
+    expect(output).toContain("Unicode: ń");
+    expect(output).toContain("Tabbed:");
+    expect(output).toContain('"Quoted"');
+    expect(output).not.toContain(String.raw`\u0144`);
+    expect(output).not.toContain(String.raw`\t`);
+    expect(output).not.toContain(String.raw`\"Quoted\"`);
+  });
+
   it("keeps plain body text inline and preserves invalid date-like values", () => {
     const output = renderTextSections(
       [
