@@ -416,19 +416,65 @@ function formatBodyScalar(
 }
 
 function hasJsonEscapes(value: string): boolean {
-  return /\\u[0-9a-fA-F]{4}|\\["\\/bfnrt]/.test(value);
+  return /\\u[0-9a-fA-F]{4}|\\["\\/nt]/.test(value);
 }
 
 function decodeJsonEscapedString(value: string): string {
-  const escaped = value
-    .replace(/"/g, '\\"')
-    .replace(/\r/g, "\\r")
-    .replace(/\n/g, "\\n")
-    .replace(/\t/g, "\\t");
+  let decoded = "";
 
-  try {
-    return JSON.parse(`"${escaped}"`) as string;
-  } catch {
-    return value;
+  for (let index = 0; index < value.length; index += 1) {
+    const current = value[index];
+
+    if (current !== "\\") {
+      decoded += current;
+      continue;
+    }
+
+    const next = value[index + 1];
+
+    if (
+      next === "u" &&
+      /^[0-9a-fA-F]{4}$/.test(value.slice(index + 2, index + 6))
+    ) {
+      decoded += String.fromCodePoint(
+        Number.parseInt(value.slice(index + 2, index + 6), 16),
+      );
+      index += 5;
+      continue;
+    }
+
+    if (next === '"') {
+      decoded += '"';
+      index += 1;
+      continue;
+    }
+
+    if (next === "\\") {
+      decoded += "\\";
+      index += 1;
+      continue;
+    }
+
+    if (next === "/") {
+      decoded += "/";
+      index += 1;
+      continue;
+    }
+
+    if (next === "n") {
+      decoded += "\n";
+      index += 1;
+      continue;
+    }
+
+    if (next === "t") {
+      decoded += "\t";
+      index += 1;
+      continue;
+    }
+
+    decoded += current;
   }
+
+  return decoded;
 }
