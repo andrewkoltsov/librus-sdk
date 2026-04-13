@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-04-13
+
+### Fixed
+
+- Development and CI dependency refresh now removes the disclosed high-severity
+  Vite advisories `GHSA-4w7w-66w2-5vf9`, `GHSA-v2wj-q39q-566r`, and
+  `GHSA-p9ff-h696-f583` from maintainer workflows and repository validation
+  gates; the published SDK and CLI runtime surface is otherwise unchanged.
+
 ## [0.4.1] - 2026-04-04
 
 ### Added
