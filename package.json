@@ -34,6 +34,7 @@
     "lint:fix": "eslint . --fix",
     "openapi:check": "tsx ./scripts/generate-openapi.ts --check",
     "openapi:generate": "tsx ./scripts/generate-openapi.ts",
+    "version": "npm run openapi:generate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:check": "node ./scripts/pack-check.mjs",
