@@ -1243,7 +1243,7 @@ function createSchemas(): Record<string, unknown> {
   return toJsonSchemaDefs(openApiSchemaDefinitions, {
     target: "openapi-3.0",
     overrideRef: (context) => `#/components/schemas/${context.referenceId}`,
-  }) as unknown as Record<string, unknown>;
+  });
 }
 
 export function generateOpenApiDocument(
