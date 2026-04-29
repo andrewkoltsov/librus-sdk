@@ -19,6 +19,30 @@ import {
   validateOptionalRequestTimeoutMs,
 } from "./requestTimeout.js";
 
+type PortalCredentialEnvName =
+  | "LIBRUS_EMAIL"
+  | "LIBRUS_PASSWORD"
+  | "LIBRUS_PORTAL_EMAIL"
+  | "LIBRUS_PORTAL_PASSWORD";
+
+interface PortalCredentialEnvField {
+  label: string;
+  primary: PortalCredentialEnvName;
+  fallback: PortalCredentialEnvName;
+}
+
+const PORTAL_EMAIL_ENV: PortalCredentialEnvField = {
+  label: "Email",
+  primary: "LIBRUS_PORTAL_EMAIL",
+  fallback: "LIBRUS_EMAIL",
+};
+
+const PORTAL_PASSWORD_ENV: PortalCredentialEnvField = {
+  label: "Password",
+  primary: "LIBRUS_PORTAL_PASSWORD",
+  fallback: "LIBRUS_PASSWORD",
+};
+
 export interface LibrusSessionOptions {
   credentials: PortalCredentials;
   portalClient?: PortalClient;
@@ -65,12 +89,12 @@ export class LibrusSession {
   }
 
   static fromEnv(env: NodeJS.ProcessEnv = process.env): LibrusSession {
-    const email = env.LIBRUS_PORTAL_EMAIL ?? env.LIBRUS_EMAIL;
-    const password = env.LIBRUS_PORTAL_PASSWORD ?? env.LIBRUS_PASSWORD;
+    const email = resolvePortalCredentialEnv(env, PORTAL_EMAIL_ENV);
+    const password = resolvePortalCredentialEnv(env, PORTAL_PASSWORD_ENV);
 
     if (!email || !password) {
       throw new LibrusConfigurationError(
-        "Missing portal credentials. Set LIBRUS_PORTAL_EMAIL and LIBRUS_PORTAL_PASSWORD.",
+        buildMissingPortalCredentialsMessage(env),
       );
     }
 
@@ -160,4 +184,50 @@ export class LibrusSession {
         : selectorOrChild;
     return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
   }
+}
+
+function resolvePortalCredentialEnv(
+  env: NodeJS.ProcessEnv,
+  field: PortalCredentialEnvField,
+): string | undefined {
+  return env[field.primary] ?? env[field.fallback];
+}
+
+function buildMissingPortalCredentialsMessage(env: NodeJS.ProcessEnv): string {
+  return [
+    "Missing portal credentials.",
+    describeCredentialEnvIssue(env, PORTAL_EMAIL_ENV),
+    describeCredentialEnvIssue(env, PORTAL_PASSWORD_ENV),
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join(" ");
+}
+
+function describeCredentialEnvIssue(
+  env: NodeJS.ProcessEnv,
+  field: PortalCredentialEnvField,
+): string | undefined {
+  const resolvedValue = resolvePortalCredentialEnv(env, field);
+
+  if (resolvedValue) {
+    return undefined;
+  }
+
+  const primaryValue = env[field.primary];
+
+  if (primaryValue !== undefined) {
+    return `${field.label}: ${field.primary} is ${describeEnvValueState(
+      primaryValue,
+    )}; fallback ${field.fallback} is ignored because ${field.primary} is set.`;
+  }
+
+  const fallbackValue = env[field.fallback];
+
+  return `${field.label}: ${field.primary} is unset; fallback ${
+    field.fallback
+  } is ${describeEnvValueState(fallbackValue)}.`;
+}
+
+function describeEnvValueState(value: string | undefined): "empty" | "unset" {
+  return value === undefined ? "unset" : "empty";
 }
