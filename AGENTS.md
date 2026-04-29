@@ -23,6 +23,7 @@ Guidance for coding agents working in this repository.
 - Run tests with `npm test`.
 - Run the CLI locally with `npm run cli -- <command>`.
 - `master` is protected. Do not commit directly to `master`.
+- For GitHub PR work, prefer the GitHub connector for metadata, diffs, comments, and status inspection. If the connector can read a PR but cannot merge it with `403 Resource not accessible by integration`, fall back to the authenticated `gh` CLI for the merge and include an expected-head guard such as `gh pr merge <number> --match-head-commit <sha>`.
 - For parallel work, prefer a separate `git worktree` for each active feature so changes do not interfere with each other.
 - Give each mergeable line of work its own branch with a short descriptive name.
 - Prefer creating new feature branches from an up-to-date `master`.
