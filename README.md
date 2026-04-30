@@ -61,17 +61,21 @@ CLI published from this repository.
 `LibrusSession.fromEnv()` and the CLI read credentials and timeout settings from
 these variables:
 
-| Variable                 | Required | Purpose                                            |
-| ------------------------ | -------- | -------------------------------------------------- |
-| `LIBRUS_PORTAL_EMAIL`    | Yes      | Portal login email used for `portal.librus.pl`.    |
-| `LIBRUS_PORTAL_PASSWORD` | Yes      | Portal login password used for `portal.librus.pl`. |
-| `LIBRUS_EMAIL`           | Fallback | Compatibility alias for `LIBRUS_PORTAL_EMAIL`.     |
-| `LIBRUS_PASSWORD`        | Fallback | Compatibility alias for `LIBRUS_PORTAL_PASSWORD`.  |
-| `LIBRUS_TIMEOUT_MS`      | No       | Positive integer request timeout in milliseconds.  |
+| Variable                 | Required | Purpose                                                     |
+| ------------------------ | -------- | ----------------------------------------------------------- |
+| `LIBRUS_PORTAL_EMAIL`    | Yes      | Portal login email used for `portal.librus.pl`.             |
+| `LIBRUS_PORTAL_PASSWORD` | Yes      | Portal login password used for `portal.librus.pl`.          |
+| `LIBRUS_EMAIL`           | Fallback | Compatibility alias when `LIBRUS_PORTAL_EMAIL` is unset.    |
+| `LIBRUS_PASSWORD`        | Fallback | Compatibility alias when `LIBRUS_PORTAL_PASSWORD` is unset. |
+| `LIBRUS_TIMEOUT_MS`      | No       | Positive integer request timeout in milliseconds.           |
 
 If no timeout is configured, portal and child-scoped SDK requests default to
 `30000` milliseconds. Invalid timeout values fail fast with
 `CONFIGURATION_ERROR`.
+
+Empty credential variables are treated as invalid. If a portal-prefixed
+credential variable is set but empty, the compatibility alias for that
+credential is ignored.
 
 ### Top-Level SDK Entry Points
 
@@ -267,7 +271,7 @@ JSON stderr shape is stable:
 {
   "error": {
     "code": "CONFIGURATION_ERROR",
-    "message": "Missing portal credentials.",
+    "message": "Missing portal credentials. Email: LIBRUS_PORTAL_EMAIL is unset; fallback LIBRUS_EMAIL is unset. Password: LIBRUS_PORTAL_PASSWORD is unset; fallback LIBRUS_PASSWORD is unset.",
     "details": {}
   }
 }

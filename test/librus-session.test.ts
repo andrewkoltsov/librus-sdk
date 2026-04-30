@@ -86,6 +86,19 @@ function readSynergiaClientRequestTimeoutMs(client: unknown): number {
   ).requestTimeoutMs;
 }
 
+function captureConfigurationError(
+  callback: () => unknown,
+): LibrusConfigurationError {
+  try {
+    callback();
+  } catch (error) {
+    expect(error).toBeInstanceOf(LibrusConfigurationError);
+    return error as LibrusConfigurationError;
+  }
+
+  throw new Error("Expected LibrusConfigurationError to be thrown.");
+}
+
 function withTemporaryPortalEnv<T>(
   env: Partial<
     Record<
@@ -187,19 +200,67 @@ describe("LibrusSession.fromEnv", () => {
   });
 
   it("fails when the email is missing", () => {
-    expect(() =>
+    const error = captureConfigurationError(() =>
       LibrusSession.fromEnv({
         LIBRUS_PORTAL_PASSWORD: "portal-secret",
       }),
-    ).toThrowError(LibrusConfigurationError);
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message:
+        "Missing portal credentials. Email: LIBRUS_PORTAL_EMAIL is unset; fallback LIBRUS_EMAIL is unset.",
+    });
   });
 
   it("fails when the password is missing", () => {
-    expect(() =>
+    const error = captureConfigurationError(() =>
       LibrusSession.fromEnv({
         LIBRUS_PORTAL_EMAIL: "portal@example.com",
       }),
-    ).toThrowError(LibrusConfigurationError);
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message:
+        "Missing portal credentials. Password: LIBRUS_PORTAL_PASSWORD is unset; fallback LIBRUS_PASSWORD is unset.",
+    });
+  });
+
+  it("reports all credential env names when all credentials are unset", () => {
+    const error = captureConfigurationError(() => LibrusSession.fromEnv({}));
+
+    expect(error.message).toBe(
+      "Missing portal credentials. Email: LIBRUS_PORTAL_EMAIL is unset; fallback LIBRUS_EMAIL is unset. Password: LIBRUS_PORTAL_PASSWORD is unset; fallback LIBRUS_PASSWORD is unset.",
+    );
+  });
+
+  it("reports empty primary credential env vars without falling back", () => {
+    const error = captureConfigurationError(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_EMAIL: "compat@example.com",
+        LIBRUS_PASSWORD: "compat-secret",
+        LIBRUS_PORTAL_EMAIL: "",
+        LIBRUS_PORTAL_PASSWORD: "",
+      }),
+    );
+
+    expect(error.message).toBe(
+      "Missing portal credentials. Email: LIBRUS_PORTAL_EMAIL is empty; fallback LIBRUS_EMAIL is ignored because LIBRUS_PORTAL_EMAIL is set. Password: LIBRUS_PORTAL_PASSWORD is empty; fallback LIBRUS_PASSWORD is ignored because LIBRUS_PORTAL_PASSWORD is set.",
+    );
+  });
+
+  it("does not include credential values in missing credential errors", () => {
+    const error = captureConfigurationError(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_EMAIL: "compat.secret@example.com",
+        LIBRUS_PASSWORD: "compat-password-secret",
+        LIBRUS_PORTAL_EMAIL: "",
+      }),
+    );
+
+    expect(error.message).not.toContain("compat.secret@example.com");
+    expect(error.message).not.toContain("compat-password-secret");
   });
 
   it("fails when LIBRUS_TIMEOUT_MS is invalid", () => {
