@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- README now exposes CI, CodeQL, and Snyk Security status badges alongside the
+  public OpenSSF Scorecard badge.
+- Snyk Security now runs in GitHub Actions and fails on high or critical
+  dependency vulnerabilities.
+
+### Changed
+
+- Vitest branch coverage enforcement now requires at least 84%.
+
 ### Fixed
 
 - Missing `LibrusSession.fromEnv()` credential errors now name the primary and
