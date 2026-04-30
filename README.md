@@ -1,5 +1,8 @@
 # librus-sdk
 
+[![CI](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/codeql.yml)
+[![Snyk Security](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/snyk.yml/badge.svg?branch=master)](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/snyk.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/andrewkoltsov/librus-sdk/badge)](https://scorecard.dev/viewer/?uri=github.com/andrewkoltsov/librus-sdk)
 
 Fresh TypeScript SDK and CLI for the Librus family portal flow.
@@ -419,6 +422,8 @@ Current CI jobs:
 
 - `Validation gate`: runs the required `npm run validate` path before merge.
 - `Dependency vulnerability gate`: fails on high or critical npm advisories.
+- `Snyk Security`: fails on high or critical dependency vulnerabilities using
+  the configured `SNYK_TOKEN` GitHub Actions secret.
 - `Trivy scan (informational)`: publishes vulnerability and secret-scan results
   for review.
 
