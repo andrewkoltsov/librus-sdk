@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-05-03
+
 ### Added
 
 - README now exposes CI, CodeQL, and Snyk Security status badges alongside the
