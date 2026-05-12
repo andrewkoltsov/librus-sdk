@@ -6,6 +6,9 @@ interface FetchMockLike {
   };
 }
 
+const LIBRUS_MOBILE_USER_AGENT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 LibrusMobileApp";
+
 export function expectJsonGetRequest(
   fetchMock: FetchMockLike,
   expectedUrl: string,
@@ -21,6 +24,8 @@ export function expectNthJsonGetRequest(
   expectNthGetRequest(fetchMock, callNumber, expectedUrl, {
     accept: "application/json",
     authorization: "Bearer token",
+    origin: "app://librus",
+    "user-agent": LIBRUS_MOBILE_USER_AGENT,
   });
 }
 
@@ -38,6 +43,8 @@ export function expectNthBinaryGetRequest(
 ): void {
   expectNthGetRequest(fetchMock, callNumber, expectedUrl, {
     authorization: "Bearer token",
+    origin: "app://librus",
+    "user-agent": LIBRUS_MOBILE_USER_AGENT,
   });
 }
 

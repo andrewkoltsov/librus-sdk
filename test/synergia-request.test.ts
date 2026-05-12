@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { buildEndpoint, getBinary } from "../src/sdk/synergia/request.js";
 
+const LIBRUS_MOBILE_USER_AGENT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 LibrusMobileApp";
+
 describe("Synergia request helpers", () => {
   it("builds endpoints without query params", () => {
     expect(buildEndpoint("https://api.librus.pl/3.0", "/Me")).toBe(
@@ -52,6 +55,8 @@ describe("Synergia request helpers", () => {
         method: "GET",
         headers: {
           authorization: "Bearer token",
+          origin: "app://librus",
+          "user-agent": LIBRUS_MOBILE_USER_AGENT,
         },
       },
     );
