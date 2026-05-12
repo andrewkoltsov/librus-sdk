@@ -217,7 +217,7 @@ type SynergiaId = string | number;
 
 const MESSAGES_SCOPE = "messages";
 const MESSAGES_SCOPE_HINT =
-  "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.";
+  "Run `librus-sdk auth token-info --child <id-or-login>` to inspect the token scopes for this child.";
 
 export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;

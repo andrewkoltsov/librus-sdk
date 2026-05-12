@@ -48,7 +48,7 @@ export function createDefaultCliContext(): CliContext {
 export function createProgram(context: CliContext): Command {
   const program = configureCommand(
     new Command()
-      .name("librus")
+      .name("librus-sdk")
       .description("CLI for the Librus family portal flow")
       .version(packageJson.version),
     context,

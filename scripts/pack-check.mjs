@@ -7,6 +7,7 @@ const cacheDir = join(tmpdir(), "librus-sdk-npm-cache");
 const requiredPaths = [
   "README.md",
   "LICENSE",
+  "dist/cli/deprecatedMain.js",
   "dist/cli/main.js",
   "dist/sdk/index.js",
 ];

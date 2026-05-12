@@ -44,10 +44,13 @@ npm install librus-sdk
 Use the CLI without installing it globally:
 
 ```bash
-npx librus --version
-npx librus children list
-npx librus grades list --child <id-or-login>
+npm exec --package librus-sdk -- librus-sdk --version
+npm exec --package librus-sdk -- librus-sdk children list
+npm exec --package librus-sdk -- librus-sdk grades list --child <id-or-login>
 ```
+
+The canonical CLI binary is `librus-sdk`. A deprecated `librus` alias remains
+temporarily for compatibility and prints a warning before delegating.
 
 The package also ships a generated [`openapi.json`](./openapi.json) for the
 SDK-supported child-scoped `https://api.librus.pl/3.0` surface, so non-TypeScript
@@ -222,8 +225,8 @@ model and error modules under `src/sdk/models/`.
 
 Root CLI commands:
 
-- `librus --help`
-- `librus --version`
+- `librus-sdk --help`
+- `librus-sdk --version`
 
 Every leaf command supports `--format <text|json>`. Child-scoped commands use
 `--child <id-or-login>` to select the linked child account by numeric id or by
@@ -321,12 +324,12 @@ SDK and CLI now add diagnostics under `error.details`:
 - `requiredScope: "messages"`
 - `scopePresent` when `Auth/TokenInfo` exposes scopes for the same child token
 - `tokenScopes` when those scopes are readable
-- `hint` pointing to `librus auth token-info --child <id-or-login>`
+- `hint` pointing to `librus-sdk auth token-info --child <id-or-login>`
 
 Use the auth helper directly when you need to compare child tokens:
 
 ```bash
-npx librus auth token-info --child <id-or-login>
+npm exec --package librus-sdk -- librus-sdk auth token-info --child <id-or-login>
 ```
 
 For timeout handling, the SDK throws `LibrusNetworkTimeoutError`, and the CLI

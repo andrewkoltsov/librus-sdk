@@ -378,7 +378,7 @@ describe("runCli high-value commands", () => {
                   requiredScope: "messages",
                   scopePresent: false,
                   tokenScopes: ["grades", "attendance"],
-                  hint: "Run `librus auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
+                  hint: "Run `librus-sdk auth token-info --child <id-or-login>` to inspect the token scopes for this child.",
                 },
               );
             },

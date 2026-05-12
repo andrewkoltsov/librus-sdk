@@ -15,7 +15,8 @@
   "main": "dist/sdk/index.js",
   "types": "dist/sdk/index.d.ts",
   "bin": {
-    "librus": "dist/cli/main.js"
+    "librus": "dist/cli/deprecatedMain.js",
+    "librus-sdk": "dist/cli/main.js"
   },
   "exports": {
     ".": {
