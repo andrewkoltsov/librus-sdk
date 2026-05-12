@@ -8,6 +8,9 @@ export interface ListMessagesOptions {
   afterId?: SynergiaId;
   alternativeBody?: boolean;
   changeNewLine?: boolean | number;
+  getAllTypes?: boolean | number;
+  limit?: number;
+  page?: number;
 }
 
 export type MessageParticipant = ApiRef;

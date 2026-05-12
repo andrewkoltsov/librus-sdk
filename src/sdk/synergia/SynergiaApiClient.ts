@@ -680,14 +680,24 @@ export class SynergiaApiClient {
   }
 
   listMessages(options: ListMessagesOptions = {}): Promise<MessagesResponse> {
-    const { afterId, alternativeBody = true, changeNewLine = 1 } = options;
+    const {
+      afterId,
+      alternativeBody = true,
+      changeNewLine = 1,
+      getAllTypes = 1,
+      limit = 300,
+      page = 1,
+    } = options;
 
     return this.withMessageAccessDiagnostics(() =>
       this.getJson("/Messages", messagesResponseSchema, {
         query: {
-          afterId,
           alternativeBody,
           changeNewLine,
+          getAllTypes,
+          page,
+          limit,
+          afterId,
         },
       }),
     );

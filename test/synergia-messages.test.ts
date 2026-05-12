@@ -13,6 +13,8 @@ import {
 } from "./fetchAssertions.js";
 
 const apiBaseUrl = "https://api.librus.pl/3.0";
+const defaultMessagesQuery =
+  "alternativeBody=true&changeNewLine=1&getAllTypes=1&page=1&limit=300";
 
 function jsonResponse(payload: unknown): Response {
   return new Response(JSON.stringify(payload), {
@@ -43,13 +45,20 @@ const requestCases = [
   {
     name: "listMessages defaults to widget-friendly query params",
     call: (client: SynergiaApiClient) => client.listMessages(),
-    path: "/Messages?alternativeBody=true&changeNewLine=1",
+    path: `/Messages?${defaultMessagesQuery}`,
     body: { Messages: [] },
   },
   {
     name: "listMessages includes the afterId filter",
     call: (client: SynergiaApiClient) => client.listMessages({ afterId: 42 }),
-    path: "/Messages?afterId=42&alternativeBody=true&changeNewLine=1",
+    path: `/Messages?${defaultMessagesQuery}&afterId=42`,
+    body: { Messages: [] },
+  },
+  {
+    name: "listMessages supports pagination and type query overrides",
+    call: (client: SynergiaApiClient) =>
+      client.listMessages({ getAllTypes: 0, limit: 50, page: 2 }),
+    path: "/Messages?alternativeBody=true&changeNewLine=1&getAllTypes=0&page=2&limit=50",
     body: { Messages: [] },
   },
   {
@@ -89,7 +98,7 @@ const parseCases = [
   {
     name: "message sender and receiver refs",
     call: (client: SynergiaApiClient) => client.listMessages(),
-    path: "/Messages?alternativeBody=true&changeNewLine=1",
+    path: `/Messages?${defaultMessagesQuery}`,
     body: {
       Messages: [
         {
@@ -254,7 +263,7 @@ describe("SynergiaApiClient message methods", () => {
       message:
         'Messages are unavailable for this child account because the token does not advertise the required "messages" scope.',
       details: {
-        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        endpoint: `${apiBaseUrl}/Messages?${defaultMessagesQuery}`,
         status: 403,
         feature: "messages",
         requiredScope: "messages",
@@ -266,7 +275,7 @@ describe("SynergiaApiClient message methods", () => {
     expectNthJsonGetRequest(
       fetchMock,
       1,
-      `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+      `${apiBaseUrl}/Messages?${defaultMessagesQuery}`,
     );
     expectNthJsonGetRequest(fetchMock, 2, `${apiBaseUrl}/Auth/TokenInfo`);
   });
@@ -291,7 +300,7 @@ describe("SynergiaApiClient message methods", () => {
       message:
         'Messages are unavailable for this child account even though the token advertises the required "messages" scope.',
       details: {
-        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        endpoint: `${apiBaseUrl}/Messages?${defaultMessagesQuery}`,
         status: 403,
         feature: "messages",
         requiredScope: "messages",
@@ -315,7 +324,7 @@ describe("SynergiaApiClient message methods", () => {
       message:
         "Messages are unavailable for this child account. Librus returned 403 for the requested message endpoint.",
       details: {
-        endpoint: `${apiBaseUrl}/Messages?alternativeBody=true&changeNewLine=1`,
+        endpoint: `${apiBaseUrl}/Messages?${defaultMessagesQuery}`,
         status: 403,
         feature: "messages",
         requiredScope: "messages",

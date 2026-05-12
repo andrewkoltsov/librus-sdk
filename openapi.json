@@ -1293,6 +1293,27 @@
             "required": false,
             "description": "Widget-style newline handling flag.",
             "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "getAllTypes",
+            "in": "query",
+            "required": false,
+            "description": "Request all message type categories.",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Message list page number.",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum messages to return for the page.",
+            "schema": { "type": "integer", "default": 300 }
           }
         ]
       }
