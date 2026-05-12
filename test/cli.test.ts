@@ -18,6 +18,10 @@ import {
   runCli,
 } from "../src/cli/main.js";
 import {
+  DEPRECATED_LIBRUS_BINARY_WARNING,
+  runDeprecatedLibrusCli,
+} from "../src/cli/deprecatedMain.js";
+import {
   LibrusSdkError,
   LibrusNetworkTimeoutError,
   type ChildAccount,
@@ -26,7 +30,7 @@ import {
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-) as { version: string };
+) as { bin: Record<string, string>; version: string };
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
   return {
@@ -67,6 +71,13 @@ function withJsonFormat(argv: string[]): string[] {
 }
 
 describe("runCli", () => {
+  it("exposes the canonical and deprecated CLI binaries", () => {
+    expect(packageJson.bin).toEqual({
+      librus: "dist/cli/deprecatedMain.js",
+      "librus-sdk": "dist/cli/main.js",
+    });
+  });
+
   it("writes text output by default", async () => {
     let stdout = "";
     let stderr = "";
@@ -122,7 +133,7 @@ describe("runCli", () => {
 
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout).toContain("Usage: librus");
+    expect(stdout).toContain("Usage: librus-sdk");
   });
 
   it("prints root help and exits successfully for --help", async () => {
@@ -137,7 +148,7 @@ describe("runCli", () => {
 
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout).toContain("Usage: librus");
+    expect(stdout).toContain("Usage: librus-sdk");
   });
 
   it("prints the package version and exits successfully for --version", async () => {
@@ -153,6 +164,39 @@ describe("runCli", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
     expect(stdout.trim()).toBe(packageJson.version);
+  });
+
+  it("does not warn when the canonical CLI entrypoint runs", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(["node", "librus-sdk", "children", "list"], {
+      stdout: { write: (chunk) => (stdout += chunk) },
+      stderr: { write: (chunk) => (stderr += chunk) },
+      createSession: () => createSessionStub() as never,
+      outputWidth: 80,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Response");
+    expect(stderr).toBe("");
+  });
+
+  it("warns and delegates when the deprecated librus binary runs", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runDeprecatedLibrusCli(
+      ["node", "librus", "children", "list"],
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createSessionStub() as never,
+        outputWidth: 80,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Response");
+    expect(stderr).toBe(DEPRECATED_LIBRUS_BINARY_WARNING);
   });
 
   it("writes stable JSON errors to stderr for --format json", async () => {

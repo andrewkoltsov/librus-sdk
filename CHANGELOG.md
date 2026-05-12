@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The canonical CLI binary is now `librus-sdk`; the previous `librus` binary
+  remains as a deprecated compatibility alias and prints a warning before
+  delegating.
+
 ## [0.4.4] - 2026-05-03
 
 ### Added
