@@ -62,7 +62,8 @@ npm run cli -- grades list --child <id-or-login>
   - `PortalClient` handles portal login/session concerns.
   - `LibrusSession` orchestrates login, child discovery, and child selection.
   - `SynergiaApiClient` handles authenticated API calls for a specific child account.
-- Keep compatibility with Node 20+.
+- Keep compatibility with Node 22+. Node 22 is the supported runtime floor for
+  SDK, CLI, CI, and dependency updates.
 
 ## Testing guidance
 
