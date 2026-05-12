@@ -453,6 +453,48 @@ describe("LibrusSession.resolveChild", () => {
     expect(grades.Grades).toEqual([]);
   });
 
+  it("creates a child-scoped BFF API client when given a child object directly", async () => {
+    const child = createChild({
+      accessToken: "child-access-token",
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      expect(url).toBe("https://testbff.librus.pl/v1/Messages");
+      expect(init?.headers).toMatchObject({
+        accept: "application/json",
+        "x-zse-authorization": "Bearer child-access-token",
+      });
+
+      return new Response(
+        JSON.stringify({
+          inboxMessages: [{ id: "message-1", subject: "Test" }],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    });
+    const session = new LibrusSession({
+      bffClientOptions: { fetch: fetchMock },
+      credentials: { email: "parent@example.com", password: "secret" },
+    });
+
+    const client = await session.forChildBff(child);
+    const messages = await client.listMessages();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(messages.inboxMessages).toEqual([
+      { id: "message-1", subject: "Test" },
+    ]);
+  });
+
   it("applies the session timeout to internally created clients by default", async () => {
     const session = new LibrusSession({
       credentials: { email: "parent@example.com", password: "secret" },

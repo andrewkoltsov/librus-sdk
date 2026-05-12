@@ -89,6 +89,7 @@ Import from the package root:
 
 ```ts
 import {
+  BffApiClient,
   LibrusSession,
   PortalClient,
   SynergiaApiClient,
@@ -100,6 +101,7 @@ import {
 | Export                    | Purpose                                                                                                                               |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `LibrusSession`           | Recommended high-level entry point. Handles login, linked-child discovery, child selection, and creation of child-scoped API clients. |
+| `BffApiClient`            | Experimental child-scoped client for selected `https://testbff.librus.pl/v1` mobile backend reads.                                    |
 | `PortalClient`            | Lower-level portal session client for `portal.librus.pl` login, `/Me`, and `/SynergiaAccounts`.                                       |
 | `SynergiaApiClient`       | Child-scoped GET client for the supported `https://api.librus.pl/3.0` surface when you already have a bearer token.                   |
 | `generateOpenApiDocument` | Generates the shipped OpenAPI document for the supported child-scoped GET subset.                                                     |
@@ -119,13 +121,14 @@ console.log(grades);
 Current high-level methods on `LibrusSession`:
 
 - `LibrusSession.fromEnv(env?)`
-- `new LibrusSession({ credentials, portalClient?, portalClientOptions?, synergiaClientOptions?, requestTimeoutMs? })`
+- `new LibrusSession({ credentials, portalClient?, portalClientOptions?, bffClientOptions?, synergiaClientOptions?, requestTimeoutMs? })`
 - `login()`
 - `getPortalMe()`
 - `getSynergiaAccounts()`
 - `listChildren()`
 - `resolveChild(selector)`
 - `forChild(selectorOrChild)`
+- `forChildBff(selectorOrChild)`
 
 Current methods on `PortalClient`:
 
@@ -155,6 +158,11 @@ endpoint family rather than raw route strings:
 Attachment-style methods such as `getHomeworkAssignmentAttachment(id)`,
 `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return
 `SynergiaBinaryResult` with `{ data, contentType, contentDisposition }`.
+
+`BffApiClient` currently exposes the research-oriented `listMessages()` method
+for `GET https://testbff.librus.pl/v1/Messages`. It uses the selected child's
+Synergia access token as `x-zse-authorization` and returns the raw
+`{ inboxMessages }` BFF response shape.
 
 `getAuthPhoto(id)` mirrors the live API and returns JSON with the photo payload
 under `data.photo`, including base64 content in `data.photo.content`. The CLI
