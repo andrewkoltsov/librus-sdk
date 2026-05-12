@@ -80,7 +80,7 @@
     "fast-check": "^4.6.0",
     "globals": "^17.4.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17.0.4",
     "prettier": "^3.8.1",
     "tsx": "^4.20.5",
     "typescript": "^6.0.2",
