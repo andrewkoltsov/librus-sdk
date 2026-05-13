@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BffApiClient } from "../src/sdk/bff/BffApiClient.js";
 import { buildBffEndpoint } from "../src/sdk/bff/request.js";
@@ -12,10 +12,17 @@ describe("BFF request helpers", () => {
     expect(buildBffEndpoint(bffBaseUrl, "/Messages")).toBe(
       "https://testbff.librus.pl/v1/Messages",
     );
+    expect(buildBffEndpoint(`${bffBaseUrl}/`, "Messages")).toBe(
+      "https://testbff.librus.pl/v1/Messages",
+    );
   });
 });
 
 describe("BffApiClient", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("lists inbox messages through the BFF Messages endpoint", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
@@ -82,6 +89,25 @@ describe("BffApiClient", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.test/v1/Messages",
       expect.any(Object),
+    );
+  });
+
+  it("uses global fetch by default", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ inboxMessages: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new BffApiClient("child-token");
+
+    await client.listMessages();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${bffBaseUrl}/Messages`,
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
