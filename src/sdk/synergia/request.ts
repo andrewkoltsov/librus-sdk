@@ -13,6 +13,22 @@ export interface SynergiaRequestOptions {
   query?: SynergiaQuery;
 }
 
+const LIBRUS_MOBILE_ORIGIN = "app://librus";
+const LIBRUS_MOBILE_USER_AGENT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 LibrusMobileApp";
+
+function buildSynergiaHeaders(
+  accessToken: string,
+  extraHeaders: HeadersInit = {},
+): HeadersInit {
+  return {
+    origin: LIBRUS_MOBILE_ORIGIN,
+    "user-agent": LIBRUS_MOBILE_USER_AGENT,
+    authorization: `Bearer ${accessToken}`,
+    ...extraHeaders,
+  };
+}
+
 function normalizeApiBaseUrl(apiBaseUrl: string): string {
   return apiBaseUrl.endsWith("/") ? apiBaseUrl : `${apiBaseUrl}/`;
 }
@@ -84,10 +100,9 @@ export async function getJson<
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
   const response = await fetchImpl(endpoint, {
     method: "GET",
-    headers: {
+    headers: buildSynergiaHeaders(accessToken, {
       accept: "application/json",
-      authorization: `Bearer ${accessToken}`,
-    },
+    }),
   });
 
   if (!response.ok) {
@@ -107,9 +122,7 @@ export async function getBinary(
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
   const response = await fetchImpl(endpoint, {
     method: "GET",
-    headers: {
-      authorization: `Bearer ${accessToken}`,
-    },
+    headers: buildSynergiaHeaders(accessToken),
   });
 
   if (!response.ok) {
