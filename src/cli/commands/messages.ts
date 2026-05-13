@@ -19,6 +19,14 @@ export function createMessagesCommand(context: CliContext): Command {
     ),
     context,
   );
+  const bffList = configureCommand(
+    addFormatOption(
+      new Command("bff-list").description(
+        "List BFF inbox messages for a child",
+      ),
+    ),
+    context,
+  );
   const get = configureCommand(
     addFormatOption(new Command("get").description("Get a message by id")),
     context,
@@ -45,6 +53,16 @@ export function createMessagesCommand(context: CliContext): Command {
     },
   );
 
+  bffList.requiredOption("--child <id-or-login>", "Child account id or login");
+  bffList.action(async (options: CliFormatOptions & { child: string }) => {
+    const session = context.createSession();
+    const child = await session.resolveChild(options.child);
+    const client = await session.forChildBff(child);
+    const data = await client.listMessages();
+
+    writeChildScopedOutput(context, options.format, child, data);
+  });
+
   get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Message id");
   get.action(
@@ -69,6 +87,7 @@ export function createMessagesCommand(context: CliContext): Command {
   });
 
   messages.addCommand(list);
+  messages.addCommand(bffList);
   messages.addCommand(get);
   messages.addCommand(unread);
 

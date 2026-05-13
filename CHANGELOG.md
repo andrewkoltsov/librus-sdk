@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `messages bff-list` now exposes the experimental BFF inbox message payload
+  through the CLI.
+
 ### Changed
 
 - The canonical CLI binary is now `librus-sdk`; the previous `librus` binary

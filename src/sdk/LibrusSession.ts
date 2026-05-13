@@ -1,3 +1,4 @@
+import { BffApiClient, type BffApiClientOptions } from "./bff/BffApiClient.js";
 import {
   PortalClient,
   type PortalClientOptions,
@@ -47,6 +48,7 @@ export interface LibrusSessionOptions {
   credentials: PortalCredentials;
   portalClient?: PortalClient;
   portalClientOptions?: PortalClientOptions;
+  bffClientOptions?: BffApiClientOptions;
   synergiaClientOptions?: SynergiaApiClientOptions;
   requestTimeoutMs?: number;
 }
@@ -54,6 +56,7 @@ export interface LibrusSessionOptions {
 export class LibrusSession {
   private readonly credentials: PortalCredentials;
   private readonly portalClient: PortalClient;
+  private readonly bffClientOptions: BffApiClientOptions | undefined;
   private readonly synergiaClientOptions: SynergiaApiClientOptions | undefined;
   private accountsCache?: SynergiaAccountsResponse;
 
@@ -81,10 +84,21 @@ export class LibrusSession {
               requestTimeoutMs,
             }
           : { requestTimeoutMs };
+    const bffClientOptions =
+      options.bffClientOptions?.requestTimeoutMs !== undefined ||
+      requestTimeoutMs === undefined
+        ? options.bffClientOptions
+        : options.bffClientOptions
+          ? {
+              ...options.bffClientOptions,
+              requestTimeoutMs,
+            }
+          : { requestTimeoutMs };
 
     this.credentials = options.credentials;
     this.portalClient =
       options.portalClient ?? new PortalClient(portalClientOptions);
+    this.bffClientOptions = bffClientOptions;
     this.synergiaClientOptions = synergiaClientOptions;
   }
 
@@ -183,6 +197,16 @@ export class LibrusSession {
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
     return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
+  }
+
+  async forChildBff(
+    selectorOrChild: string | ChildAccount,
+  ): Promise<BffApiClient> {
+    const child =
+      typeof selectorOrChild === "string"
+        ? await this.resolveChild(selectorOrChild)
+        : selectorOrChild;
+    return new BffApiClient(child.accessToken, this.bffClientOptions);
   }
 }
 

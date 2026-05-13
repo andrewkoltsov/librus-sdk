@@ -1,3 +1,4 @@
+export { BffApiClient } from "./bff/BffApiClient.js";
 export { LibrusSession } from "./LibrusSession.js";
 export { generateOpenApiDocument } from "./openapi.js";
 export { PortalClient } from "./portal/PortalClient.js";

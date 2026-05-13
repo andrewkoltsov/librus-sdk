@@ -262,11 +262,13 @@ function summarizeSuccess(args, payload) {
       ok: true,
       child: payload.child ? summarizeChild(payload.child) : null,
       count:
-        subcommandName === "unread"
-          ? typeof payload.data?.UnreadMessages === "number"
-            ? payload.data.UnreadMessages
-            : 0
-          : (payload.data?.Messages?.length ?? 0),
+        subcommandName === "bff-list"
+          ? (payload.data?.inboxMessages?.length ?? 0)
+          : subcommandName === "unread"
+            ? typeof payload.data?.UnreadMessages === "number"
+              ? payload.data.UnreadMessages
+              : 0
+            : (payload.data?.Messages?.length ?? 0),
       keys:
         subcommandName === "get"
           ? Object.keys(payload.data?.Message ?? {})
@@ -499,6 +501,7 @@ export function runCliMatrix(env = process.env) {
         ["attendance", "list", "--child", String(child.id)],
         ["homework", "list", "--child", String(child.id)],
         ["messages", "list", "--child", String(child.id)],
+        ["messages", "bff-list", "--child", String(child.id)],
         ["messages", "unread", "--child", String(child.id)],
         ["timetable", "day", "--child", String(child.id), "--day", currentDay],
         [
