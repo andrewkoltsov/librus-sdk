@@ -50,6 +50,9 @@ function createCommandContext(
   const forChild = vi.fn().mockResolvedValue({
     [method]: apiMethod,
   });
+  const forChildBff = vi.fn().mockResolvedValue({
+    [method]: apiMethod,
+  });
 
   return {
     apiMethod,
@@ -62,9 +65,11 @@ function createCommandContext(
         ({
           resolveChild,
           forChild,
+          forChildBff,
         }) as never,
     },
     forChild,
+    forChildBff,
     getOutput: () => ({ stderr, stdout }),
     resolveChild,
   };
@@ -274,6 +279,11 @@ const usageFailureCases = [
     expectedMessage: "required option '--child <id-or-login>' not specified",
   },
   {
+    name: "messages bff-list requires child",
+    argv: ["node", "librus", "messages", "bff-list"],
+    expectedMessage: "required option '--child <id-or-login>' not specified",
+  },
+  {
     name: "timetable week requires week start",
     argv: ["node", "librus", "timetable", "week", "--child", "child-login"],
     expectedMessage:
@@ -354,6 +364,52 @@ describe("runCli high-value commands", () => {
       expect(output.error.message).toContain(expectedMessage);
     },
   );
+
+  it("writes BFF message list payloads", async () => {
+    const response = {
+      inboxMessages: [
+        {
+          id: "1",
+          body: "Full body",
+          senderName: "Teacher",
+          subject: "BFF message",
+        },
+      ],
+    };
+    const {
+      apiMethod,
+      child,
+      context,
+      forChild,
+      forChildBff,
+      getOutput,
+      resolveChild,
+    } = createCommandContext("listMessages", response);
+
+    const exitCode = await runCli(
+      withJsonFormat([
+        "node",
+        "librus",
+        "messages",
+        "bff-list",
+        "--child",
+        "child-login",
+      ]),
+      context,
+    );
+    const output = parseJson<{ child: { login: string }; data: unknown }>(
+      getOutput().stdout,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(getOutput().stderr).toBe("");
+    expect(resolveChild).toHaveBeenCalledWith("child-login");
+    expect(forChild).not.toHaveBeenCalled();
+    expect(forChildBff).toHaveBeenCalledWith(child);
+    expect(apiMethod).toHaveBeenCalledWith();
+    expect(output.child.login).toBe("child-login");
+    expect(output.data).toEqual(response);
+  });
 
   it("keeps new command failures secret-safe", async () => {
     let stderr = "";
