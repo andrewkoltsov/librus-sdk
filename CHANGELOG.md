@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-13
+
 ### Added
 
+- The SDK now exposes an experimental `BffApiClient` plus
+  `LibrusSession.forChildBff()` for reading
+  `https://testbff.librus.pl/v1/Messages` with child-scoped access tokens.
 - `messages bff-list` now exposes the experimental BFF inbox message payload
   through the CLI.
 
@@ -16,6 +21,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The canonical CLI binary is now `librus-sdk`; the previous `librus` binary
   remains as a deprecated compatibility alias and prints a warning before
   delegating.
+- Synergia API requests now align message-related mobile headers with the
+  Librus mobile app, including `Origin: app://librus`.
+- `messages list` now sends the mobile-app query parity options
+  `alternativeBody`, `changeNewLine`, `getAllTypes`, `page`, and `limit` by
+  default, with CLI/SDK options for overriding them.
 
 ## [0.4.4] - 2026-05-03
 
