@@ -221,13 +221,22 @@ export class LibrusSession {
       typeof selectorOrChild === "string"
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
-    const messageBackend =
-      this.synergiaClientOptions?.messageBackend ??
-      new WiadomosciMessagesClient(child, {
-        ...this.wiadomosciClientOptions,
-        ensurePortalLogin: () => this.login(),
-        portalClient: this.portalClient,
-      });
+
+    return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
+  }
+
+  async forChildWiadomosci(
+    selectorOrChild: string | ChildAccount,
+  ): Promise<SynergiaApiClient> {
+    const child =
+      typeof selectorOrChild === "string"
+        ? await this.resolveChild(selectorOrChild)
+        : selectorOrChild;
+    const messageBackend = new WiadomosciMessagesClient(child, {
+      ...this.wiadomosciClientOptions,
+      ensurePortalLogin: () => this.login(),
+      portalClient: this.portalClient,
+    });
 
     return new SynergiaApiClient(child.accessToken, {
       ...this.synergiaClientOptions,
