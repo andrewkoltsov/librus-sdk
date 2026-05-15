@@ -350,7 +350,7 @@ function decodeMessageXml(value: string): string | null {
   }
 
   if (!decoded.includes("<Message")) {
-    return null;
+    return decoded;
   }
 
   const content = /<Content><!\[CDATA\[([\s\S]*?)\]\]><\/Content>/.exec(
