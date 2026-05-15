@@ -464,7 +464,60 @@ describe("LibrusSession.resolveChild", () => {
     expect(grades.Grades).toEqual([]);
   });
 
-  it("uses the wiadomosci backend for session-created message reads", async () => {
+  it("uses API 3.0 for session-created message reads by default", async () => {
+    const child = createChild({
+      accessToken: "child-access-token",
+    });
+    const { getFreshSynergiaAccount, portalClient } = createPortalClientStub({
+      accounts: [child],
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      expect(url).toBe(
+        "https://api.librus.pl/3.0/Messages?alternativeBody=true&changeNewLine=1&getAllTypes=1&page=1&limit=10",
+      );
+      expect(init?.headers).toMatchObject({
+        accept: "application/json",
+        authorization: "Bearer child-access-token",
+      });
+
+      return new Response(
+        JSON.stringify({
+          Messages: [{ Id: 1, Subject: "Hello" }],
+          Resources: {},
+          Url: "https://api.librus.pl/3.0/Messages",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    });
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+      synergiaClientOptions: { fetch: fetchMock },
+      wiadomosciClientOptions: { fetch: vi.fn<typeof fetch>() },
+    });
+
+    const client = await session.forChild(child);
+    const messages = await client.listMessages({ limit: 10 });
+
+    expect(getFreshSynergiaAccount).not.toHaveBeenCalled();
+    expect(messages).toMatchObject({
+      Messages: [{ Id: 1, Subject: "Hello" }],
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Messages",
+    });
+  });
+
+  it("uses the wiadomosci backend for explicit wiadomosci child clients", async () => {
     const child = createChild({
       accessToken: "child-access-token",
     });
@@ -499,7 +552,7 @@ describe("LibrusSession.resolveChild", () => {
       wiadomosciClientOptions: { fetch: fetchMock },
     });
 
-    const client = await session.forChild(child);
+    const client = await session.forChildWiadomosci(child);
     const messages = await client.listMessages({ limit: 10 });
 
     expect(getFreshSynergiaAccount).toHaveBeenCalledWith("child-login");
@@ -507,6 +560,48 @@ describe("LibrusSession.resolveChild", () => {
       Messages: [{ Id: 1, Subject: "Hello" }],
       Resources: {},
       Url: "https://wiadomosci.librus.pl/api/inbox/messages?page=1&limit=10",
+    });
+  });
+
+  it("resolves child selectors for explicit wiadomosci child clients", async () => {
+    const child = createChild({
+      accessToken: "child-access-token",
+    });
+    const { getFreshSynergiaAccount, getSynergiaAccounts, portalClient } =
+      createPortalClientStub({
+        accounts: [child],
+      });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ Token: "auto-login-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response("", { status: 200 }))
+      .mockResolvedValueOnce(new Response("", { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: 3 }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+      wiadomosciClientOptions: { fetch: fetchMock },
+    });
+
+    const client = await session.forChildWiadomosci("child-login");
+    const unread = await client.getUnreadMessages();
+
+    expect(getSynergiaAccounts).toHaveBeenCalledTimes(1);
+    expect(getFreshSynergiaAccount).toHaveBeenCalledWith("child-login");
+    expect(unread).toMatchObject({
+      Resources: {},
+      UnreadMessages: 3,
+      Url: "https://wiadomosci.librus.pl/api/inbox/unreadMessagesCount",
     });
   });
 

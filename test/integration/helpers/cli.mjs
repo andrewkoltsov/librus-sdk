@@ -259,9 +259,15 @@ function summarizeSuccess(args, payload) {
 
   if (commandName === "messages") {
     const usesWiadomosci =
-      subcommandName === "list" ||
-      subcommandName === "get" ||
-      subcommandName === "unread";
+      subcommandName.startsWith("wiadomosci-") ||
+      args.includes("--backend=wiadomosci") ||
+      (args.includes("--backend") &&
+        args[args.indexOf("--backend") + 1] === "wiadomosci");
+    const usesApi3 =
+      (subcommandName === "list" ||
+        subcommandName === "get" ||
+        subcommandName === "unread") &&
+      !usesWiadomosci;
     const url = payload.data?.Url;
 
     if (
@@ -276,19 +282,31 @@ function summarizeSuccess(args, payload) {
       };
     }
 
+    if (
+      usesApi3 &&
+      (typeof url !== "string" || !url.startsWith("https://api.librus.pl/"))
+    ) {
+      return {
+        ok: false,
+        child: payload.child ? summarizeChild(payload.child) : null,
+        errorMessage: `Expected api.librus.pl message URL, got ${url}`,
+      };
+    }
+
     return {
       ok: true,
       child: payload.child ? summarizeChild(payload.child) : null,
       count:
         subcommandName === "bff-list"
           ? (payload.data?.inboxMessages?.length ?? 0)
-          : subcommandName === "unread"
+          : subcommandName === "unread" ||
+              subcommandName === "wiadomosci-unread"
             ? typeof payload.data?.UnreadMessages === "number"
               ? payload.data.UnreadMessages
               : 0
             : (payload.data?.Messages?.length ?? 0),
       keys:
-        subcommandName === "get"
+        subcommandName === "get" || subcommandName === "wiadomosci-get"
           ? Object.keys(payload.data?.Message ?? {})
           : [],
     };
@@ -435,6 +453,23 @@ function summarizeOrSkipCliStatus(result, status, reason) {
   return summarizeCliResult(result);
 }
 
+function isDefaultApi3MessageCommand(args) {
+  if (args[0] !== "messages") {
+    return false;
+  }
+
+  if (args[1] !== "list" && args[1] !== "get" && args[1] !== "unread") {
+    return false;
+  }
+
+  const backendIndex = args.indexOf("--backend");
+
+  return (
+    !args.includes("--backend=wiadomosci") &&
+    (backendIndex === -1 || args[backendIndex + 1] !== "wiadomosci")
+  );
+}
+
 export function runCliCommand(args, env = process.env) {
   assertBuiltCli();
   const commandArgs = [...args, "--format", "json"];
@@ -519,8 +554,18 @@ export function runCliMatrix(env = process.env) {
         ["attendance", "list", "--child", String(child.id)],
         ["homework", "list", "--child", String(child.id)],
         ["messages", "list", "--child", String(child.id)],
+        [
+          "messages",
+          "list",
+          "--child",
+          String(child.id),
+          "--backend",
+          "wiadomosci",
+        ],
+        ["messages", "wiadomosci-list", "--child", String(child.id)],
         ["messages", "bff-list", "--child", String(child.id)],
         ["messages", "unread", "--child", String(child.id)],
+        ["messages", "wiadomosci-unread", "--child", String(child.id)],
         ["timetable", "day", "--child", String(child.id), "--day", currentDay],
         [
           "timetable",
@@ -548,7 +593,15 @@ export function runCliMatrix(env = process.env) {
         const result = runCliCommand(args, env);
 
         childCommandResults.set(args.join("\u0000"), result);
-        targetResults.push(summarizeCliResult(result));
+        targetResults.push(
+          isDefaultApi3MessageCommand(args)
+            ? summarizeOrSkipCliStatus(
+                result,
+                403,
+                "API 3.0 messages returned 403 for this child account.",
+              )
+            : summarizeCliResult(result),
+        );
       }
 
       const messagesList = childCommandResults.get(
@@ -562,7 +615,7 @@ export function runCliMatrix(env = process.env) {
               ["messages", "get", "--child", String(child.id), "--id", "<id>"],
               "No message id found in the live messages payload.",
             )
-          : summarizeCliResult(
+          : summarizeOrSkipCliStatus(
               runCliCommand(
                 [
                   "messages",
@@ -571,6 +624,45 @@ export function runCliMatrix(env = process.env) {
                   String(child.id),
                   "--id",
                   String(messageId),
+                ],
+                env,
+              ),
+              403,
+              "API 3.0 message detail returned 403 for this child account.",
+            ),
+      );
+
+      const wiadomosciMessagesList = childCommandResults.get(
+        ["messages", "wiadomosci-list", "--child", String(child.id)].join(
+          "\u0000",
+        ),
+      );
+      const wiadomosciMessageId = findEntityId(
+        wiadomosciMessagesList.payload?.data?.Messages,
+      );
+
+      targetResults.push(
+        wiadomosciMessageId === null
+          ? skippedCliResult(
+              [
+                "messages",
+                "wiadomosci-get",
+                "--child",
+                String(child.id),
+                "--id",
+                "<id>",
+              ],
+              "No message id found in the live wiadomosci messages payload.",
+            )
+          : summarizeCliResult(
+              runCliCommand(
+                [
+                  "messages",
+                  "wiadomosci-get",
+                  "--child",
+                  String(child.id),
+                  "--id",
+                  String(wiadomosciMessageId),
                 ],
                 env,
               ),

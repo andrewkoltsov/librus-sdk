@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `LibrusSession.forChildWiadomosci()` and CLI `messages wiadomosci-list`,
+  `messages wiadomosci-get`, and `messages wiadomosci-unread` now expose the
+  `wiadomosci.librus.pl` message backend explicitly.
+- CLI `messages list`, `messages get`, and `messages unread` now support
+  `--backend <api3|wiadomosci>`.
+
+### Fixed
+
+- `messages list`, `messages get`, `messages unread`, and
+  `LibrusSession.forChild()` now use API 3.0 by default again after the
+  `0.6.0` regression.
+
 ## [0.6.0] - 2026-05-15
 
 ### Added

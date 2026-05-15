@@ -77,6 +77,25 @@ function assertWiadomosciUrl(payload) {
   );
 }
 
+function assertApi3Url(payload) {
+  assert.equal(
+    typeof payload.Url === "string" &&
+      payload.Url.startsWith("https://api.librus.pl/"),
+    true,
+    `Expected api.librus.pl URL, got ${payload.Url}`,
+  );
+}
+
+function summarizeApi3ArrayResponse(payload, key) {
+  assertApi3Url(payload);
+  return summarizeArrayResponse(payload, key);
+}
+
+function summarizeApi3CountResponse(payload, key) {
+  assertApi3Url(payload);
+  return summarizeCountResponse(payload, key);
+}
+
 function summarizeWiadomosciArrayResponse(payload, key) {
   assertWiadomosciUrl(payload);
   return summarizeArrayResponse(payload, key);
@@ -197,22 +216,6 @@ function arrayCheck(name, load, key) {
     name,
     load,
     summarize: (payload) => summarizeArrayResponse(payload, key),
-  };
-}
-
-function wiadomosciArrayCheck(name, load, key) {
-  return {
-    name,
-    load,
-    summarize: (payload) => summarizeWiadomosciArrayResponse(payload, key),
-  };
-}
-
-function wiadomosciCountCheck(name, load, key) {
-  return {
-    name,
-    load,
-    summarize: (payload) => summarizeWiadomosciCountResponse(payload, key),
   };
 }
 
@@ -756,9 +759,17 @@ async function runTimetableEntryCheck(api) {
   }
 }
 
-async function runMessageDetailCheck(api) {
+async function runMessageDetailCheck(
+  api,
+  { allowForbidden = false, expectWiadomosciUrl = false } = {},
+) {
   try {
     const payload = await api.listMessages();
+    if (expectWiadomosciUrl) {
+      assertWiadomosciUrl(payload);
+    } else {
+      assertApi3Url(payload);
+    }
     const messageId = findEntityId(payload.Messages);
 
     if (messageId === null) {
@@ -770,7 +781,11 @@ async function runMessageDetailCheck(api) {
     }
 
     const message = await api.getMessage(messageId);
-    assertWiadomosciUrl(message);
+    if (expectWiadomosciUrl) {
+      assertWiadomosciUrl(message);
+    } else {
+      assertApi3Url(message);
+    }
 
     return {
       ok: true,
@@ -778,6 +793,74 @@ async function runMessageDetailCheck(api) {
       keys: Object.keys(message.Message ?? {}),
     };
   } catch (error) {
+    if (allowForbidden && isApiStatus(error, 403)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "API 3.0 messages returned 403 for this child account.",
+      };
+    }
+
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runWiadomosciMessagesCheck(api) {
+  return runCheck(
+    () => api.listMessages(),
+    (payload) => summarizeWiadomosciArrayResponse(payload, "Messages"),
+  );
+}
+
+async function runWiadomosciUnreadMessagesCheck(api) {
+  return runCheck(
+    () => api.getUnreadMessages(),
+    (payload) => summarizeWiadomosciCountResponse(payload, "UnreadMessages"),
+  );
+}
+
+async function runApi3MessagesCheck(api) {
+  try {
+    const payload = await api.listMessages();
+    return {
+      ok: true,
+      ...summarizeApi3ArrayResponse(payload, "Messages"),
+    };
+  } catch (error) {
+    if (isApiStatus(error, 403)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "API 3.0 messages returned 403 for this child account.",
+      };
+    }
+
+    return {
+      ok: false,
+      error: serializeError(error),
+    };
+  }
+}
+
+async function runApi3UnreadMessagesCheck(api) {
+  try {
+    const payload = await api.getUnreadMessages();
+    return {
+      ok: true,
+      ...summarizeApi3CountResponse(payload, "UnreadMessages"),
+    };
+  } catch (error) {
+    if (isApiStatus(error, 403)) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "API 3.0 unread messages returned 403 for this child account.",
+      };
+    }
+
     return {
       ok: false,
       error: serializeError(error),
@@ -1103,12 +1186,6 @@ const sdkChecks = [
   keysCheck("systemData", (api) => api.getSystemData()),
   objectCheck("authPhotos", (api) => api.listAuthPhotos(), "data"),
   keysCheck("authTokenInfo", (api) => api.getAuthTokenInfo()),
-  wiadomosciArrayCheck("messages", (api) => api.listMessages(), "Messages"),
-  wiadomosciCountCheck(
-    "unreadMessages",
-    (api) => api.getUnreadMessages(),
-    "UnreadMessages",
-  ),
   arrayCheck(
     "messageReceiverGroups",
     (api) => api.listMessageReceiverGroups(),
@@ -1148,6 +1225,7 @@ export async function runSdkMatrix(env = process.env) {
 
   for (const child of targetChildren) {
     const api = await session.forChild(child);
+    const wiadomosciApi = await session.forChildWiadomosci(child);
     const checkEntries = await Promise.all(
       sdkChecks.map(async ({ name, load, summarize }) => {
         const check = await runCheck(() => load(api), summarize);
@@ -1165,7 +1243,17 @@ export async function runSdkMatrix(env = process.env) {
     const authPhotoDetail = await runAuthPhotoDetailCheck(api);
     const authUserInfo = await runAuthUserInfoCheck(api);
     const authClassroom = await runAuthClassroomCheck(api);
-    const messageDetail = await runMessageDetailCheck(api);
+    const messages = await runApi3MessagesCheck(api);
+    const unreadMessages = await runApi3UnreadMessagesCheck(api);
+    const messageDetail = await runMessageDetailCheck(api, {
+      allowForbidden: true,
+    });
+    const wiadomosciMessages = await runWiadomosciMessagesCheck(wiadomosciApi);
+    const wiadomosciUnreadMessages =
+      await runWiadomosciUnreadMessagesCheck(wiadomosciApi);
+    const wiadomosciMessageDetail = await runMessageDetailCheck(wiadomosciApi, {
+      expectWiadomosciUrl: true,
+    });
     const messageReceiverGroupDetail =
       await runMessageReceiverGroupDetailCheck(api);
     const schoolNoticeDetail = await runSchoolNoticeDetailCheck(api);
@@ -1188,7 +1276,12 @@ export async function runSdkMatrix(env = process.env) {
       ["authPhotoDetail", authPhotoDetail],
       ["authUserInfo", authUserInfo],
       ["authClassroom", authClassroom],
+      ["messages", messages],
+      ["unreadMessages", unreadMessages],
       ["messageDetail", messageDetail],
+      ["wiadomosciMessages", wiadomosciMessages],
+      ["wiadomosciUnreadMessages", wiadomosciUnreadMessages],
+      ["wiadomosciMessageDetail", wiadomosciMessageDetail],
       ["messageReceiverGroupDetail", messageReceiverGroupDetail],
       ["schoolNoticeDetail", schoolNoticeDetail],
       ["noteDetail", noteDetail],

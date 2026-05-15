@@ -50,6 +50,9 @@ function createCommandContext(
   const forChild = vi.fn().mockResolvedValue({
     [method]: apiMethod,
   });
+  const forChildWiadomosci = vi.fn().mockResolvedValue({
+    [method]: apiMethod,
+  });
   const forChildBff = vi.fn().mockResolvedValue({
     [method]: apiMethod,
   });
@@ -65,10 +68,12 @@ function createCommandContext(
         ({
           resolveChild,
           forChild,
+          forChildWiadomosci,
           forChildBff,
         }) as never,
     },
     forChild,
+    forChildWiadomosci,
     forChildBff,
     getOutput: () => ({ stderr, stdout }),
     resolveChild,
@@ -284,6 +289,42 @@ const usageFailureCases = [
     expectedMessage: "required option '--child <id-or-login>' not specified",
   },
   {
+    name: "messages list rejects invalid backend",
+    argv: [
+      "node",
+      "librus",
+      "messages",
+      "list",
+      "--child",
+      "child-login",
+      "--backend",
+      "old-api",
+    ],
+    expectedMessage: 'Expected "api3" or "wiadomosci".',
+  },
+  {
+    name: "messages wiadomosci-list requires child",
+    argv: ["node", "librus", "messages", "wiadomosci-list"],
+    expectedMessage: "required option '--child <id-or-login>' not specified",
+  },
+  {
+    name: "messages wiadomosci-get requires id",
+    argv: [
+      "node",
+      "librus",
+      "messages",
+      "wiadomosci-get",
+      "--child",
+      "child-login",
+    ],
+    expectedMessage: "required option '--id <id>' not specified",
+  },
+  {
+    name: "messages wiadomosci-unread requires child",
+    argv: ["node", "librus", "messages", "wiadomosci-unread"],
+    expectedMessage: "required option '--child <id-or-login>' not specified",
+  },
+  {
     name: "timetable week requires week start",
     argv: ["node", "librus", "timetable", "week", "--child", "child-login"],
     expectedMessage:
@@ -325,8 +366,15 @@ describe("runCli high-value commands", () => {
   it.each(successCases)(
     "writes success payloads for $name",
     async ({ argv, expectedArgs, method, response }) => {
-      const { apiMethod, child, context, forChild, getOutput, resolveChild } =
-        createCommandContext(method, response);
+      const {
+        apiMethod,
+        child,
+        context,
+        forChild,
+        forChildWiadomosci,
+        getOutput,
+        resolveChild,
+      } = createCommandContext(method, response);
 
       const exitCode = await runCli(withJsonFormat(argv), context);
       const output = parseJson<{ child: { login: string }; data: unknown }>(
@@ -337,6 +385,7 @@ describe("runCli high-value commands", () => {
       expect(getOutput().stderr).toBe("");
       expect(resolveChild).toHaveBeenCalledWith("child-login");
       expect(forChild).toHaveBeenCalledWith(child);
+      expect(forChildWiadomosci).not.toHaveBeenCalled();
       expect(apiMethod).toHaveBeenCalledWith(...expectedArgs);
       expect(output.child.login).toBe("child-login");
       expect(output.data).toEqual(response);
@@ -382,6 +431,7 @@ describe("runCli high-value commands", () => {
       context,
       forChild,
       forChildBff,
+      forChildWiadomosci,
       getOutput,
       resolveChild,
     } = createCommandContext("listMessages", response);
@@ -405,11 +455,138 @@ describe("runCli high-value commands", () => {
     expect(getOutput().stderr).toBe("");
     expect(resolveChild).toHaveBeenCalledWith("child-login");
     expect(forChild).not.toHaveBeenCalled();
+    expect(forChildWiadomosci).not.toHaveBeenCalled();
     expect(forChildBff).toHaveBeenCalledWith(child);
     expect(apiMethod).toHaveBeenCalledWith();
     expect(output.child.login).toBe("child-login");
     expect(output.data).toEqual(response);
   });
+
+  it.each([
+    {
+      name: "messages list --backend wiadomosci",
+      argv: [
+        "node",
+        "librus",
+        "messages",
+        "list",
+        "--child",
+        "child-login",
+        "--backend",
+        "wiadomosci",
+      ],
+      expectedArgs: [{}],
+      method: "listMessages",
+      response: {
+        Messages: [],
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages",
+      },
+    },
+    {
+      name: "messages wiadomosci-list with after-id",
+      argv: [
+        "node",
+        "librus",
+        "messages",
+        "wiadomosci-list",
+        "--child",
+        "child-login",
+        "--after-id",
+        "42",
+      ],
+      expectedArgs: [{ afterId: "42" }],
+      method: "listMessages",
+      response: {
+        Messages: [],
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages?afterId=42",
+      },
+    },
+    {
+      name: "messages wiadomosci-list",
+      argv: [
+        "node",
+        "librus",
+        "messages",
+        "wiadomosci-list",
+        "--child",
+        "child-login",
+      ],
+      expectedArgs: [{}],
+      method: "listMessages",
+      response: {
+        Messages: [],
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages",
+      },
+    },
+    {
+      name: "messages wiadomosci-get",
+      argv: [
+        "node",
+        "librus",
+        "messages",
+        "wiadomosci-get",
+        "--child",
+        "child-login",
+        "--id",
+        "17",
+      ],
+      expectedArgs: ["17"],
+      method: "getMessage",
+      response: {
+        Message: { Id: 17 },
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages/17",
+      },
+    },
+    {
+      name: "messages wiadomosci-unread",
+      argv: [
+        "node",
+        "librus",
+        "messages",
+        "wiadomosci-unread",
+        "--child",
+        "child-login",
+      ],
+      expectedArgs: [],
+      method: "getUnreadMessages",
+      response: {
+        UnreadMessages: 4,
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/unreadMessagesCount",
+      },
+    },
+  ])(
+    "writes success payloads for $name",
+    async ({ argv, expectedArgs, method, response }) => {
+      const {
+        apiMethod,
+        child,
+        context,
+        forChild,
+        forChildWiadomosci,
+        getOutput,
+        resolveChild,
+      } = createCommandContext(method, response);
+
+      const exitCode = await runCli(withJsonFormat(argv), context);
+      const output = parseJson<{ child: { login: string }; data: unknown }>(
+        getOutput().stdout,
+      );
+
+      expect(exitCode).toBe(0);
+      expect(getOutput().stderr).toBe("");
+      expect(resolveChild).toHaveBeenCalledWith("child-login");
+      expect(forChild).not.toHaveBeenCalled();
+      expect(forChildWiadomosci).toHaveBeenCalledWith(child);
+      expect(apiMethod).toHaveBeenCalledWith(...expectedArgs);
+      expect(output.child.login).toBe("child-login");
+      expect(output.data).toEqual(response);
+    },
+  );
 
   it("keeps new command failures secret-safe", async () => {
     let stderr = "";

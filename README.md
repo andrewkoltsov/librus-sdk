@@ -128,6 +128,7 @@ Current high-level methods on `LibrusSession`:
 - `listChildren()`
 - `resolveChild(selector)`
 - `forChild(selectorOrChild)`
+- `forChildWiadomosci(selectorOrChild)`
 - `forChildBff(selectorOrChild)`
 
 Current methods on `PortalClient`:
@@ -160,12 +161,14 @@ Attachment-style methods such as `getHomeworkAssignmentAttachment(id)`,
 `SynergiaBinaryResult` with `{ data, contentType, contentDisposition }`.
 
 When a `SynergiaApiClient` is created through `LibrusSession.forChild()`,
-message reads use the portal-authenticated `https://wiadomosci.librus.pl/api`
-inbox backend by default for `listMessages()`, `getMessage(id)`, and
-`getUnreadMessages()`. Other child-scoped reads, message receiver groups, and
-message attachment downloads continue to use `https://api.librus.pl/3.0`.
-Direct `new SynergiaApiClient(token)` construction keeps using API 3.0 for all
-methods unless a custom message backend is supplied.
+message reads use the standard `https://api.librus.pl/3.0` backend by default.
+Use `LibrusSession.forChildWiadomosci()` to opt in to the
+portal-authenticated `https://wiadomosci.librus.pl/api` inbox backend for
+`listMessages()`, `getMessage(id)`, and `getUnreadMessages()`. Other
+child-scoped reads, message receiver groups, and message attachment downloads
+continue to use `https://api.librus.pl/3.0`. Direct
+`new SynergiaApiClient(token)` construction keeps using API 3.0 for all methods
+unless a custom message backend is supplied.
 
 `BffApiClient` currently exposes the research-oriented `listMessages()` method
 for `GET https://testbff.librus.pl/v1/Messages`. It uses the selected child's
@@ -248,22 +251,22 @@ Every leaf command supports `--format <text|json>`. Child-scoped commands use
 `--child <id-or-login>` to select the linked child account by numeric id or by
 login.
 
-| Family           | Subcommands                                                                                                 | Extra selectors and flags                                                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `children`       | `list`                                                                                                      | No child selector.                                                                                                                 |
-| `me`             | root command                                                                                                | `--child`.                                                                                                                         |
-| `grades`         | `list`                                                                                                      | `--child`.                                                                                                                         |
-| `attendance`     | `list`                                                                                                      | `--child`.                                                                                                                         |
-| `homework`       | `list`                                                                                                      | `--child`.                                                                                                                         |
-| `messages`       | `list`, `bff-list`, `get`, `unread`                                                                         | `list` supports `--after-id <id>`; `bff-list` reads the experimental BFF inbox payload; `get` requires `--id <id>`.                |
-| `timetable`      | `week`, `day`, `entry`                                                                                      | `week` requires `--week-start <YYYY-MM-DD>`; `day` requires `--day <YYYY-MM-DD>`; `entry` requires `--id <id>`.                    |
-| `announcements`  | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                        |
-| `notes`          | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                        |
-| `lessons`        | `list`, `get`, `planned-list`, `planned-get`, `planned-attachment`, `realizations-list`, `realizations-get` | `get`, `planned-get`, and `realizations-get` require `--id <id>`; `planned-attachment` requires `--id <id>` and `--output <path>`. |
-| `lucky-number`   | `get`                                                                                                       | Optional `--for-day <YYYY-MM-DD>`.                                                                                                 |
-| `notifications`  | `center`, `push-configurations`                                                                             | `--child`.                                                                                                                         |
-| `justifications` | `list`, `get`, `conferences`, `system-data`                                                                 | `list` supports `--date-from <YYYY-MM-DD>`; `get` requires `--id <id>`.                                                            |
-| `auth`           | `photos`, `photo`, `user-info`, `token-info`, `classroom`                                                   | `photo` requires `--id <id>` and `--output <path>`; `user-info` and `classroom` require `--id <id>`.                               |
+| Family           | Subcommands                                                                                                 | Extra selectors and flags                                                                                                                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `children`       | `list`                                                                                                      | No child selector.                                                                                                                                                                                                                           |
+| `me`             | root command                                                                                                | `--child`.                                                                                                                                                                                                                                   |
+| `grades`         | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
+| `attendance`     | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
+| `homework`       | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
+| `messages`       | `list`, `bff-list`, `get`, `unread`, `wiadomosci-list`, `wiadomosci-get`, `wiadomosci-unread`               | `list`, `get`, and `unread` support `--backend <api3\|wiadomosci>` and default to `api3`; `wiadomosci-list` supports `--after-id <id>`; `bff-list` reads the experimental BFF inbox payload; `get` and `wiadomosci-get` require `--id <id>`. |
+| `timetable`      | `week`, `day`, `entry`                                                                                      | `week` requires `--week-start <YYYY-MM-DD>`; `day` requires `--day <YYYY-MM-DD>`; `entry` requires `--id <id>`.                                                                                                                              |
+| `announcements`  | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                                                                                                                                  |
+| `notes`          | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                                                                                                                                  |
+| `lessons`        | `list`, `get`, `planned-list`, `planned-get`, `planned-attachment`, `realizations-list`, `realizations-get` | `get`, `planned-get`, and `realizations-get` require `--id <id>`; `planned-attachment` requires `--id <id>` and `--output <path>`.                                                                                                           |
+| `lucky-number`   | `get`                                                                                                       | Optional `--for-day <YYYY-MM-DD>`.                                                                                                                                                                                                           |
+| `notifications`  | `center`, `push-configurations`                                                                             | `--child`.                                                                                                                                                                                                                                   |
+| `justifications` | `list`, `get`, `conferences`, `system-data`                                                                 | `list` supports `--date-from <YYYY-MM-DD>`; `get` requires `--id <id>`.                                                                                                                                                                      |
+| `auth`           | `photos`, `photo`, `user-info`, `token-info`, `classroom`                                                   | `photo` requires `--id <id>` and `--output <path>`; `user-info` and `classroom` require `--id <id>`.                                                                                                                                         |
 
 ### CLI Output Contract
 
@@ -329,10 +332,11 @@ Current codes emitted by the SDK and CLI:
 ### Troubleshooting
 
 Direct API 3.0 `messages` reads can fail with HTTP `403` even when other
-child-scoped endpoints such as `grades list` still work. Session-created SDK
-clients and CLI `messages list`, `messages get`, and `messages unread` use the
-portal-authenticated `wiadomosci.librus.pl` inbox backend by default to avoid
-that mobile-addons gate.
+child-scoped endpoints such as `grades list` still work. CLI
+`messages list`, `messages get`, and `messages unread` use API 3.0 by default.
+Pass `--backend wiadomosci` or use `messages wiadomosci-list`,
+`messages wiadomosci-get`, and `messages wiadomosci-unread` to read through the
+portal-authenticated `wiadomosci.librus.pl` inbox backend.
 
 When a `/Messages` request returns `API_REQUEST_FAILED` with `status: 403`, the
 SDK and CLI now add diagnostics under `error.details`:
