@@ -28,6 +28,7 @@ function createPortalClientStub(
   } = {},
 ): {
   getMe: ReturnType<typeof vi.fn>;
+  getFreshSynergiaAccount: ReturnType<typeof vi.fn>;
   getSynergiaAccounts: ReturnType<typeof vi.fn>;
   login: ReturnType<typeof vi.fn>;
   portalClient: PortalClient;
@@ -43,8 +44,17 @@ function createPortalClientStub(
     accounts: options.accounts ?? [],
     lastModification: 456,
   });
+  const getFreshSynergiaAccount = vi
+    .fn()
+    .mockImplementation((login: string) =>
+      Promise.resolve(
+        options.accounts?.find((account) => account.login === login) ??
+          createChild({ accessToken: "fresh-child-token", login }),
+      ),
+    );
 
   return {
+    getFreshSynergiaAccount,
     getMe,
     getSynergiaAccounts,
     login,
@@ -52,6 +62,7 @@ function createPortalClientStub(
       isLoggedIn: () => options.isLoggedIn ?? true,
       login,
       getMe,
+      getFreshSynergiaAccount,
       getSynergiaAccounts,
     } as unknown as PortalClient,
   };
@@ -451,6 +462,52 @@ describe("LibrusSession.resolveChild", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(grades.Grades).toEqual([]);
+  });
+
+  it("uses the wiadomosci backend for session-created message reads", async () => {
+    const child = createChild({
+      accessToken: "child-access-token",
+    });
+    const { getFreshSynergiaAccount, portalClient } = createPortalClientStub({
+      accounts: [child],
+    });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ Token: "auto-login-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response("", { status: 200 }))
+      .mockResolvedValueOnce(new Response("", { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [{ messageId: 1, topic: "Hello" }],
+            total: 1,
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      );
+    const session = new LibrusSession({
+      credentials: { email: "parent@example.com", password: "secret" },
+      portalClient,
+      wiadomosciClientOptions: { fetch: fetchMock },
+    });
+
+    const client = await session.forChild(child);
+    const messages = await client.listMessages({ limit: 10 });
+
+    expect(getFreshSynergiaAccount).toHaveBeenCalledWith("child-login");
+    expect(messages).toMatchObject({
+      Messages: [{ Id: 1, Subject: "Hello" }],
+      Resources: {},
+      Url: "https://wiadomosci.librus.pl/api/inbox/messages?page=1&limit=10",
+    });
   });
 
   it("creates a child-scoped BFF API client when given a child object directly", async () => {

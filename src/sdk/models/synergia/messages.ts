@@ -2,7 +2,7 @@ import type { ApiRef, JsonObject } from "../common.js";
 
 import type { SynergiaResponseEnvelope } from "./common.js";
 
-type SynergiaId = string | number;
+export type SynergiaId = string | number;
 
 export interface ListMessagesOptions {
   afterId?: SynergiaId;
@@ -42,4 +42,10 @@ export interface MessageReceiverGroupsResponse extends SynergiaResponseEnvelope 
 
 export interface MessageReceiverGroupResponse extends SynergiaResponseEnvelope {
   ReceiversGroup: MessageReceiverGroup | MessageReceiverGroup[] | null;
+}
+
+export interface MessageReadBackend {
+  listMessages(options?: ListMessagesOptions): Promise<MessagesResponse>;
+  getMessage(id: SynergiaId): Promise<MessageResponse>;
+  getUnreadMessages(): Promise<UnreadMessagesResponse>;
 }

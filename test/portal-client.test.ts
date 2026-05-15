@@ -239,6 +239,91 @@ describe("PortalClient", () => {
     expect(response.accounts[0]).not.toHaveProperty("scopes");
   });
 
+  it("fetches a fresh child Synergia account by login", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 10,
+          accountIdentifier: "abc",
+          group: "parent",
+          login: "child-login",
+          studentName: "Child Name",
+          accessToken: "fresh-secret",
+          state: "active",
+          scopes: ["Messages"],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+    const client = new PortalClient({ fetch: fetchMock });
+    const account = await client.getFreshSynergiaAccount("child/login");
+
+    expect(account).toMatchObject({
+      accessToken: "fresh-secret",
+      login: "child-login",
+      scopes: ["Messages"],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://portal.librus.pl/api/v3/SynergiaAccounts/fresh/child%2Flogin",
+      expect.objectContaining({
+        method: "GET",
+        headers: { accept: "application/json" },
+      }),
+    );
+  });
+
+  it("fails when a fresh Synergia account response is malformed", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 10,
+          login: 42,
+          accessToken: "fresh-secret",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+    const client = new PortalClient({ fetch: fetchMock });
+
+    await expect(
+      client.getFreshSynergiaAccount("child-login"),
+    ).rejects.toMatchObject({
+      code: "RESPONSE_VALIDATION_FAILED",
+      details: {
+        endpoint:
+          "https://portal.librus.pl/api/v3/SynergiaAccounts/fresh/child-login",
+      },
+    });
+  });
+
+  it("raises API errors for failed fresh Synergia account requests", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: "denied" }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const client = new PortalClient({ fetch: fetchMock });
+
+    await expect(
+      client.getFreshSynergiaAccount("child-login"),
+    ).rejects.toMatchObject({
+      code: "API_REQUEST_FAILED",
+      message: "Portal API request failed",
+      details: {
+        endpoint:
+          "https://portal.librus.pl/api/v3/SynergiaAccounts/fresh/child-login",
+        status: 403,
+      },
+    });
+  });
+
   it("maps 401 verification failures to authentication errors", async () => {
     const fetchMock = createLoginFetchMock(
       new Response("", {

@@ -258,6 +258,24 @@ function summarizeSuccess(args, payload) {
   }
 
   if (commandName === "messages") {
+    const usesWiadomosci =
+      subcommandName === "list" ||
+      subcommandName === "get" ||
+      subcommandName === "unread";
+    const url = payload.data?.Url;
+
+    if (
+      usesWiadomosci &&
+      (typeof url !== "string" ||
+        !url.startsWith("https://wiadomosci.librus.pl/api/"))
+    ) {
+      return {
+        ok: false,
+        child: payload.child ? summarizeChild(payload.child) : null,
+        errorMessage: `Expected wiadomosci message API URL, got ${url}`,
+      };
+    }
+
     return {
       ok: true,
       child: payload.child ? summarizeChild(payload.child) : null,

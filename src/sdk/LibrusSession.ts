@@ -8,6 +8,10 @@ import {
   type SynergiaApiClientOptions,
 } from "./synergia/SynergiaApiClient.js";
 import {
+  WiadomosciMessagesClient,
+  type WiadomosciMessagesClientOptions,
+} from "./wiadomosci/WiadomosciMessagesClient.js";
+import {
   LibrusConfigurationError,
   LibrusSdkError,
   type ChildAccount,
@@ -50,6 +54,10 @@ export interface LibrusSessionOptions {
   portalClientOptions?: PortalClientOptions;
   bffClientOptions?: BffApiClientOptions;
   synergiaClientOptions?: SynergiaApiClientOptions;
+  wiadomosciClientOptions?: Omit<
+    WiadomosciMessagesClientOptions,
+    "ensurePortalLogin" | "portalClient"
+  >;
   requestTimeoutMs?: number;
 }
 
@@ -58,6 +66,12 @@ export class LibrusSession {
   private readonly portalClient: PortalClient;
   private readonly bffClientOptions: BffApiClientOptions | undefined;
   private readonly synergiaClientOptions: SynergiaApiClientOptions | undefined;
+  private readonly wiadomosciClientOptions:
+    | Omit<
+        WiadomosciMessagesClientOptions,
+        "ensurePortalLogin" | "portalClient"
+      >
+    | undefined;
   private accountsCache?: SynergiaAccountsResponse;
 
   constructor(options: LibrusSessionOptions) {
@@ -94,12 +108,23 @@ export class LibrusSession {
               requestTimeoutMs,
             }
           : { requestTimeoutMs };
+    const wiadomosciClientOptions =
+      options.wiadomosciClientOptions?.requestTimeoutMs !== undefined ||
+      requestTimeoutMs === undefined
+        ? options.wiadomosciClientOptions
+        : options.wiadomosciClientOptions
+          ? {
+              ...options.wiadomosciClientOptions,
+              requestTimeoutMs,
+            }
+          : { requestTimeoutMs };
 
     this.credentials = options.credentials;
     this.portalClient =
       options.portalClient ?? new PortalClient(portalClientOptions);
     this.bffClientOptions = bffClientOptions;
     this.synergiaClientOptions = synergiaClientOptions;
+    this.wiadomosciClientOptions = wiadomosciClientOptions;
   }
 
   static fromEnv(env: NodeJS.ProcessEnv = process.env): LibrusSession {
@@ -196,7 +221,18 @@ export class LibrusSession {
       typeof selectorOrChild === "string"
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
-    return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
+    const messageBackend =
+      this.synergiaClientOptions?.messageBackend ??
+      new WiadomosciMessagesClient(child, {
+        ...this.wiadomosciClientOptions,
+        ensurePortalLogin: () => this.login(),
+        portalClient: this.portalClient,
+      });
+
+    return new SynergiaApiClient(child.accessToken, {
+      ...this.synergiaClientOptions,
+      messageBackend,
+    });
   }
 
   async forChildBff(
