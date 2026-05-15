@@ -4,6 +4,7 @@ import type { FetchLike } from "../models/common.js";
 import {
   LibrusApiError,
   LibrusAuthenticationError,
+  type ChildAccount,
   type PortalCredentials,
   type PortalMe,
   type SynergiaAccountsResponse,
@@ -15,6 +16,7 @@ import {
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   portalMeSchema,
+  childAccountSchema,
   synergiaAccountsResponseSchema,
 } from "../validation/portal.js";
 import { parseApiResponse } from "../validation/responseValidation.js";
@@ -123,6 +125,15 @@ export class PortalClient {
     };
   }
 
+  async getFreshSynergiaAccount(login: string): Promise<ChildAccount> {
+    return normalizeChildAccount(
+      await this.getPortalJson(
+        `/SynergiaAccounts/fresh/${encodeURIComponent(login)}`,
+        childAccountSchema,
+      ),
+    );
+  }
+
   isLoggedIn(): boolean {
     return this.loggedIn;
   }
@@ -152,4 +163,16 @@ export class PortalClient {
   private buildUrl(baseUrl: string, path: string): string {
     return new URL(path, baseUrl).toString();
   }
+}
+
+interface RawChildAccount extends Omit<ChildAccount, "scopes"> {
+  scopes?: string[] | "" | undefined;
+}
+
+function normalizeChildAccount(account: RawChildAccount): ChildAccount {
+  const { scopes, ...accountWithoutScopes } = account;
+
+  return Array.isArray(scopes)
+    ? { ...accountWithoutScopes, scopes }
+    : accountWithoutScopes;
 }

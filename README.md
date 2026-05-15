@@ -159,6 +159,14 @@ Attachment-style methods such as `getHomeworkAssignmentAttachment(id)`,
 `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return
 `SynergiaBinaryResult` with `{ data, contentType, contentDisposition }`.
 
+When a `SynergiaApiClient` is created through `LibrusSession.forChild()`,
+message reads use the portal-authenticated `https://wiadomosci.librus.pl/api`
+inbox backend by default for `listMessages()`, `getMessage(id)`, and
+`getUnreadMessages()`. Other child-scoped reads, message receiver groups, and
+message attachment downloads continue to use `https://api.librus.pl/3.0`.
+Direct `new SynergiaApiClient(token)` construction keeps using API 3.0 for all
+methods unless a custom message backend is supplied.
+
 `BffApiClient` currently exposes the research-oriented `listMessages()` method
 for `GET https://testbff.librus.pl/v1/Messages`. It uses the selected child's
 Synergia access token as `x-zse-authorization` and returns the raw
@@ -320,10 +328,11 @@ Current codes emitted by the SDK and CLI:
 
 ### Troubleshooting
 
-`messages` reads can fail with HTTP `403` even when other child-scoped
-endpoints such as `grades list` still work. This appears to depend on the
-current child account's effective message access rather than on the overall
-portal login flow.
+Direct API 3.0 `messages` reads can fail with HTTP `403` even when other
+child-scoped endpoints such as `grades list` still work. Session-created SDK
+clients and CLI `messages list`, `messages get`, and `messages unread` use the
+portal-authenticated `wiadomosci.librus.pl` inbox backend by default to avoid
+that mobile-addons gate.
 
 When a `/Messages` request returns `API_REQUEST_FAILED` with `status: 403`, the
 SDK and CLI now add diagnostics under `error.details`:

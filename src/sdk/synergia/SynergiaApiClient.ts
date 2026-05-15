@@ -63,6 +63,7 @@ import type {
 import type { SynergiaMeResponse } from "../models/synergia/me.js";
 import type {
   ListMessagesOptions,
+  MessageReadBackend,
   MessageReceiverGroupResponse,
   MessageReceiverGroupsResponse,
   MessageResponse,
@@ -210,6 +211,7 @@ import {
 export interface SynergiaApiClientOptions {
   fetch?: FetchLike;
   apiBaseUrl?: string;
+  messageBackend?: MessageReadBackend;
   requestTimeoutMs?: number;
 }
 
@@ -223,6 +225,7 @@ export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;
   private readonly apiBaseUrl: string;
   private readonly accessToken: string;
+  private readonly messageBackend: MessageReadBackend | undefined;
   private readonly requestTimeoutMs: number;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
@@ -233,6 +236,7 @@ export class SynergiaApiClient {
       this.requestTimeoutMs,
     );
     this.apiBaseUrl = options.apiBaseUrl ?? "https://api.librus.pl/3.0";
+    this.messageBackend = options.messageBackend;
   }
 
   private getJson<
@@ -680,6 +684,10 @@ export class SynergiaApiClient {
   }
 
   listMessages(options: ListMessagesOptions = {}): Promise<MessagesResponse> {
+    if (this.messageBackend) {
+      return this.messageBackend.listMessages(options);
+    }
+
     const {
       afterId,
       alternativeBody = true,
@@ -704,6 +712,10 @@ export class SynergiaApiClient {
   }
 
   getMessage(id: SynergiaId): Promise<MessageResponse> {
+    if (this.messageBackend) {
+      return this.messageBackend.getMessage(id);
+    }
+
     return this.withMessageAccessDiagnostics(() =>
       this.getJson(
         `/Messages/${encodeURIComponent(String(id))}`,
@@ -713,6 +725,10 @@ export class SynergiaApiClient {
   }
 
   getUnreadMessages(): Promise<UnreadMessagesResponse> {
+    if (this.messageBackend) {
+      return this.messageBackend.getUnreadMessages();
+    }
+
     return this.withMessageAccessDiagnostics(() =>
       this.getJson("/Messages/Unread", unreadMessagesResponseSchema),
     );

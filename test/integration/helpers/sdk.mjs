@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { accessSync, constants } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -65,6 +66,25 @@ function summarizeArrayResponse(payload, key) {
   return {
     count: Array.isArray(payload[key]) ? payload[key].length : 0,
   };
+}
+
+function assertWiadomosciUrl(payload) {
+  assert.equal(
+    typeof payload.Url === "string" &&
+      payload.Url.startsWith("https://wiadomosci.librus.pl/api/"),
+    true,
+    `Expected wiadomosci message API URL, got ${payload.Url}`,
+  );
+}
+
+function summarizeWiadomosciArrayResponse(payload, key) {
+  assertWiadomosciUrl(payload);
+  return summarizeArrayResponse(payload, key);
+}
+
+function summarizeWiadomosciCountResponse(payload, key) {
+  assertWiadomosciUrl(payload);
+  return summarizeCountResponse(payload, key);
 }
 
 function summarizeCountResponse(payload, key) {
@@ -180,11 +200,19 @@ function arrayCheck(name, load, key) {
   };
 }
 
-function countCheck(name, load, key) {
+function wiadomosciArrayCheck(name, load, key) {
   return {
     name,
     load,
-    summarize: (payload) => summarizeCountResponse(payload, key),
+    summarize: (payload) => summarizeWiadomosciArrayResponse(payload, key),
+  };
+}
+
+function wiadomosciCountCheck(name, load, key) {
+  return {
+    name,
+    load,
+    summarize: (payload) => summarizeWiadomosciCountResponse(payload, key),
   };
 }
 
@@ -742,6 +770,7 @@ async function runMessageDetailCheck(api) {
     }
 
     const message = await api.getMessage(messageId);
+    assertWiadomosciUrl(message);
 
     return {
       ok: true,
@@ -1074,8 +1103,8 @@ const sdkChecks = [
   keysCheck("systemData", (api) => api.getSystemData()),
   objectCheck("authPhotos", (api) => api.listAuthPhotos(), "data"),
   keysCheck("authTokenInfo", (api) => api.getAuthTokenInfo()),
-  arrayCheck("messages", (api) => api.listMessages(), "Messages"),
-  countCheck(
+  wiadomosciArrayCheck("messages", (api) => api.listMessages(), "Messages"),
+  wiadomosciCountCheck(
     "unreadMessages",
     (api) => api.getUnreadMessages(),
     "UnreadMessages",

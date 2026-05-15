@@ -8,7 +8,7 @@ export const portalMeSchema = v.looseObject({
   subscription: v.optional(unknownRecordSchema),
 });
 
-const childAccountSchema = v.looseObject({
+export const childAccountSchema = v.looseObject({
   accessToken: v.string(),
   accountIdentifier: v.string(),
   group: v.string(),

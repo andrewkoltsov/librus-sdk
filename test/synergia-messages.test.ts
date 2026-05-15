@@ -218,6 +218,70 @@ describe("SynergiaApiClient message methods", () => {
     },
   );
 
+  it("delegates message reads to an injected message backend", async () => {
+    const messageBackend = {
+      getMessage: vi.fn().mockResolvedValue({
+        Message: { Id: "message-1" },
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages/message-1",
+      }),
+      getUnreadMessages: vi.fn().mockResolvedValue({
+        Resources: {},
+        UnreadMessages: 2,
+        Url: "https://wiadomosci.librus.pl/api/inbox/unreadMessagesCount",
+      }),
+      listMessages: vi.fn().mockResolvedValue({
+        Messages: [{ Id: "message-1" }],
+        Resources: {},
+        Url: "https://wiadomosci.librus.pl/api/inbox/messages",
+      }),
+    };
+    const fetchMock = vi.fn<typeof fetch>();
+    const client = new SynergiaApiClient("token", {
+      fetch: fetchMock,
+      messageBackend,
+    });
+
+    await expect(client.listMessages({ limit: 10 })).resolves.toMatchObject({
+      Messages: [{ Id: "message-1" }],
+    });
+    await expect(client.getMessage("message-1")).resolves.toMatchObject({
+      Message: { Id: "message-1" },
+    });
+    await expect(client.getUnreadMessages()).resolves.toMatchObject({
+      UnreadMessages: 2,
+    });
+    expect(messageBackend.listMessages).toHaveBeenCalledWith({ limit: 10 });
+    expect(messageBackend.getMessage).toHaveBeenCalledWith("message-1");
+    expect(messageBackend.getUnreadMessages).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps receiver group reads on API 3.0 when a message backend is injected", async () => {
+    const messageBackend = {
+      getMessage: vi.fn(),
+      getUnreadMessages: vi.fn(),
+      listMessages: vi.fn(),
+    };
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse(
+        envelope("/Messages/ReceiversGroup", {
+          ReceiversGroup: [],
+        }),
+      ),
+    );
+    const client = new SynergiaApiClient("token", {
+      fetch: fetchMock,
+      messageBackend,
+    });
+
+    await expect(client.listMessageReceiverGroups()).resolves.toMatchObject({
+      ReceiversGroup: [],
+    });
+    expectJsonGetRequest(fetchMock, `${apiBaseUrl}/Messages/ReceiversGroup`);
+    expect(messageBackend.listMessages).not.toHaveBeenCalled();
+  });
+
   it("downloads message attachments as binary results", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(new Uint8Array([1, 2, 3]), {

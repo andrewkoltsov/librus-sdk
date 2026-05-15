@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Session-created SDK clients and CLI message read commands now use the
+  portal-authenticated `wiadomosci.librus.pl` inbox API for `messages list`,
+  `messages get`, and `messages unread`.
+
 ## [0.5.0] - 2026-05-13
 
 ### Added
