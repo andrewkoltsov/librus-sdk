@@ -341,16 +341,14 @@ function normalizeMessageBody(raw: JsonObject): unknown {
 }
 
 function decodeMessageXml(value: string): string | null {
-  let decoded: string;
+  const decoded = decodeBase64Text(value);
 
-  try {
-    decoded = Buffer.from(value, "base64").toString("utf8");
-  } catch {
+  if (decoded === null) {
     return null;
   }
 
   if (!decoded.includes("<Message")) {
-    return null;
+    return decoded;
   }
 
   const content = /<Content><!\[CDATA\[([\s\S]*?)\]\]><\/Content>/.exec(
@@ -358,6 +356,25 @@ function decodeMessageXml(value: string): string | null {
   );
 
   return content?.[1] ?? decoded;
+}
+
+function decodeBase64Text(value: string): string | null {
+  const compactValue = value.replace(/\s+/g, "");
+
+  if (
+    compactValue.length === 0 ||
+    compactValue.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(compactValue)
+  ) {
+    return null;
+  }
+
+  const decoded = Buffer.from(compactValue, "base64").toString("utf8");
+  const encoded = Buffer.from(decoded, "utf8").toString("base64");
+
+  return encoded.replace(/=+$/, "") === compactValue.replace(/=+$/, "")
+    ? decoded
+    : null;
 }
 
 function normalizeDate(value: unknown): unknown {

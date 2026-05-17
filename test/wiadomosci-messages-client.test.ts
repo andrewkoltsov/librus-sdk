@@ -171,6 +171,64 @@ describe("WiadomosciMessagesClient", () => {
     expect(unread.UnreadMessages).toBe(4);
   });
 
+  it("decodes base64 message bodies without an XML envelope", async () => {
+    const { portalClient } = createPortalClientStub();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(responseJson({ Token: "auto-login-token" }))
+      .mockResolvedValueOnce(responseText())
+      .mockResolvedValueOnce(responseText())
+      .mockResolvedValueOnce(
+        responseJson({
+          data: {
+            Message: Buffer.from(
+              'Hello<br><a href="https://example.test">Link</a>',
+            ).toString("base64"),
+            messageId: "message-7",
+          },
+        }),
+      );
+    const client = new WiadomosciMessagesClient(child, {
+      fetch: fetchMock,
+      portalClient,
+    });
+
+    const message = await client.getMessage("message-7");
+
+    expect(message.Message).toMatchObject({
+      Body: 'Hello<br><a href="https://example.test">Link</a>',
+      Id: "message-7",
+    });
+  });
+
+  it("preserves plain non-base64 message bodies", async () => {
+    const { portalClient } = createPortalClientStub();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(responseJson({ Token: "auto-login-token" }))
+      .mockResolvedValueOnce(responseText())
+      .mockResolvedValueOnce(responseText())
+      .mockResolvedValueOnce(
+        responseJson({
+          data: {
+            Message: "Hello<br>World",
+            messageId: "message-7",
+          },
+        }),
+      );
+    const client = new WiadomosciMessagesClient(child, {
+      fetch: fetchMock,
+      portalClient,
+    });
+
+    const message = await client.getMessage("message-7");
+
+    expect(message.Message).toMatchObject({
+      Body: "Hello<br>World",
+      Id: "message-7",
+    });
+  });
+
   it("reauthenticates once after an unauthorized wiadomosci response", async () => {
     const { ensurePortalLogin, getFreshSynergiaAccount, portalClient } =
       createPortalClientStub();
