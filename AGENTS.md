@@ -4,8 +4,11 @@ Guidance for coding agents working in this repository.
 
 ## Project summary
 
-- This is a TypeScript SDK and CLI for the Librus family portal flow.
-- The supported path is `portal.librus.pl` authentication plus child-scoped `https://api.librus.pl/3.0` requests.
+- This is a TypeScript SDK and CLI for Librus family portal and Gateway API 2.0 flows.
+- Supported backends are:
+  - `api_v3`: `portal.librus.pl` authentication plus child-scoped `https://api.librus.pl/3.0` requests.
+  - `gateway_api_20`: school-issued login/password authentication plus cookie-backed `https://synergia.librus.pl/gateway/api/2.0` requests.
+- `api_v3` is multi-child. `gateway_api_20` is already scoped to one account and must not pretend to support Portal-style child switching.
 - Do not reintroduce the legacy `synergia.librus.pl` HTML-scraping approach.
 - The package exposes both an SDK entrypoint and a CLI binary named `librus`.
 
@@ -49,6 +52,9 @@ npm run cli -- grades list --child <id-or-login>
 ## Environment and secrets
 
 - Runtime credentials come from `LIBRUS_PORTAL_EMAIL` and `LIBRUS_PORTAL_PASSWORD`.
+- Gateway API 2.0 credentials come from `LIBRUS_GATEWAY_LOGIN` and `LIBRUS_GATEWAY_PASSWORD`.
+- Backend selection uses `LIBRUS_API_BACKEND=api_v3|gateway_api_20` when explicit; otherwise complete Portal credentials win, then complete Gateway credentials, then `api_v3` default errors.
+- `LIBRUS_CHILD` is an optional default child selector for `api_v3` only. CLI `--child` wins over `LIBRUS_CHILD`; explicit `--child` is unsupported for `gateway_api_20`.
 - `LIBRUS_EMAIL` and `LIBRUS_PASSWORD` are kept as compatibility fallbacks.
 - Never hardcode credentials, tokens, or session cookies.
 - Keep CLI and SDK errors secret-safe. Do not leak passwords, bearer tokens, or raw cookie values in output, logs, tests, or thrown error messages.
@@ -60,7 +66,8 @@ npm run cli -- grades list --child <id-or-login>
 - Preserve the JSON-first CLI behavior: normal results go to stdout, structured errors go to stderr, and commands should return non-zero exit codes on failure.
 - Follow the existing class boundaries:
   - `PortalClient` handles portal login/session concerns.
-  - `LibrusSession` orchestrates login, child discovery, and child selection.
+  - `GatewayApi20AuthClient` handles Gateway API 2.0 login/session concerns.
+  - `LibrusSession` orchestrates backend selection, login, child discovery, and child selection.
   - `SynergiaApiClient` handles authenticated API calls for a specific child account.
 - Keep compatibility with Node 22+. Node 22 is the supported runtime floor for
   SDK, CLI, CI, and dependency updates.
@@ -73,7 +80,7 @@ npm run cli -- grades list --child <id-or-login>
 
 ## Change guidance
 
-- Preserve the current portal-based flow unless the task explicitly requires architectural change.
+- Preserve existing `api_v3` behavior unless the task explicitly requires architectural change, and keep `gateway_api_20` feature support limited to what the upstream JSON API actually provides.
 - All code and documentation changes should be made outside `master`. Prefer one worktree per active feature and one branch per mergeable change. Prefer branches cut from an up-to-date `master`, but allow short-lived dependent branches when the work is intentionally stacked.
 - Keep public SDK exports intentional and update `README.md` when user-facing CLI or SDK behavior changes.
 - Update `CHANGELOG.md` for notable user-facing changes.

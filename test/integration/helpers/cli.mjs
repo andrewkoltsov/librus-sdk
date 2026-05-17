@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { selectTargetChildren, summarizeChild } from "./children.mjs";
+import {
+  GATEWAY_API_20_CHILD,
+  isGatewayApi20Mode,
+  selectTargetChildren,
+  summarizeChild,
+} from "./children.mjs";
 
 const MAX_BUFFER_BYTES = 20 * 1024 * 1024;
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
@@ -521,7 +526,320 @@ export function summarizeCliResult(result) {
   };
 }
 
+function commandKey(args) {
+  return args.join("\u0000");
+}
+
+function runGatewayApi20CliMatrix(env) {
+  assertBuiltCli();
+
+  const targetResults = [];
+  const childCommandResults = new Map();
+  const currentDay = getCurrentDay();
+  const currentWeekStart = getCurrentWeekStart();
+  const downloadDir = mkdtempSync(join(tmpdir(), "librus-sdk-cli-"));
+  const gatewayArgs = [
+    ["me"],
+    ["grades", "list"],
+    ["attendance", "list"],
+    ["homework", "list"],
+    ["messages", "list"],
+    ["messages", "unread"],
+    ["timetable", "day", "--day", currentDay],
+    ["timetable", "week", "--week-start", currentWeekStart],
+    ["announcements", "list"],
+    ["notes", "list"],
+    ["lessons", "list"],
+    ["lessons", "planned-list"],
+    ["lessons", "realizations-list"],
+    ["lucky-number", "get"],
+    ["notifications", "center"],
+    ["notifications", "push-configurations"],
+    ["justifications", "conferences"],
+    ["justifications", "system-data"],
+    ["auth", "photos"],
+    ["auth", "token-info"],
+  ];
+
+  try {
+    targetResults.push(
+      skippedCliResult(
+        ["children", "list"],
+        "Gateway API 2.0 mode is already child-scoped and has no Portal child list.",
+      ),
+      skippedCliResult(
+        ["messages", "bff-list"],
+        "BFF messages require Portal child tokens.",
+      ),
+      skippedCliResult(
+        ["messages", "wiadomosci-list"],
+        "The wiadomosci backend requires Portal authentication.",
+      ),
+    );
+
+    for (const args of gatewayArgs) {
+      const result = runCliCommand(args, env);
+
+      childCommandResults.set(commandKey(args), result);
+      targetResults.push(
+        isDefaultApi3MessageCommand(args)
+          ? summarizeOrSkipCliStatus(
+              result,
+              403,
+              "Gateway API 2.0 messages returned 403 for this gateway_api_20 account.",
+            )
+          : summarizeCliResult(result),
+      );
+    }
+
+    const messagesList = childCommandResults.get(
+      commandKey(["messages", "list"]),
+    );
+    const messageId = findEntityId(messagesList.payload?.data?.Messages);
+
+    targetResults.push(
+      messageId === null
+        ? skippedCliResult(
+            ["messages", "get", "--id", "<id>"],
+            "No message id found in the live messages payload.",
+          )
+        : summarizeOrSkipCliStatus(
+            runCliCommand(["messages", "get", "--id", String(messageId)], env),
+            403,
+            "Gateway API 2.0 message detail returned 403 for this gateway_api_20 account.",
+          ),
+    );
+
+    const timetableDay = childCommandResults.get(
+      commandKey(["timetable", "day", "--day", currentDay]),
+    );
+    const timetableEntryId = findTimetableEntryId(
+      timetableDay.payload?.data?.Timetable,
+    );
+
+    targetResults.push(
+      timetableEntryId === null
+        ? skippedCliResult(
+            ["timetable", "entry", "--id", "<id>"],
+            "No timetable entry id found in the current day payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              ["timetable", "entry", "--id", String(timetableEntryId)],
+              env,
+            ),
+          ),
+    );
+
+    const announcementsList = childCommandResults.get(
+      commandKey(["announcements", "list"]),
+    );
+    const announcementId = findEntityId(
+      announcementsList.payload?.data?.SchoolNotices,
+    );
+
+    targetResults.push(
+      announcementId === null
+        ? skippedCliResult(
+            ["announcements", "get", "--id", "<id>"],
+            "No school notice id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              ["announcements", "get", "--id", String(announcementId)],
+              env,
+            ),
+          ),
+    );
+
+    const notesList = childCommandResults.get(commandKey(["notes", "list"]));
+    const noteId = findEntityId(notesList.payload?.data?.Notes);
+
+    targetResults.push(
+      noteId === null
+        ? skippedCliResult(
+            ["notes", "get", "--id", "<id>"],
+            "No note id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(["notes", "get", "--id", String(noteId)], env),
+          ),
+    );
+
+    const lessonsList = childCommandResults.get(
+      commandKey(["lessons", "list"]),
+    );
+    const lessonId = findEntityId(lessonsList.payload?.data?.Lessons);
+
+    targetResults.push(
+      lessonId === null
+        ? skippedCliResult(
+            ["lessons", "get", "--id", "<id>"],
+            "No lesson id found in the live lessons payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(["lessons", "get", "--id", String(lessonId)], env),
+          ),
+    );
+
+    const plannedLessonsList = childCommandResults.get(
+      commandKey(["lessons", "planned-list"]),
+    );
+    const plannedLessonId = findEntityId(
+      plannedLessonsList.payload?.data?.PlannedLessons,
+    );
+    const plannedAttachmentId = findAttachmentId(
+      plannedLessonsList.payload?.data?.PlannedLessons,
+    );
+
+    targetResults.push(
+      plannedLessonId === null
+        ? skippedCliResult(
+            ["lessons", "planned-get", "--id", "<id>"],
+            "No planned lesson id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              ["lessons", "planned-get", "--id", String(plannedLessonId)],
+              env,
+            ),
+          ),
+    );
+
+    targetResults.push(
+      plannedAttachmentId === null
+        ? skippedCliResult(
+            [
+              "lessons",
+              "planned-attachment",
+              "--id",
+              "<id>",
+              "--output",
+              "<path>",
+            ],
+            "No planned lesson attachment id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "lessons",
+                "planned-attachment",
+                "--id",
+                String(plannedAttachmentId),
+                "--output",
+                join(downloadDir, "planned-gateway-api-20.bin"),
+              ],
+              env,
+            ),
+          ),
+    );
+
+    const realizationsList = childCommandResults.get(
+      commandKey(["lessons", "realizations-list"]),
+    );
+    const realizationId = findEntityId(
+      realizationsList.payload?.data?.Realizations,
+    );
+
+    targetResults.push(
+      realizationId === null
+        ? skippedCliResult(
+            ["lessons", "realizations-get", "--id", "<id>"],
+            "No realization id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              ["lessons", "realizations-get", "--id", String(realizationId)],
+              env,
+            ),
+          ),
+    );
+
+    const justificationsList = runCliCommand(["justifications", "list"], env);
+    targetResults.push(
+      summarizeOrSkipCliStatus(
+        justificationsList,
+        403,
+        "Justifications are disabled or unreadable for this account.",
+      ),
+    );
+
+    const justificationId = findEntityId(
+      justificationsList.payload?.data?.Justifications,
+    );
+    targetResults.push(
+      justificationId === null
+        ? skippedCliResult(
+            ["justifications", "get", "--id", "<id>"],
+            "No justification id found in the live payload.",
+          )
+        : summarizeOrSkipCliStatus(
+            runCliCommand(
+              ["justifications", "get", "--id", String(justificationId)],
+              env,
+            ),
+            403,
+            "Justification details are disabled or unreadable for this account.",
+          ),
+    );
+
+    const authPhotos = childCommandResults.get(commandKey(["auth", "photos"]));
+    const authPhotoId = findAuthPhotoId(authPhotos.payload?.data);
+
+    targetResults.push(
+      authPhotoId === null
+        ? skippedCliResult(
+            ["auth", "photo", "--id", "<id>"],
+            "No auth photo id found in the live payload.",
+          )
+        : summarizeCliResult(
+            runCliCommand(
+              [
+                "auth",
+                "photo",
+                "--id",
+                String(authPhotoId),
+                "--output",
+                join(downloadDir, "photo-gateway-api-20.jpg"),
+              ],
+              env,
+            ),
+          ),
+    );
+
+    const authTokenInfo = childCommandResults.get(
+      commandKey(["auth", "token-info"]),
+    );
+    const userIdentifier = authTokenInfo.payload?.data?.UserIdentifier;
+
+    targetResults.push(
+      typeof userIdentifier !== "string"
+        ? skippedCliResult(
+            ["auth", "user-info", "--id", "<id>"],
+            "No auth user identifier found in token info.",
+          )
+        : summarizeCliResult(
+            runCliCommand(["auth", "user-info", "--id", userIdentifier], env),
+          ),
+    );
+
+    return {
+      ok: targetResults.every((result) => result.ok),
+      apiBackend: "gateway_api_20",
+      availableChildren: [summarizeChild(GATEWAY_API_20_CHILD)],
+      targetChildren: [summarizeChild(GATEWAY_API_20_CHILD)],
+      results: targetResults,
+    };
+  } finally {
+    rmSync(downloadDir, { recursive: true, force: true });
+  }
+}
+
 export function runCliMatrix(env = process.env) {
+  if (isGatewayApi20Mode(env)) {
+    return runGatewayApi20CliMatrix(env);
+  }
+
   const childrenResult = runCliCommand(["children", "list"], env);
   const results = [summarizeCliResult(childrenResult)];
 

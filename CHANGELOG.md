@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Gateway API 2.0 login/password authentication through
+  `LIBRUS_GATEWAY_LOGIN` and `LIBRUS_GATEWAY_PASSWORD`, including
+  `LibrusSession.fromGatewayCredentials()` and CLI child-scoped commands that
+  can run without `--child` in `gateway_api_20`.
+- Public API backend selection through `LIBRUS_API_BACKEND`,
+  `LibrusSessionOptions.apiBackend`, and `LibrusSession.getApiBackend()`.
+- Optional `LIBRUS_CHILD` default child selection for `api_v3` CLI commands.
+
+### Changed
+
+- `LIBRUS_EMAIL` and `LIBRUS_PASSWORD` remain documented as deprecated
+  Portal-only compatibility fallbacks. Use `LIBRUS_PORTAL_EMAIL` and
+  `LIBRUS_PORTAL_PASSWORD` for `api_v3`, or `LIBRUS_GATEWAY_LOGIN` and
+  `LIBRUS_GATEWAY_PASSWORD` for `gateway_api_20`.
+- Deprecated compatibility aliases now emit Node deprecation warnings when
+  used.
+
 ## [0.6.2] - 2026-05-17
 
 ### Fixed

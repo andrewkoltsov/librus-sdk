@@ -10,7 +10,7 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   isCliEntryPoint,
@@ -31,6 +31,20 @@ import {
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { bin: Record<string, string>; version: string };
+const originalLibrusChild = process.env.LIBRUS_CHILD;
+
+beforeEach(() => {
+  delete process.env.LIBRUS_CHILD;
+});
+
+afterEach(() => {
+  if (originalLibrusChild === undefined) {
+    delete process.env.LIBRUS_CHILD;
+    return;
+  }
+
+  process.env.LIBRUS_CHILD = originalLibrusChild;
+});
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
   return {
@@ -46,17 +60,35 @@ function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
 }
 
 function createSessionStub(child = createChild()) {
+  const resolveChild = vi.fn(async () => child);
+
   return {
+    getApiBackend: () => "api_v3",
+    getAuthMode: () => "portal",
     getSynergiaAccounts: async () => ({
       lastModification: 999,
       accounts: [child],
     }),
-    resolveChild: async () => child,
+    resolveChild,
     forChild: async () => ({
       getGrades: async () => ({
         Grades: [],
         Resources: {},
         Url: "https://api.librus.pl/3.0/Grades",
+      }),
+    }),
+  };
+}
+
+function createGatewayApi20SessionStub() {
+  return {
+    getApiBackend: () => "gateway_api_20",
+    getAuthMode: () => "synergia",
+    forChild: async () => ({
+      getGrades: async () => ({
+        Grades: [],
+        Resources: {},
+        Url: "https://synergia.librus.pl/gateway/api/2.0/Grades",
       }),
     }),
   };
@@ -119,6 +151,131 @@ describe("runCli", () => {
     expect(stderr).toBe("");
     expect(output.lastModification).toBe(999);
     expect(output.children[0]).not.toHaveProperty("accessToken");
+  });
+
+  it("runs child-scoped API commands without --child in gateway_api_20", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createGatewayApi20SessionStub() as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{ data: { Grades: unknown[] } }>(stdout);
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(output.data.Grades).toEqual([]);
+  });
+
+  it("returns a structured unsupported error when gateway_api_20 receives --child", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat([
+        "node",
+        "librus",
+        "grades",
+        "list",
+        "--child",
+        "child-login",
+      ]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createGatewayApi20SessionStub() as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{
+      error: {
+        code: string;
+        message: string;
+        details: { apiBackend: string };
+      };
+    }>(stderr);
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(output.error.code).toBe("UNSUPPORTED_BACKEND");
+    expect(output.error.message).toContain("gateway_api_20");
+    expect(output.error.details).toEqual({ apiBackend: "gateway_api_20" });
+  });
+
+  it("returns a structured child-required error when portal mode omits --child", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createSessionStub() as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(output.error.code).toBe("CHILD_REQUIRED");
+    expect(output.error.message).toContain("--child <id-or-login>");
+  });
+
+  it("uses LIBRUS_CHILD as the api_v3 default child selector", async () => {
+    process.env.LIBRUS_CHILD = "env-child";
+    let stdout = "";
+    let stderr = "";
+    const session = createSessionStub();
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => session as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{ data: { Grades: unknown[] } }>(stdout);
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe("");
+    expect(session.resolveChild).toHaveBeenCalledWith("env-child");
+    expect(output.data.Grades).toEqual([]);
+  });
+
+  it("lets --child override LIBRUS_CHILD in api_v3", async () => {
+    process.env.LIBRUS_CHILD = "env-child";
+    let stdout = "";
+    let stderr = "";
+    const session = createSessionStub();
+    const exitCode = await runCli(
+      withJsonFormat([
+        "node",
+        "librus",
+        "grades",
+        "list",
+        "--child",
+        "cli-child",
+      ]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => session as never,
+        outputWidth: 80,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout).not.toBe("");
+    expect(stderr).toBe("");
+    expect(session.resolveChild).toHaveBeenCalledWith("cli-child");
   });
 
   it("prints root help and exits successfully when no command is provided", async () => {
@@ -307,7 +464,7 @@ describe("runCli", () => {
     expect(stderr).toContain("5000");
   });
 
-  it("keeps usage errors as failures", async () => {
+  it("keeps portal child requirement errors as failures", async () => {
     let stderr = "";
     const processStderrWrite = vi
       .spyOn(process.stderr, "write")
@@ -321,8 +478,9 @@ describe("runCli", () => {
     });
 
     expect(exitCode).not.toBe(0);
-    expect(stderr).toContain("CLI_USAGE_ERROR");
-    expect(stderr).toContain("required option");
+    expect(stderr).toContain("CHILD_REQUIRED");
+    expect(stderr).toContain("--child");
+    expect(stderr).toContain("<id-or-login>");
     expect(processStderrWrite).not.toHaveBeenCalled();
     processStderrWrite.mockRestore();
   });

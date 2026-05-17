@@ -1,13 +1,22 @@
 import { Command, InvalidArgumentError } from "commander";
 
-import type { ChildAccount, LibrusSession } from "../../sdk/index.js";
+import {
+  LibrusSdkError,
+  type ChildAccount,
+  type LibrusSession,
+} from "../../sdk/index.js";
 
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
+  getSessionApiBackend,
+  resolveApiV3ChildSelector,
   type CliFormatOptions,
   writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 type MessageBackendName = "api3" | "wiadomosci";
@@ -22,55 +31,68 @@ export function createMessagesCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addFormatOption(
-      new Command("list").description("List messages for a child"),
+    addChildOption(
+      addFormatOption(
+        new Command("list").description("List messages for a child"),
+      ),
     ),
     context,
   );
   const bffList = configureCommand(
-    addFormatOption(
-      new Command("bff-list").description(
-        "List BFF inbox messages for a child",
+    addChildOption(
+      addFormatOption(
+        new Command("bff-list").description(
+          "List BFF inbox messages for a child",
+        ),
       ),
     ),
     context,
   );
   const get = configureCommand(
-    addFormatOption(new Command("get").description("Get a message by id")),
+    addChildOption(
+      addFormatOption(new Command("get").description("Get a message by id")),
+    ),
     context,
   );
   const unread = configureCommand(
-    addFormatOption(
-      new Command("unread").description("List unread messages for a child"),
+    addChildOption(
+      addFormatOption(
+        new Command("unread").description("List unread messages for a child"),
+      ),
     ),
     context,
   );
   const wiadomosciList = configureCommand(
-    addFormatOption(
-      new Command("wiadomosci-list").description(
-        "List messages through wiadomosci.librus.pl",
+    addChildOption(
+      addFormatOption(
+        new Command("wiadomosci-list").description(
+          "List messages through wiadomosci.librus.pl",
+        ),
       ),
     ),
     context,
   );
   const wiadomosciGet = configureCommand(
-    addFormatOption(
-      new Command("wiadomosci-get").description(
-        "Get a message through wiadomosci.librus.pl",
+    addChildOption(
+      addFormatOption(
+        new Command("wiadomosci-get").description(
+          "Get a message through wiadomosci.librus.pl",
+        ),
       ),
     ),
     context,
   );
   const wiadomosciUnread = configureCommand(
-    addFormatOption(
-      new Command("wiadomosci-unread").description(
-        "List unread messages through wiadomosci.librus.pl",
+    addChildOption(
+      addFormatOption(
+        new Command("wiadomosci-unread").description(
+          "List unread messages through wiadomosci.librus.pl",
+        ),
       ),
     ),
     context,
   );
 
-  list.requiredOption("--child <id-or-login>", "Child account id or login");
   list.option("--after-id <id>", "List messages after the given message id");
   list.option(
     "--backend <backend>",
@@ -80,30 +102,31 @@ export function createMessagesCommand(context: CliContext): Command {
   );
   list.action(
     async (
-      options: MessageBackendOptions & { afterId?: string; child: string },
+      options: MessageBackendOptions & { afterId?: string; child?: string },
     ) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await createMessageClient(session, child, options.backend);
+      const { child, client } = await createMessageClient(
+        session,
+        options.child,
+        options.backend,
+      );
       const data = await client.listMessages(
         options.afterId ? { afterId: options.afterId } : {},
       );
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  bffList.requiredOption("--child <id-or-login>", "Child account id or login");
-  bffList.action(async (options: CliFormatOptions & { child: string }) => {
+  bffList.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
+    const child = await resolvePortalChild(session, options.child);
     const client = await session.forChildBff(child);
     const data = await client.listMessages();
 
     writeChildScopedOutput(context, options.format, child, data);
   });
 
-  get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Message id");
   get.option(
     "--backend <backend>",
@@ -112,44 +135,47 @@ export function createMessagesCommand(context: CliContext): Command {
     "api3",
   );
   get.action(
-    async (options: MessageBackendOptions & { child: string; id: string }) => {
+    async (options: MessageBackendOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await createMessageClient(session, child, options.backend);
+      const { child, client } = await createMessageClient(
+        session,
+        options.child,
+        options.backend,
+      );
       const data = await client.getMessage(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  unread.requiredOption("--child <id-or-login>", "Child account id or login");
   unread.option(
     "--backend <backend>",
     "Message backend: api3 or wiadomosci",
     parseMessageBackendName,
     "api3",
   );
-  unread.action(async (options: MessageBackendOptions & { child: string }) => {
+  unread.action(async (options: MessageBackendOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await createMessageClient(session, child, options.backend);
+    const { child, client } = await createMessageClient(
+      session,
+      options.child,
+      options.backend,
+    );
     const data = await client.getUnreadMessages();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  wiadomosciList.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   wiadomosciList.option(
     "--after-id <id>",
     "List messages after the given message id",
   );
   wiadomosciList.action(
-    async (options: CliFormatOptions & { afterId?: string; child: string }) => {
+    async (
+      options: CliFormatOptions & { afterId?: string; child?: string },
+    ) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
+      const child = await resolvePortalChild(session, options.child);
       const client = await session.forChildWiadomosci(child);
       const data = await client.listMessages(
         options.afterId ? { afterId: options.afterId } : {},
@@ -159,15 +185,11 @@ export function createMessagesCommand(context: CliContext): Command {
     },
   );
 
-  wiadomosciGet.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   wiadomosciGet.requiredOption("--id <id>", "Message id");
   wiadomosciGet.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
+      const child = await resolvePortalChild(session, options.child);
       const client = await session.forChildWiadomosci(child);
       const data = await client.getMessage(options.id);
 
@@ -175,14 +197,10 @@ export function createMessagesCommand(context: CliContext): Command {
     },
   );
 
-  wiadomosciUnread.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   wiadomosciUnread.action(
-    async (options: CliFormatOptions & { child: string }) => {
+    async (options: CliFormatOptions & { child?: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
+      const child = await resolvePortalChild(session, options.child);
       const client = await session.forChildWiadomosci(child);
       const data = await client.getUnreadMessages();
 
@@ -211,10 +229,46 @@ function parseMessageBackendName(value: string): MessageBackendName {
 
 async function createMessageClient(
   session: LibrusSession,
-  child: ChildAccount,
+  childSelector: string | undefined,
   backend: MessageBackendName,
-): ReturnType<LibrusSession["forChild"]> {
-  return backend === "wiadomosci"
-    ? session.forChildWiadomosci(child)
-    : session.forChild(child);
+): Promise<{
+  child?: ChildAccount;
+  client: Awaited<ReturnType<LibrusSession["forChild"]>>;
+}> {
+  if (backend === "api3") {
+    return createChildApiClient(session, childSelector);
+  }
+
+  const child = await resolvePortalChild(session, childSelector);
+
+  return {
+    child,
+    client: await session.forChildWiadomosci(child),
+  };
+}
+
+async function resolvePortalChild(
+  session: LibrusSession,
+  childSelector?: string,
+): Promise<ChildAccount> {
+  const apiBackend = getSessionApiBackend(session);
+
+  if (apiBackend === "gateway_api_20") {
+    throw new LibrusSdkError(
+      "UNSUPPORTED_BACKEND",
+      "This command requires api_v3 and is not available when using gateway_api_20.",
+      { apiBackend },
+    );
+  }
+
+  const resolvedChildSelector = resolveApiV3ChildSelector(childSelector);
+
+  if (!resolvedChildSelector) {
+    throw new LibrusSdkError(
+      "CHILD_REQUIRED",
+      "Child account id or login is required for api_v3. Pass --child <id-or-login> or set LIBRUS_CHILD.",
+    );
+  }
+
+  return session.resolveChild(resolvedChildSelector);
 }

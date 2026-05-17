@@ -66,6 +66,8 @@ function createCommandContext(
       outputWidth: 80,
       createSession: () =>
         ({
+          getApiBackend: () => "api_v3",
+          getAuthMode: () => "portal",
           resolveChild,
           forChild,
           forChildWiadomosci,
@@ -81,6 +83,17 @@ function createCommandContext(
 }
 
 const successCases = [
+  {
+    name: "me",
+    argv: ["node", "librus", "me", "--child", "child-login"],
+    method: "getMe",
+    response: {
+      Me: { Id: 1, FirstName: "Child", LastName: "Name" },
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Me",
+    },
+    expectedArgs: [],
+  },
   {
     name: "messages list",
     argv: ["node", "librus", "messages", "list", "--child", "child-login"],
@@ -271,7 +284,8 @@ const usageFailureCases = [
   {
     name: "messages list requires child",
     argv: ["node", "librus", "messages", "list"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "messages get requires id",
@@ -281,12 +295,14 @@ const usageFailureCases = [
   {
     name: "messages unread requires child",
     argv: ["node", "librus", "messages", "unread"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "messages bff-list requires child",
     argv: ["node", "librus", "messages", "bff-list"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "messages list rejects invalid backend",
@@ -305,7 +321,8 @@ const usageFailureCases = [
   {
     name: "messages wiadomosci-list requires child",
     argv: ["node", "librus", "messages", "wiadomosci-list"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "messages wiadomosci-get requires id",
@@ -322,7 +339,8 @@ const usageFailureCases = [
   {
     name: "messages wiadomosci-unread requires child",
     argv: ["node", "librus", "messages", "wiadomosci-unread"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "timetable week requires week start",
@@ -343,7 +361,8 @@ const usageFailureCases = [
   {
     name: "announcements list requires child",
     argv: ["node", "librus", "announcements", "list"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "announcements get requires id",
@@ -353,7 +372,8 @@ const usageFailureCases = [
   {
     name: "notes list requires child",
     argv: ["node", "librus", "notes", "list"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "notes get requires id",
@@ -394,13 +414,17 @@ describe("runCli high-value commands", () => {
 
   it.each(usageFailureCases)(
     "keeps usage failures for $name",
-    async ({ argv, expectedMessage }) => {
+    async ({ argv, expectedCode = "CLI_USAGE_ERROR", expectedMessage }) => {
       let stderr = "";
 
       const exitCode = await runCli(withJsonFormat(argv), {
         stdout: { write: () => undefined },
         stderr: { write: (chunk) => (stderr += chunk) },
-        createSession: () => ({}) as never,
+        createSession: () =>
+          ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
+          }) as never,
         outputWidth: 80,
       });
 
@@ -409,7 +433,7 @@ describe("runCli high-value commands", () => {
       );
 
       expect(exitCode).not.toBe(0);
-      expect(output.error.code).toBe("CLI_USAGE_ERROR");
+      expect(output.error.code).toBe(expectedCode);
       expect(output.error.message).toContain(expectedMessage);
     },
   );
@@ -599,6 +623,8 @@ describe("runCli high-value commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild: async () => createChild(),
             forChild: async () => {
               throw new LibrusSdkError(

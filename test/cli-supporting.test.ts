@@ -46,6 +46,8 @@ function createCommandContext(
       outputWidth: 80,
       createSession: () =>
         ({
+          getApiBackend: () => "api_v3",
+          getAuthMode: () => "portal",
           resolveChild,
           forChild,
         }) as never,
@@ -57,6 +59,28 @@ function createCommandContext(
 }
 
 const successCases = [
+  {
+    name: "attendance list",
+    argv: ["node", "librus", "attendance", "list", "--child", "child-login"],
+    method: "getAttendances",
+    response: {
+      Attendances: [],
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/Attendances",
+    },
+    expectedArgs: [],
+  },
+  {
+    name: "homework list",
+    argv: ["node", "librus", "homework", "list", "--child", "child-login"],
+    method: "getHomeWorks",
+    response: {
+      HomeWorks: [],
+      Resources: {},
+      Url: "https://api.librus.pl/3.0/HomeWorks",
+    },
+    expectedArgs: [],
+  },
   {
     name: "lessons list",
     argv: ["node", "librus", "lessons", "list", "--child", "child-login"],
@@ -414,7 +438,8 @@ const usageFailureCases = [
   {
     name: "lucky-number get requires child",
     argv: ["node", "librus", "lucky-number", "get"],
-    expectedMessage: "required option '--child <id-or-login>' not specified",
+    expectedCode: "CHILD_REQUIRED",
+    expectedMessage: "Pass --child <id-or-login> or set LIBRUS_CHILD.",
   },
   {
     name: "justifications get requires id",
@@ -496,6 +521,8 @@ describe("supporting CLI commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild,
             forChild,
           }) as never,
@@ -561,6 +588,8 @@ describe("supporting CLI commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild,
             forChild,
           }) as never,
@@ -620,6 +649,8 @@ describe("supporting CLI commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild,
             forChild,
           }) as never,
@@ -714,6 +745,8 @@ describe("supporting CLI commands", () => {
           outputWidth: 80,
           createSession: () =>
             ({
+              getApiBackend: () => "api_v3",
+              getAuthMode: () => "portal",
               resolveChild,
               forChild,
             }) as never,
@@ -768,6 +801,8 @@ describe("supporting CLI commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild,
             forChild,
           }) as never,
@@ -817,6 +852,8 @@ describe("supporting CLI commands", () => {
         outputWidth: 80,
         createSession: () =>
           ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
             resolveChild,
             forChild,
           }) as never,
@@ -832,28 +869,33 @@ describe("supporting CLI commands", () => {
     expect(output.error.code).toBe("RESPONSE_VALIDATION_FAILED");
   });
 
-  it.each(usageFailureCases)("$name", async ({ argv, expectedMessage }) => {
-    let stderr = "";
+  it.each(usageFailureCases)(
+    "$name",
+    async ({ argv, expectedCode = "CLI_USAGE_ERROR", expectedMessage }) => {
+      let stderr = "";
 
-    const exitCode = await runCli(withJsonFormat(argv), {
-      stdout: { write: () => undefined },
-      stderr: { write: (chunk) => (stderr += chunk) },
-      outputWidth: 80,
-      createSession: () =>
-        ({
-          resolveChild: vi.fn(),
-          forChild: vi.fn(),
-        }) as never,
-    });
+      const exitCode = await runCli(withJsonFormat(argv), {
+        stdout: { write: () => undefined },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        outputWidth: 80,
+        createSession: () =>
+          ({
+            getApiBackend: () => "api_v3",
+            getAuthMode: () => "portal",
+            resolveChild: vi.fn(),
+            forChild: vi.fn(),
+          }) as never,
+      });
 
-    const output = parseJson<{ error: { code: string; message: string } }>(
-      stderr,
-    );
+      const output = parseJson<{ error: { code: string; message: string } }>(
+        stderr,
+      );
 
-    expect(exitCode).not.toBe(0);
-    expect(output.error.code).toBe("CLI_USAGE_ERROR");
-    expect(output.error.message).toContain(expectedMessage);
-  });
+      expect(exitCode).not.toBe(0);
+      expect(output.error.code).toBe(expectedCode);
+      expect(output.error.message).toContain(expectedMessage);
+    },
+  );
 
   it("renders text output by default for lessons list", async () => {
     const { context, getOutput } = createCommandContext("listLessons", {

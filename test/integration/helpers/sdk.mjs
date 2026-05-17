@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { accessSync, constants } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { selectTargetChildren, summarizeChild } from "./children.mjs";
+import {
+  GATEWAY_API_20_CHILD,
+  isGatewayApi20Mode,
+  selectTargetChildren,
+  summarizeChild,
+} from "./children.mjs";
 import { serializeError } from "./errors.mjs";
 
 const sdkEntryUrl = new URL("../../../dist/sdk/index.js", import.meta.url);
@@ -86,6 +91,15 @@ function assertApi3Url(payload) {
   );
 }
 
+function assertGatewayApi2Url(payload) {
+  assert.equal(
+    typeof payload.Url === "string" &&
+      payload.Url.startsWith("https://synergia.librus.pl/gateway/api/2.0/"),
+    true,
+    `Expected synergia.librus.pl gateway API 2.0 URL, got ${payload.Url}`,
+  );
+}
+
 function summarizeApi3ArrayResponse(payload, key) {
   assertApi3Url(payload);
   return summarizeArrayResponse(payload, key);
@@ -93,6 +107,16 @@ function summarizeApi3ArrayResponse(payload, key) {
 
 function summarizeApi3CountResponse(payload, key) {
   assertApi3Url(payload);
+  return summarizeCountResponse(payload, key);
+}
+
+function summarizeGatewayApi2ArrayResponse(payload, key) {
+  assertGatewayApi2Url(payload);
+  return summarizeArrayResponse(payload, key);
+}
+
+function summarizeGatewayApi2CountResponse(payload, key) {
+  assertGatewayApi2Url(payload);
   return summarizeCountResponse(payload, key);
 }
 
@@ -761,12 +785,19 @@ async function runTimetableEntryCheck(api) {
 
 async function runMessageDetailCheck(
   api,
-  { allowForbidden = false, expectWiadomosciUrl = false } = {},
+  {
+    allowForbidden = false,
+    expectGatewayApi2Url = false,
+    expectWiadomosciUrl = false,
+    transportLabel = "API 3.0",
+  } = {},
 ) {
   try {
     const payload = await api.listMessages();
     if (expectWiadomosciUrl) {
       assertWiadomosciUrl(payload);
+    } else if (expectGatewayApi2Url) {
+      assertGatewayApi2Url(payload);
     } else {
       assertApi3Url(payload);
     }
@@ -783,6 +814,8 @@ async function runMessageDetailCheck(
     const message = await api.getMessage(messageId);
     if (expectWiadomosciUrl) {
       assertWiadomosciUrl(message);
+    } else if (expectGatewayApi2Url) {
+      assertGatewayApi2Url(message);
     } else {
       assertApi3Url(message);
     }
@@ -797,7 +830,7 @@ async function runMessageDetailCheck(
       return {
         ok: true,
         skipped: true,
-        reason: "API 3.0 messages returned 403 for this child account.",
+        reason: `${transportLabel} messages returned 403 for this child account.`,
       };
     }
 
@@ -822,19 +855,24 @@ async function runWiadomosciUnreadMessagesCheck(api) {
   );
 }
 
-async function runApi3MessagesCheck(api) {
+async function runApi3MessagesCheck(
+  api,
+  { expectGatewayApi2Url = false, transportLabel = "API 3.0" } = {},
+) {
   try {
     const payload = await api.listMessages();
     return {
       ok: true,
-      ...summarizeApi3ArrayResponse(payload, "Messages"),
+      ...(expectGatewayApi2Url
+        ? summarizeGatewayApi2ArrayResponse(payload, "Messages")
+        : summarizeApi3ArrayResponse(payload, "Messages")),
     };
   } catch (error) {
     if (isApiStatus(error, 403)) {
       return {
         ok: true,
         skipped: true,
-        reason: "API 3.0 messages returned 403 for this child account.",
+        reason: `${transportLabel} messages returned 403 for this child account.`,
       };
     }
 
@@ -845,19 +883,24 @@ async function runApi3MessagesCheck(api) {
   }
 }
 
-async function runApi3UnreadMessagesCheck(api) {
+async function runApi3UnreadMessagesCheck(
+  api,
+  { expectGatewayApi2Url = false, transportLabel = "API 3.0" } = {},
+) {
   try {
     const payload = await api.getUnreadMessages();
     return {
       ok: true,
-      ...summarizeApi3CountResponse(payload, "UnreadMessages"),
+      ...(expectGatewayApi2Url
+        ? summarizeGatewayApi2CountResponse(payload, "UnreadMessages")
+        : summarizeApi3CountResponse(payload, "UnreadMessages")),
     };
   } catch (error) {
     if (isApiStatus(error, 403)) {
       return {
         ok: true,
         skipped: true,
-        reason: "API 3.0 unread messages returned 403 for this child account.",
+        reason: `${transportLabel} unread messages returned 403 for this child account.`,
       };
     }
 
@@ -1218,6 +1261,88 @@ const sdkChecks = [
 export async function runSdkMatrix(env = process.env) {
   const { LibrusSession } = await loadSdkModule();
   const session = LibrusSession.fromEnv(env);
+
+  if (isGatewayApi20Mode(env)) {
+    const api = await session.forChild();
+    const checkEntries = await Promise.all(
+      sdkChecks.map(async ({ name, load, summarize }) => {
+        const check = await runCheck(() => load(api), summarize);
+        return [name, check];
+      }),
+    );
+    const behaviourSystemProposal = await runBehaviourSystemProposalCheck(api);
+    const timetableEntry = await runTimetableEntryCheck(api);
+    const lessonDetail = await runLessonDetailCheck(api);
+    const plannedLessonDetail = await runPlannedLessonDetailCheck(api);
+    const plannedLessonAttachment = await runPlannedLessonAttachmentCheck(api);
+    const realizationDetail = await runRealizationDetailCheck(api);
+    const justifications = await runJustificationsListCheck(api);
+    const justificationDetail = await runJustificationDetailCheck(api);
+    const authPhotoDetail = await runAuthPhotoDetailCheck(api);
+    const authUserInfo = await runAuthUserInfoCheck(api);
+    const authClassroom = await runAuthClassroomCheck(api);
+    const messages = await runApi3MessagesCheck(api, {
+      expectGatewayApi2Url: true,
+      transportLabel: "Gateway API 2.0",
+    });
+    const unreadMessages = await runApi3UnreadMessagesCheck(api, {
+      expectGatewayApi2Url: true,
+      transportLabel: "Gateway API 2.0",
+    });
+    const messageDetail = await runMessageDetailCheck(api, {
+      allowForbidden: true,
+      expectGatewayApi2Url: true,
+      transportLabel: "Gateway API 2.0",
+    });
+    const messageReceiverGroupDetail =
+      await runMessageReceiverGroupDetailCheck(api);
+    const schoolNoticeDetail = await runSchoolNoticeDetailCheck(api);
+    const noteDetail = await runNoteDetailCheck(api);
+    const schoolById = await runSchoolByIdCheck(api);
+    const subjectDetail = await runSubjectDetailCheck(api);
+    const userDetail = await runUserDetailCheck(api);
+    const homeworkAssignmentAttachment =
+      await runHomeworkAssignmentAttachmentCheck(api);
+    const checks = Object.fromEntries([
+      ...checkEntries,
+      ["behaviourSystemProposal", behaviourSystemProposal],
+      ["timetableEntry", timetableEntry],
+      ["lessonDetail", lessonDetail],
+      ["plannedLessonDetail", plannedLessonDetail],
+      ["plannedLessonAttachment", plannedLessonAttachment],
+      ["realizationDetail", realizationDetail],
+      ["justifications", justifications],
+      ["justificationDetail", justificationDetail],
+      ["authPhotoDetail", authPhotoDetail],
+      ["authUserInfo", authUserInfo],
+      ["authClassroom", authClassroom],
+      ["messages", messages],
+      ["unreadMessages", unreadMessages],
+      ["messageDetail", messageDetail],
+      ["messageReceiverGroupDetail", messageReceiverGroupDetail],
+      ["schoolNoticeDetail", schoolNoticeDetail],
+      ["noteDetail", noteDetail],
+      ["schoolById", schoolById],
+      ["subjectDetail", subjectDetail],
+      ["userDetail", userDetail],
+      ["homeworkAssignmentAttachment", homeworkAssignmentAttachment],
+    ]);
+    const child = {
+      ...GATEWAY_API_20_CHILD,
+      ok: Object.values(checks).every((check) => check.ok),
+      checks,
+    };
+
+    return {
+      ok: child.ok,
+      apiBackend: "gateway_api_20",
+      availableChildren: [summarizeChild(GATEWAY_API_20_CHILD)],
+      targetChildren: [summarizeChild(GATEWAY_API_20_CHILD)],
+      childCount: 1,
+      children: [child],
+    };
+  }
+
   const linkedChildren = await session.listChildren();
   const targetChildren = selectTargetChildren(linkedChildren, env);
 
