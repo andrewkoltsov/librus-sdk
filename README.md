@@ -5,11 +5,17 @@
 [![Snyk Security](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/snyk.yml/badge.svg?branch=master)](https://github.com/andrewkoltsov/librus-sdk/actions/workflows/snyk.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/andrewkoltsov/librus-sdk/badge)](https://scorecard.dev/viewer/?uri=github.com/andrewkoltsov/librus-sdk)
 
-Fresh TypeScript SDK and CLI for the Librus family portal flow.
+Fresh TypeScript SDK and CLI for the Librus family portal and Gateway API 2.0
+JSON flows.
 
-This project logs into `portal.librus.pl`, loads linked child accounts from
-`portal/api/v3/SynergiaAccounts`, and uses the selected child account's bearer
-token against `https://api.librus.pl/3.0`.
+For Portal accounts, this project logs into `portal.librus.pl`, loads linked
+child accounts from `portal/api/v3/SynergiaAccounts`, and uses the selected
+child account's bearer token against `https://api.librus.pl/3.0`.
+
+For school-issued accounts, it can also log in with the Gateway API 2.0 login
+and password, keep the resulting Synergia cookies, and read
+`https://synergia.librus.pl/gateway/api/2.0`. That backend is already scoped to
+one account and does not support Portal-only child discovery.
 
 It intentionally does not reuse the legacy `synergia.librus.pl` HTML-scraping
 approach.
@@ -67,21 +73,34 @@ CLI published from this repository.
 `LibrusSession.fromEnv()` and the CLI read credentials and timeout settings from
 these variables:
 
-| Variable                 | Required | Purpose                                                     |
-| ------------------------ | -------- | ----------------------------------------------------------- |
-| `LIBRUS_PORTAL_EMAIL`    | Yes      | Portal login email used for `portal.librus.pl`.             |
-| `LIBRUS_PORTAL_PASSWORD` | Yes      | Portal login password used for `portal.librus.pl`.          |
-| `LIBRUS_EMAIL`           | Fallback | Compatibility alias when `LIBRUS_PORTAL_EMAIL` is unset.    |
-| `LIBRUS_PASSWORD`        | Fallback | Compatibility alias when `LIBRUS_PORTAL_PASSWORD` is unset. |
-| `LIBRUS_TIMEOUT_MS`      | No       | Positive integer request timeout in milliseconds.           |
+| Variable                  | Required | Purpose                                                              |
+| ------------------------- | -------- | -------------------------------------------------------------------- |
+| `LIBRUS_API_BACKEND`      | No       | Optional `api_v3` or `gateway_api_20` selector.                      |
+| `LIBRUS_PORTAL_EMAIL`     | `api_v3` | Portal login email used for `portal.librus.pl`.                      |
+| `LIBRUS_PORTAL_PASSWORD`  | `api_v3` | Portal login password used for `portal.librus.pl`.                   |
+| `LIBRUS_GATEWAY_LOGIN`    | Gateway  | School-issued Gateway API 2.0 login. This is not an email address.   |
+| `LIBRUS_GATEWAY_PASSWORD` | Gateway  | Password for the Gateway API 2.0 login.                              |
+| `LIBRUS_CHILD`            | No       | Optional default child id or login for `api_v3` CLI commands.        |
+| `LIBRUS_EMAIL`            | Fallback | Deprecated Portal-only alias when `LIBRUS_PORTAL_EMAIL` is unset.    |
+| `LIBRUS_PASSWORD`         | Fallback | Deprecated Portal-only alias when `LIBRUS_PORTAL_PASSWORD` is unset. |
+| `LIBRUS_TIMEOUT_MS`       | No       | Positive integer request timeout in milliseconds.                    |
 
 If no timeout is configured, portal and child-scoped SDK requests default to
 `30000` milliseconds. Invalid timeout values fail fast with
 `CONFIGURATION_ERROR`.
 
+When no `LIBRUS_API_BACKEND` is set, complete Portal credentials select
+`api_v3`. If Portal credentials are absent and complete Gateway credentials are
+present, `gateway_api_20` is selected. If neither set is complete, the default
+is `api_v3` so missing-credential errors stay Portal-oriented. When both
+credential sets are complete, `api_v3` wins unless
+`LIBRUS_API_BACKEND=gateway_api_20` is set explicitly.
+
 Empty credential variables are treated as invalid. If a portal-prefixed
-credential variable is set but empty, the compatibility alias for that
-credential is ignored.
+credential variable is set but empty, the deprecated compatibility alias for
+that credential is ignored. `LIBRUS_CHILD` is used only by `api_v3`; CLI
+`--child` wins over `LIBRUS_CHILD`, and explicit `--child` is rejected for
+`gateway_api_20` because that backend is already scoped to one account.
 
 ### Top-Level SDK Entry Points
 
@@ -90,11 +109,13 @@ Import from the package root:
 ```ts
 import {
   BffApiClient,
+  GatewayApi20AuthClient,
   LibrusSession,
   PortalClient,
   SynergiaApiClient,
   generateOpenApiDocument,
   LibrusSdkError,
+  type LibrusApiBackend,
 } from "librus-sdk";
 ```
 
@@ -102,6 +123,7 @@ import {
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `LibrusSession`           | Recommended high-level entry point. Handles login, linked-child discovery, child selection, and creation of child-scoped API clients. |
 | `BffApiClient`            | Experimental child-scoped client for selected `https://testbff.librus.pl/v1` mobile backend reads.                                    |
+| `GatewayApi20AuthClient`  | Lower-level Gateway API 2.0 login/password auth client for `synergia.librus.pl/gateway/api/2.0` cookie-backed requests.               |
 | `PortalClient`            | Lower-level portal session client for `portal.librus.pl` login, `/Me`, and `/SynergiaAccounts`.                                       |
 | `SynergiaApiClient`       | Child-scoped GET client for the supported `https://api.librus.pl/3.0` surface when you already have a bearer token.                   |
 | `generateOpenApiDocument` | Generates the shipped OpenAPI document for the supported child-scoped GET subset.                                                     |
@@ -118,11 +140,39 @@ const grades = await client.getGrades();
 console.log(grades);
 ```
 
+Gateway API 2.0 flow:
+
+```bash
+LIBRUS_API_BACKEND=gateway_api_20
+LIBRUS_GATEWAY_LOGIN=1234567
+LIBRUS_GATEWAY_PASSWORD=your-password
+npm exec --package librus-sdk -- librus-sdk grades list
+```
+
+```ts
+import { LibrusSession } from "librus-sdk";
+
+const session = LibrusSession.fromGatewayCredentials({
+  login: "1234567",
+  password: "your-password",
+});
+const client = await session.forChild();
+const grades = await client.getGrades();
+console.log(grades);
+```
+
+Gateway API 2.0 is already child-scoped. `getPortalMe()`,
+`getSynergiaAccounts()`, `listChildren()`, `resolveChild(...)`,
+`forChildBff(...)`, and `forChildWiadomosci(...)` require Portal auth and fail
+with `UNSUPPORTED_BACKEND` in `gateway_api_20`.
+
 Current high-level methods on `LibrusSession`:
 
 - `LibrusSession.fromEnv(env?)`
-- `new LibrusSession({ credentials, portalClient?, portalClientOptions?, bffClientOptions?, synergiaClientOptions?, requestTimeoutMs? })`
+- `LibrusSession.fromGatewayCredentials(credentials, options?)`
+- `new LibrusSession({ apiBackend?, credentials, portalClient?, portalClientOptions?, gatewayApi20AuthClient?, gatewayApi20AuthClientOptions?, bffClientOptions?, synergiaClientOptions?, wiadomosciClientOptions?, requestTimeoutMs? })`
 - `login()`
+- `getApiBackend()`
 - `getPortalMe()`
 - `getSynergiaAccounts()`
 - `listChildren()`
@@ -160,15 +210,21 @@ Attachment-style methods such as `getHomeworkAssignmentAttachment(id)`,
 `getMessageAttachment(id)`, and `getPlannedLessonAttachment(id)` return
 `SynergiaBinaryResult` with `{ data, contentType, contentDisposition }`.
 
-When a `SynergiaApiClient` is created through `LibrusSession.forChild()`,
-message reads use the standard `https://api.librus.pl/3.0` backend by default.
-Use `LibrusSession.forChildWiadomosci()` to opt in to the
-portal-authenticated `https://wiadomosci.librus.pl/api` inbox backend for
-`listMessages()`, `getMessage(id)`, and `getUnreadMessages()`. Other
-child-scoped reads, message receiver groups, and message attachment downloads
-continue to use `https://api.librus.pl/3.0`. Direct
-`new SynergiaApiClient(token)` construction keeps using API 3.0 for all methods
-unless a custom message backend is supplied.
+When a `SynergiaApiClient` is created through `api_v3`
+`LibrusSession.forChild(child)`, reads use bearer-token requests against
+`https://api.librus.pl/3.0` by default. When it is created through
+`gateway_api_20` with `LibrusSession.forChild()` and no child selector, reads
+use cookie-backed requests against
+`https://synergia.librus.pl/gateway/api/2.0` instead; API 3.0 bearer requests
+are not expected to work for that backend.
+
+Use `LibrusSession.forChildWiadomosci()` to opt in to the portal-authenticated
+`https://wiadomosci.librus.pl/api` inbox backend for `listMessages()`,
+`getMessage(id)`, and `getUnreadMessages()`. Other child-scoped reads, message
+receiver groups, and message attachment downloads continue to use the session's
+default Synergia transport. Direct `new SynergiaApiClient(token)` construction
+keeps using API 3.0 for all methods unless lower-level transport options or a
+custom message backend are supplied.
 
 `BffApiClient` currently exposes the research-oriented `listMessages()` method
 for `GET https://testbff.librus.pl/v1/Messages`. It uses the selected child's
@@ -193,13 +249,18 @@ here rather than promising every helper type as a named top-level export.
 
 `LibrusSession` constructor options (`LibrusSessionOptions`):
 
-| Property                | Required | Meaning                                                                              |
-| ----------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `credentials`           | Yes      | Portal credentials object with `email` and `password`.                               |
-| `portalClient`          | No       | Reuse an existing `PortalClient` instance instead of constructing one internally.    |
-| `portalClientOptions`   | No       | Passed to the internally created `PortalClient` when `portalClient` is not supplied. |
-| `synergiaClientOptions` | No       | Passed to `SynergiaApiClient` instances created by `forChild(...)`.                  |
-| `requestTimeoutMs`      | No       | Session-wide default timeout for internally created portal and child clients.        |
+| Property                        | Required | Meaning                                                                              |
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `credentials`                   | Yes      | Portal `{ email, password }` or Gateway `{ login, password }` credentials.           |
+| `apiBackend`                    | No       | `api_v3` by default, or `gateway_api_20` for Gateway API 2.0 credentials.            |
+| `portalClient`                  | No       | Reuse an existing `PortalClient` instance instead of constructing one internally.    |
+| `portalClientOptions`           | No       | Passed to the internally created `PortalClient` when `portalClient` is not supplied. |
+| `gatewayApi20AuthClient`        | No       | Reuse an existing Gateway API 2.0 auth client in `gateway_api_20`.                   |
+| `gatewayApi20AuthClientOptions` | No       | Passed to the internally created Gateway API 2.0 auth client.                        |
+| `bffClientOptions`              | No       | Passed to BFF clients created by `forChildBff(...)`.                                 |
+| `synergiaClientOptions`         | No       | Passed to `SynergiaApiClient` instances created by `forChild(...)`.                  |
+| `wiadomosciClientOptions`       | No       | Passed to wiadomosci-backed clients created by `forChildWiadomosci(...)`.            |
+| `requestTimeoutMs`              | No       | Session-wide default timeout for internally created portal and child clients.        |
 
 `PortalClient` constructor options (`PortalClientOptions`):
 
@@ -218,6 +279,7 @@ here rather than promising every helper type as a named top-level export.
 | ------------------ | -------- | --------------------------------------------------------------- |
 | `fetch`            | No       | Custom fetch implementation for child-scoped API requests.      |
 | `apiBaseUrl`       | No       | Synergia API base URL. Defaults to `https://api.librus.pl/3.0`. |
+| `authMode`         | No       | `bearer` by default, or `cookie` for Gateway-created sessions.  |
 | `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.  |
 
 `generateOpenApiDocument()` options (`GenerateOpenApiDocumentOptions`):
@@ -247,26 +309,30 @@ Root CLI commands:
 - `librus-sdk --help`
 - `librus-sdk --version`
 
-Every leaf command supports `--format <text|json>`. Child-scoped commands use
-`--child <id-or-login>` to select the linked child account by numeric id or by
-login.
+Every leaf command supports `--format <text|json>`. In `api_v3`, child-scoped
+commands require a child selector: pass `--child <id-or-login>` or set
+`LIBRUS_CHILD`. `--child` wins when both are present. In `gateway_api_20`, the
+account is already child-scoped, so the same commands run without `--child` and
+explicit `--child` fails with `UNSUPPORTED_BACKEND`. Portal-only commands such
+as `children list`, `messages bff-list`, and `messages wiadomosci-list` are not
+available in `gateway_api_20`.
 
-| Family           | Subcommands                                                                                                 | Extra selectors and flags                                                                                                                                                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `children`       | `list`                                                                                                      | No child selector.                                                                                                                                                                                                                           |
-| `me`             | root command                                                                                                | `--child`.                                                                                                                                                                                                                                   |
-| `grades`         | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
-| `attendance`     | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
-| `homework`       | `list`                                                                                                      | `--child`.                                                                                                                                                                                                                                   |
-| `messages`       | `list`, `bff-list`, `get`, `unread`, `wiadomosci-list`, `wiadomosci-get`, `wiadomosci-unread`               | `list`, `get`, and `unread` support `--backend <api3\|wiadomosci>` and default to `api3`; `wiadomosci-list` supports `--after-id <id>`; `bff-list` reads the experimental BFF inbox payload; `get` and `wiadomosci-get` require `--id <id>`. |
-| `timetable`      | `week`, `day`, `entry`                                                                                      | `week` requires `--week-start <YYYY-MM-DD>`; `day` requires `--day <YYYY-MM-DD>`; `entry` requires `--id <id>`.                                                                                                                              |
-| `announcements`  | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                                                                                                                                  |
-| `notes`          | `list`, `get`                                                                                               | `get` requires `--id <id>`.                                                                                                                                                                                                                  |
-| `lessons`        | `list`, `get`, `planned-list`, `planned-get`, `planned-attachment`, `realizations-list`, `realizations-get` | `get`, `planned-get`, and `realizations-get` require `--id <id>`; `planned-attachment` requires `--id <id>` and `--output <path>`.                                                                                                           |
-| `lucky-number`   | `get`                                                                                                       | Optional `--for-day <YYYY-MM-DD>`.                                                                                                                                                                                                           |
-| `notifications`  | `center`, `push-configurations`                                                                             | `--child`.                                                                                                                                                                                                                                   |
-| `justifications` | `list`, `get`, `conferences`, `system-data`                                                                 | `list` supports `--date-from <YYYY-MM-DD>`; `get` requires `--id <id>`.                                                                                                                                                                      |
-| `auth`           | `photos`, `photo`, `user-info`, `token-info`, `classroom`                                                   | `photo` requires `--id <id>` and `--output <path>`; `user-info` and `classroom` require `--id <id>`.                                                                                                                                         |
+| Family           | Subcommands                                                                                                 | Extra selectors and flags                                                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `children`       | `list`                                                                                                      | Portal-only; no child selector.                                                                                                                                                                    |
+| `me`             | root command                                                                                                | `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                                                     |
+| `grades`         | `list`                                                                                                      | `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                                                     |
+| `attendance`     | `list`                                                                                                      | `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                                                     |
+| `homework`       | `list`                                                                                                      | `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                                                     |
+| `messages`       | `list`, `bff-list`, `get`, `unread`, `wiadomosci-list`, `wiadomosci-get`, `wiadomosci-unread`               | `list`, `get`, and `unread` support `--backend <api3\|wiadomosci>` and default to `api3`; `get` and `wiadomosci-get` require `--id <id>`; `bff-*` and `wiadomosci-*` are Portal-only.              |
+| `timetable`      | `week`, `day`, `entry`                                                                                      | `week` requires `--week-start <YYYY-MM-DD>`; `day` requires `--day <YYYY-MM-DD>`; `entry` requires `--id <id>`; `api_v3` requires a child selector; `gateway_api_20` does not.                     |
+| `announcements`  | `list`, `get`                                                                                               | `get` requires `--id <id>`; `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                         |
+| `notes`          | `list`, `get`                                                                                               | `get` requires `--id <id>`; `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                         |
+| `lessons`        | `list`, `get`, `planned-list`, `planned-get`, `planned-attachment`, `realizations-list`, `realizations-get` | `get`, `planned-get`, and `realizations-get` require `--id <id>`; `planned-attachment` requires `--id <id>` and `--output <path>`; `api_v3` requires a child selector; `gateway_api_20` does not.  |
+| `lucky-number`   | `get`                                                                                                       | Optional `--for-day <YYYY-MM-DD>`; `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                  |
+| `notifications`  | `center`, `push-configurations`                                                                             | `api_v3` requires a child selector; `gateway_api_20` does not.                                                                                                                                     |
+| `justifications` | `list`, `get`, `conferences`, `system-data`                                                                 | `list` supports `--date-from <YYYY-MM-DD>`; `get` requires `--id <id>`; `api_v3` requires a child selector; `gateway_api_20` does not.                                                             |
+| `auth`           | `photos`, `photo`, `user-info`, `token-info`, `classroom`                                                   | `photo` requires `--id <id>` and `--output <path>`; `user-info` and `classroom` require `--id <id>`; `api_v3` requires a child selector for child-scoped auth commands; `gateway_api_20` does not. |
 
 ### CLI Output Contract
 
@@ -275,7 +341,9 @@ login.
 - Errors are written to stderr and follow the selected output format.
 - Non-successful commands return a non-zero exit code.
 - `children list` JSON output is `{ lastModification, children }`.
-- Child-scoped read commands emit `{ child, data }` in JSON output.
+- Child-scoped read commands emit `{ child, data }` in JSON output for `api_v3`
+  and `{ data }` for `gateway_api_20`, where the session is already
+  child-scoped.
 - Download commands such as `lessons planned-attachment` and `auth photo`
   write the requested file first, then report saved-file metadata instead of raw
   bytes. JSON output keeps the same `{ child, data }` envelope, where `data`
@@ -318,7 +386,7 @@ Current codes emitted by the SDK and CLI:
 | Code                         | Meaning                                                                    |
 | ---------------------------- | -------------------------------------------------------------------------- |
 | `CONFIGURATION_ERROR`        | Required credentials or other local configuration are missing or invalid.  |
-| `AUTHENTICATION_FAILED`      | Portal login or post-login verification failed.                            |
+| `AUTHENTICATION_FAILED`      | Portal or Gateway API 2.0 authentication failed.                           |
 | `PORTAL_LOGIN_PAGE_INVALID`  | The portal login page no longer matches the expected CSRF-token structure. |
 | `NETWORK_TIMEOUT`            | A portal or Synergia request exceeded the configured timeout.              |
 | `API_REQUEST_FAILED`         | A portal or Synergia request failed with a non-maintenance HTTP error.     |
@@ -326,6 +394,8 @@ Current codes emitted by the SDK and CLI:
 | `RESPONSE_VALIDATION_FAILED` | The live payload no longer matches the validated SDK schema.               |
 | `CHILD_NOT_FOUND`            | No linked child account matched the provided selector.                     |
 | `AMBIGUOUS_CHILD`            | More than one linked child account matched the provided selector.          |
+| `CHILD_REQUIRED`             | `api_v3` needs `--child`, `LIBRUS_CHILD`, or an SDK child selector.        |
+| `UNSUPPORTED_BACKEND`        | The selected API backend cannot support the requested operation.           |
 | `CLI_USAGE_ERROR`            | The CLI arguments were invalid, incomplete, or used unsupported values.    |
 | `INTERNAL_ERROR`             | Unexpected non-SDK error wrapper used by the CLI fallback path.            |
 
@@ -464,14 +534,14 @@ They are intended for local manual verification only:
 - they are not part of `npm run validate`
 - they are not run in CI or release automation
 
-Create a dedicated local env file:
+Create a dedicated Portal env file at `.env.integration.local`:
 
 ```bash
 LIBRUS_PORTAL_EMAIL=you@example.com
 LIBRUS_PORTAL_PASSWORD=your-password
 ```
 
-Save it as `.env.integration.local`, then run:
+Then run:
 
 ```bash
 npm run test:integration
@@ -483,8 +553,38 @@ npm run report:integration:sdk
 npm run report:integration:cli
 ```
 
-To limit the live run to specific children, set `LIBRUS_TEST_CHILDREN` as a
-comma-separated list of child ids or logins:
+For Gateway API 2.0 verification, create
+`.env.integration.gateway-api-20.local` with the school-issued login. The login
+is printed or issued by the school; it is not an email address.
+
+```bash
+LIBRUS_GATEWAY_LOGIN=1234567
+LIBRUS_GATEWAY_PASSWORD=your-password
+```
+
+Then run:
+
+```bash
+npm run test:integration:gateway-api-20
+npm run test:integration:gateway-api-20:sdk
+npm run test:integration:gateway-api-20:cli
+
+npm run report:integration:gateway-api-20
+npm run report:integration:gateway-api-20:sdk
+npm run report:integration:gateway-api-20:cli
+```
+
+The Gateway API 2.0 integration scripts force
+`LIBRUS_API_BACKEND=gateway_api_20`, so a developer shell with Portal variables
+set will not accidentally run the Portal matrix. The Gateway matrix is already
+child-scoped: SDK checks use `session.forChild()` without a selector, and CLI
+checks run commands such as `librus-sdk grades list` without `--child`.
+Portal-only checks are skipped in the Gateway report because
+`gateway_api_20` cannot list Portal-linked children or create Portal-backed
+BFF/wiadomosci clients.
+
+To limit the Portal live run to specific children, set `LIBRUS_TEST_CHILDREN` as
+a comma-separated list of child ids or logins:
 
 ```bash
 LIBRUS_TEST_CHILDREN=7147345 npm run test:integration

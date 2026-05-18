@@ -3,9 +3,11 @@ import { Command } from "commander";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   type CliFormatOptions,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 export function createAnnouncementsCommand(context: CliContext): Command {
@@ -14,38 +16,44 @@ export function createAnnouncementsCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addFormatOption(
-      new Command("list").description("List school announcements"),
+    addChildOption(
+      addFormatOption(
+        new Command("list").description("List school announcements"),
+      ),
     ),
     context,
   );
   const get = configureCommand(
-    addFormatOption(
-      new Command("get").description("Get a school announcement by id"),
+    addChildOption(
+      addFormatOption(
+        new Command("get").description("Get a school announcement by id"),
+      ),
     ),
     context,
   );
 
-  list.requiredOption("--child <id-or-login>", "Child account id or login");
-  list.action(async (options: CliFormatOptions & { child: string }) => {
+  list.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.listSchoolNotices();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Announcement id");
   get.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getSchoolNotice(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 

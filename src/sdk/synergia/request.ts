@@ -13,20 +13,31 @@ export interface SynergiaRequestOptions {
   query?: SynergiaQuery;
 }
 
+export type SynergiaAuthMode = "bearer" | "cookie";
+
 const LIBRUS_MOBILE_ORIGIN = "app://librus";
 const LIBRUS_MOBILE_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 LibrusMobileApp";
 
 function buildSynergiaHeaders(
   accessToken: string,
+  authMode: SynergiaAuthMode,
   extraHeaders: HeadersInit = {},
 ): HeadersInit {
-  return {
+  const headers: HeadersInit = {
     origin: LIBRUS_MOBILE_ORIGIN,
     "user-agent": LIBRUS_MOBILE_USER_AGENT,
-    authorization: `Bearer ${accessToken}`,
     ...extraHeaders,
   };
+
+  if (authMode === "bearer") {
+    return {
+      ...headers,
+      authorization: `Bearer ${accessToken}`,
+    };
+  }
+
+  return headers;
 }
 
 function normalizeApiBaseUrl(apiBaseUrl: string): string {
@@ -96,11 +107,12 @@ export async function getJson<
   path: string,
   schema: TSchema,
   options: SynergiaRequestOptions = {},
+  authMode: SynergiaAuthMode = "bearer",
 ): Promise<InferOutput<TSchema>> {
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
   const response = await fetchImpl(endpoint, {
     method: "GET",
-    headers: buildSynergiaHeaders(accessToken, {
+    headers: buildSynergiaHeaders(accessToken, authMode, {
       accept: "application/json",
     }),
   });
@@ -118,11 +130,12 @@ export async function getBinary(
   apiBaseUrl: string,
   path: string,
   options: SynergiaRequestOptions = {},
+  authMode: SynergiaAuthMode = "bearer",
 ): Promise<SynergiaBinaryResult> {
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
   const response = await fetchImpl(endpoint, {
     method: "GET",
-    headers: buildSynergiaHeaders(accessToken),
+    headers: buildSynergiaHeaders(accessToken, authMode),
   });
 
   if (!response.ok) {

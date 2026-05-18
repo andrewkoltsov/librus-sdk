@@ -3,9 +3,11 @@ import { Command } from "commander";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   type CliFormatOptions,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 export function createLuckyNumberCommand(context: CliContext): Command {
@@ -14,20 +16,23 @@ export function createLuckyNumberCommand(context: CliContext): Command {
     context,
   );
   const get = configureCommand(
-    addFormatOption(new Command("get").description("Get the lucky number")),
+    addChildOption(
+      addFormatOption(new Command("get").description("Get the lucky number")),
+    ),
     context,
   );
 
-  get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.option("--for-day <YYYY-MM-DD>", "Request the lucky number for a day");
   get.action(
-    async (options: CliFormatOptions & { child: string; forDay?: string }) => {
+    async (options: CliFormatOptions & { child?: string; forDay?: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getLuckyNumber(options.forDay);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 

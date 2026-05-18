@@ -3,11 +3,13 @@ import { Command } from "commander";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   createSingleDataSection,
   type CliFormatOptions,
   writeBinaryDownload,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 export function createLessonsCommand(context: CliContext): Command {
@@ -16,104 +18,114 @@ export function createLessonsCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addFormatOption(new Command("list").description("List lessons")),
+    addChildOption(
+      addFormatOption(new Command("list").description("List lessons")),
+    ),
     context,
   );
   const get = configureCommand(
-    addFormatOption(new Command("get").description("Get a lesson by id")),
+    addChildOption(
+      addFormatOption(new Command("get").description("Get a lesson by id")),
+    ),
     context,
   );
   const plannedList = configureCommand(
-    addFormatOption(
-      new Command("planned-list").description("List planned lessons"),
+    addChildOption(
+      addFormatOption(
+        new Command("planned-list").description("List planned lessons"),
+      ),
     ),
     context,
   );
   const plannedGet = configureCommand(
-    addFormatOption(
-      new Command("planned-get").description("Get a planned lesson by id"),
+    addChildOption(
+      addFormatOption(
+        new Command("planned-get").description("Get a planned lesson by id"),
+      ),
     ),
     context,
   );
   const plannedAttachment = configureCommand(
-    addFormatOption(
-      new Command("planned-attachment").description(
-        "Download a planned lesson attachment",
+    addChildOption(
+      addFormatOption(
+        new Command("planned-attachment").description(
+          "Download a planned lesson attachment",
+        ),
       ),
     ),
     context,
   );
   const realizationsList = configureCommand(
-    addFormatOption(
-      new Command("realizations-list").description("List lesson realizations"),
+    addChildOption(
+      addFormatOption(
+        new Command("realizations-list").description(
+          "List lesson realizations",
+        ),
+      ),
     ),
     context,
   );
   const realizationsGet = configureCommand(
-    addFormatOption(
-      new Command("realizations-get").description(
-        "Get a lesson realization by id",
+    addChildOption(
+      addFormatOption(
+        new Command("realizations-get").description(
+          "Get a lesson realization by id",
+        ),
       ),
     ),
     context,
   );
 
-  list.requiredOption("--child <id-or-login>", "Child account id or login");
-  list.action(async (options: CliFormatOptions & { child: string }) => {
+  list.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.listLessons();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  get.requiredOption("--child <id-or-login>", "Child account id or login");
   get.requiredOption("--id <id>", "Lesson id");
   get.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getLesson(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  plannedList.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
-  plannedList.action(async (options: CliFormatOptions & { child: string }) => {
+  plannedList.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.listPlannedLessons();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  plannedGet.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   plannedGet.requiredOption("--id <id>", "Planned lesson id");
   plannedGet.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getPlannedLesson(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  plannedAttachment.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   plannedAttachment.requiredOption("--id <id>", "Attachment id");
   plannedAttachment.requiredOption(
     "--output <path>",
@@ -122,58 +134,59 @@ export function createLessonsCommand(context: CliContext): Command {
   plannedAttachment.action(
     async (
       options: CliFormatOptions & {
-        child: string;
+        child?: string;
         id: string;
         output: string;
       },
     ) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const file = await client.getPlannedLessonAttachment(options.id);
       const data = writeBinaryDownload(context, options.output, file);
 
-      writeChildScopedOutput(
+      writeOptionalChildScopedOutput(
         context,
         options.format,
         child,
         data,
-        (summary) => [
-          { title: "Child", value: summary },
-          ...createSingleDataSection("Saved File", data),
-        ],
+        (summary) =>
+          summary
+            ? [
+                { title: "Child", value: summary },
+                ...createSingleDataSection("Saved File", data),
+              ]
+            : createSingleDataSection("Saved File", data),
       );
     },
   );
 
-  realizationsList.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   realizationsList.action(
-    async (options: CliFormatOptions & { child: string }) => {
+    async (options: CliFormatOptions & { child?: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.listRealizations();
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  realizationsGet.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   realizationsGet.requiredOption("--id <id>", "Realization id");
   realizationsGet.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getRealization(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 

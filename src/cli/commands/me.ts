@@ -3,25 +3,30 @@ import { Command } from "commander";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   type CliFormatOptions,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 export function createMeCommand(context: CliContext): Command {
   const me = configureCommand(
-    addFormatOption(new Command("me").description("Get child profile data")),
+    addChildOption(
+      addFormatOption(new Command("me").description("Get child profile data")),
+    ),
     context,
   );
 
-  me.requiredOption("--child <id-or-login>", "Child account id or login");
-  me.action(async (options: CliFormatOptions & { child: string }) => {
+  me.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.getMe();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
   return me;

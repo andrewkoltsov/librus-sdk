@@ -19,6 +19,7 @@ export async function runDeprecatedLibrusCli(
   return runCli(argv, context);
 }
 
+/* v8 ignore next -- covered by packaged CLI smoke tests instead of unit import. */
 if (isCliEntryPoint(process.argv, import.meta.url)) {
   loadCliEnvironment();
   const exitCode = await runDeprecatedLibrusCli(

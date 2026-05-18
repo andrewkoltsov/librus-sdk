@@ -3,9 +3,11 @@ import { Command } from "commander";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   type CliFormatOptions,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 export function createGradesCommand(context: CliContext): Command {
@@ -14,18 +16,23 @@ export function createGradesCommand(context: CliContext): Command {
     context,
   );
   const list = configureCommand(
-    addFormatOption(new Command("list").description("List grades for a child")),
+    addChildOption(
+      addFormatOption(
+        new Command("list").description("List grades for a child"),
+      ),
+    ),
     context,
   );
 
-  list.requiredOption("--child <id-or-login>", "Child account id or login");
-  list.action(async (options: CliFormatOptions & { child: string }) => {
+  list.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.getGrades();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
   grades.addCommand(list);

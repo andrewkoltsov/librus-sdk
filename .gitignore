@@ -5,6 +5,7 @@ coverage/
 .env
 .env.integration
 .env.integration.local
+.env.integration.*.local
 .DS_Store
 .claude/
 .serena/

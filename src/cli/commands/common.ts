@@ -6,6 +6,8 @@ import {
   LibrusSdkError,
   type ChildAccount,
   type ChildAccountSummary,
+  type LibrusApiBackend,
+  type SynergiaApiClient,
 } from "../../sdk/index.js";
 import { renderTextSections, type CliTextSection } from "../output/render.js";
 
@@ -56,6 +58,57 @@ export function addFormatOption(command: Command): Command {
     parseCliOutputFormat,
     "text",
   );
+}
+
+export function addChildOption(command: Command): Command {
+  return command.option("--child <id-or-login>", "Child account id or login");
+}
+
+export async function createChildApiClient(
+  session: LibrusSession,
+  childSelector?: string,
+): Promise<{ child?: ChildAccount; client: SynergiaApiClient }> {
+  const apiBackend = getSessionApiBackend(session);
+
+  if (apiBackend === "gateway_api_20") {
+    if (childSelector) {
+      throw new LibrusSdkError(
+        "UNSUPPORTED_BACKEND",
+        "--child is not supported with gateway_api_20 because the gateway session is already scoped to one account.",
+        { apiBackend },
+      );
+    }
+
+    return {
+      client: await session.forChild(),
+    };
+  }
+
+  const resolvedChildSelector = resolveApiV3ChildSelector(childSelector);
+
+  if (!resolvedChildSelector) {
+    throw new LibrusSdkError(
+      "CHILD_REQUIRED",
+      "Child account id or login is required for api_v3. Pass --child <id-or-login> or set LIBRUS_CHILD.",
+    );
+  }
+
+  const child = await session.resolveChild(resolvedChildSelector);
+
+  return {
+    child,
+    client: await session.forChild(child),
+  };
+}
+
+export function getSessionApiBackend(session: LibrusSession): LibrusApiBackend {
+  return session.getApiBackend();
+}
+
+export function resolveApiV3ChildSelector(
+  childSelector?: string,
+): string | undefined {
+  return childSelector ?? process.env.LIBRUS_CHILD;
 }
 
 export function summarizeChildAccount(
@@ -270,6 +323,33 @@ export function writeChildScopedOutput(
     buildTextSections
       ? buildTextSections(summary)
       : createChildScopedSections(summary, data),
+  );
+}
+
+export function writeOptionalChildScopedOutput(
+  context: CliContext,
+  format: CliOutputFormat,
+  child: ChildAccount | undefined,
+  data: unknown,
+  buildTextSections:
+    | ((child: ChildAccountSummary | undefined) => CliTextSection[])
+    | null = null,
+): void {
+  if (child) {
+    writeChildScopedOutput(context, format, child, data, (summary) =>
+      buildTextSections
+        ? buildTextSections(summary)
+        : createChildScopedSections(summary, data),
+    );
+    return;
+  }
+
+  const payload = { data };
+
+  writeCommandOutput(context, format, payload, () =>
+    buildTextSections
+      ? buildTextSections(undefined)
+      : createTopLevelDataSections(data),
   );
 }
 

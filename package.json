@@ -1,7 +1,7 @@
 {
   "name": "librus-sdk",
   "version": "0.6.2",
-  "description": "TypeScript SDK and CLI for the Librus family portal flow.",
+  "description": "TypeScript SDK and CLI for Librus family portal and Gateway API 2.0 flows.",
   "author": "Andrey Koltsov",
   "repository": {
     "type": "git",
@@ -42,6 +42,12 @@
     "report:integration": "npm run build && node --env-file=.env.integration.local test/integration/report-all.mjs",
     "report:integration:cli": "npm run build && node --env-file=.env.integration.local test/integration/report-cli.mjs",
     "report:integration:sdk": "npm run build && node --env-file=.env.integration.local test/integration/report-sdk.mjs",
+    "report:integration:gateway-api-20": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local test/integration/report-all.mjs",
+    "report:integration:gateway-api-20:cli": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local test/integration/report-cli.mjs",
+    "report:integration:gateway-api-20:sdk": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local test/integration/report-sdk.mjs",
+    "report:integration:synergia": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local test/integration/report-all.mjs",
+    "report:integration:synergia:cli": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local test/integration/report-cli.mjs",
+    "report:integration:synergia:sdk": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local test/integration/report-sdk.mjs",
     "validate": "npm run lint && npm run format:check && npm run build && npm run test:coverage && npm run pack:check",
     "prepublishOnly": "npm run validate",
     "prepare": "husky",
@@ -49,7 +55,13 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "npm run build && node --env-file=.env.integration.local --test test/integration/*.integration.test.mjs",
     "test:integration:cli": "npm run build && node --env-file=.env.integration.local --test test/integration/cli.integration.test.mjs",
-    "test:integration:sdk": "npm run build && node --env-file=.env.integration.local --test test/integration/sdk.integration.test.mjs"
+    "test:integration:sdk": "npm run build && node --env-file=.env.integration.local --test test/integration/sdk.integration.test.mjs",
+    "test:integration:gateway-api-20": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local --test test/integration/*.integration.test.mjs",
+    "test:integration:gateway-api-20:cli": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local --test test/integration/cli.integration.test.mjs",
+    "test:integration:gateway-api-20:sdk": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.gateway-api-20.local --test test/integration/sdk.integration.test.mjs",
+    "test:integration:synergia": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local --test test/integration/*.integration.test.mjs",
+    "test:integration:synergia:cli": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local --test test/integration/cli.integration.test.mjs",
+    "test:integration:synergia:sdk": "npm run build && LIBRUS_API_BACKEND=gateway_api_20 node --env-file=.env.integration.synergia.local --test test/integration/sdk.integration.test.mjs"
   },
   "files": [
     "dist",

@@ -74,9 +74,20 @@ function readSessionCredentials(session: LibrusSession): {
 } {
   return (
     session as unknown as {
-      credentials: { email: string; password: string };
+      portalCredentials: { email: string; password: string };
     }
-  ).credentials;
+  ).portalCredentials;
+}
+
+function readGatewayCredentials(session: LibrusSession): {
+  login: string;
+  password: string;
+} {
+  return (
+    session as unknown as {
+      gatewayCredentials: { login: string; password: string };
+    }
+  ).gatewayCredentials;
 }
 
 function readPortalClientRequestTimeoutMs(session: LibrusSession): number {
@@ -110,6 +121,41 @@ function captureConfigurationError(
   throw new Error("Expected LibrusConfigurationError to be thrown.");
 }
 
+function captureDeprecationWarnings<T>(callback: () => T): {
+  result: T;
+  warnings: Parameters<typeof process.emitWarning>[];
+} {
+  const emitWarning = vi
+    .spyOn(process, "emitWarning")
+    .mockImplementation(() => undefined);
+
+  try {
+    return {
+      result: callback(),
+      warnings: emitWarning.mock.calls,
+    };
+  } finally {
+    emitWarning.mockRestore();
+  }
+}
+
+function expectDeprecationWarning(
+  warnings: Parameters<typeof process.emitWarning>[],
+  code: string,
+): void {
+  expect(warnings).toEqual(
+    expect.arrayContaining([
+      expect.arrayContaining([
+        expect.any(String),
+        expect.objectContaining({
+          code,
+          type: "DeprecationWarning",
+        }),
+      ]),
+    ]),
+  );
+}
+
 function withTemporaryPortalEnv<T>(
   env: Partial<
     Record<
@@ -117,7 +163,13 @@ function withTemporaryPortalEnv<T>(
       | "LIBRUS_PASSWORD"
       | "LIBRUS_PORTAL_EMAIL"
       | "LIBRUS_PORTAL_PASSWORD"
-      | "LIBRUS_TIMEOUT_MS",
+      | "LIBRUS_TIMEOUT_MS"
+      | "LIBRUS_API_BACKEND"
+      | "LIBRUS_AUTH_MODE"
+      | "LIBRUS_GATEWAY_LOGIN"
+      | "LIBRUS_GATEWAY_PASSWORD"
+      | "SYNERGIA_ID"
+      | "SYNERGIA_PASSWORD",
       string | undefined
     >
   >,
@@ -129,6 +181,12 @@ function withTemporaryPortalEnv<T>(
     LIBRUS_PORTAL_EMAIL: process.env.LIBRUS_PORTAL_EMAIL,
     LIBRUS_PORTAL_PASSWORD: process.env.LIBRUS_PORTAL_PASSWORD,
     LIBRUS_TIMEOUT_MS: process.env.LIBRUS_TIMEOUT_MS,
+    LIBRUS_API_BACKEND: process.env.LIBRUS_API_BACKEND,
+    LIBRUS_AUTH_MODE: process.env.LIBRUS_AUTH_MODE,
+    LIBRUS_GATEWAY_LOGIN: process.env.LIBRUS_GATEWAY_LOGIN,
+    LIBRUS_GATEWAY_PASSWORD: process.env.LIBRUS_GATEWAY_PASSWORD,
+    SYNERGIA_ID: process.env.SYNERGIA_ID,
+    SYNERGIA_PASSWORD: process.env.SYNERGIA_PASSWORD,
   };
 
   for (const [key, value] of Object.entries(env)) {
@@ -161,8 +219,11 @@ describe("LibrusSession.fromEnv", () => {
       LIBRUS_PASSWORD: "compat-secret",
       LIBRUS_PORTAL_EMAIL: "portal@example.com",
       LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      LIBRUS_GATEWAY_LOGIN: "1234567",
+      LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
     });
 
+    expect(session.getApiBackend()).toBe("api_v3");
     expect(readSessionCredentials(session)).toEqual({
       email: "portal@example.com",
       password: "portal-secret",
@@ -170,14 +231,253 @@ describe("LibrusSession.fromEnv", () => {
   });
 
   it("falls back to compatibility environment variables", () => {
-    const session = LibrusSession.fromEnv({
-      LIBRUS_EMAIL: "compat@example.com",
-      LIBRUS_PASSWORD: "compat-secret",
-    });
+    const { result: session, warnings } = captureDeprecationWarnings(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_EMAIL: "compat@example.com",
+        LIBRUS_PASSWORD: "compat-secret",
+      }),
+    );
 
+    expectDeprecationWarning(warnings, "LIBRUS_EMAIL_ENV_DEPRECATED");
+    expectDeprecationWarning(warnings, "LIBRUS_PASSWORD_ENV_DEPRECATED");
+
+    expect(session.getApiBackend()).toBe("api_v3");
     expect(readSessionCredentials(session)).toEqual({
       email: "compat@example.com",
       password: "compat-secret",
+    });
+  });
+
+  it("uses gateway credentials when portal credentials are absent", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_GATEWAY_LOGIN: "1234567",
+      LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
+    });
+
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+  });
+
+  it("lets portal credentials win when both backends are configured", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      LIBRUS_GATEWAY_LOGIN: "1234567",
+      LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
+    });
+
+    expect(session.getApiBackend()).toBe("api_v3");
+    expect(readSessionCredentials(session)).toEqual({
+      email: "portal@example.com",
+      password: "portal-secret",
+    });
+  });
+
+  it("lets LIBRUS_API_BACKEND select gateway_api_20 when both backends are configured", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_API_BACKEND: "gateway_api_20",
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      LIBRUS_GATEWAY_LOGIN: "1234567",
+      LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
+    });
+
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+  });
+
+  it("lets LIBRUS_API_BACKEND win over the compatibility auth mode alias", () => {
+    const { result: session, warnings } = captureDeprecationWarnings(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_API_BACKEND: "api_v3",
+        LIBRUS_AUTH_MODE: "synergia",
+        LIBRUS_PORTAL_EMAIL: "portal@example.com",
+        LIBRUS_PORTAL_PASSWORD: "portal-secret",
+        LIBRUS_GATEWAY_LOGIN: "1234567",
+        LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
+      }),
+    );
+
+    expectDeprecationWarning(warnings, "LIBRUS_AUTH_MODE_ENV_DEPRECATED");
+    expect(session.getApiBackend()).toBe("api_v3");
+    expect(readSessionCredentials(session)).toEqual({
+      email: "portal@example.com",
+      password: "portal-secret",
+    });
+  });
+
+  it("accepts the compatibility auth mode alias when LIBRUS_API_BACKEND is unset", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_AUTH_MODE: "synergia",
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      LIBRUS_GATEWAY_LOGIN: "1234567",
+      LIBRUS_GATEWAY_PASSWORD: "gateway-secret",
+    });
+
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+  });
+
+  it("accepts legacy Synergia credential env aliases for gateway_api_20", () => {
+    const { result: session, warnings } = captureDeprecationWarnings(() =>
+      LibrusSession.fromEnv({
+        SYNERGIA_ID: "1234567",
+        SYNERGIA_PASSWORD: "gateway-secret",
+      }),
+    );
+
+    expectDeprecationWarning(warnings, "SYNERGIA_ID_ENV_DEPRECATED");
+    expectDeprecationWarning(warnings, "SYNERGIA_PASSWORD_ENV_DEPRECATED");
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+  });
+
+  it("keeps fromSynergiaCredentials as a compatibility alias", () => {
+    const { result: session, warnings } = captureDeprecationWarnings(() =>
+      LibrusSession.fromSynergiaCredentials({
+        id: "1234567",
+        password: "gateway-secret",
+      }),
+    );
+
+    expectDeprecationWarning(
+      warnings,
+      "LIBRUS_FROM_SYNERGIA_CREDENTIALS_DEPRECATED",
+    );
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+  });
+
+  it("keeps getAuthMode as a compatibility alias with a warning", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_PORTAL_EMAIL: "portal@example.com",
+      LIBRUS_PORTAL_PASSWORD: "portal-secret",
+    });
+
+    const { result: authMode, warnings } = captureDeprecationWarnings(() =>
+      session.getAuthMode(),
+    );
+
+    expect(authMode).toBe("portal");
+    expectDeprecationWarning(warnings, "LIBRUS_GET_AUTH_MODE_DEPRECATED");
+  });
+
+  it("accepts id-shaped gateway credentials in the constructor as a deprecated alias", () => {
+    const { result: session, warnings } = captureDeprecationWarnings(
+      () =>
+        new LibrusSession({
+          apiBackend: "gateway_api_20",
+          credentials: {
+            id: "1234567",
+            password: "gateway-secret",
+          },
+        }),
+    );
+
+    expect(session.getApiBackend()).toBe("gateway_api_20");
+    expect(readGatewayCredentials(session)).toEqual({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+    expectDeprecationWarning(
+      warnings,
+      "LIBRUS_SYNERGIA_CREDENTIALS_ID_DEPRECATED",
+    );
+  });
+
+  it("rejects gateway credentials in api_v3 sessions", () => {
+    const error = captureConfigurationError(
+      () =>
+        new LibrusSession({
+          apiBackend: "api_v3",
+          credentials: {
+            login: "1234567",
+            password: "gateway-secret",
+          },
+        }),
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message: "api_v3 credentials require email and password.",
+    });
+  });
+
+  it("rejects portal credentials in gateway_api_20 sessions", () => {
+    const error = captureConfigurationError(
+      () =>
+        new LibrusSession({
+          apiBackend: "gateway_api_20",
+          credentials: {
+            email: "portal@example.com",
+            password: "portal-secret",
+          },
+        }),
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message: "gateway_api_20 credentials require login and password.",
+    });
+  });
+
+  it("does not treat deprecated LIBRUS_EMAIL as a Synergia id", () => {
+    const session = LibrusSession.fromEnv({
+      LIBRUS_EMAIL: "1234567",
+      LIBRUS_PASSWORD: "compat-secret",
+    });
+
+    expect(session.getApiBackend()).toBe("api_v3");
+    expect(readSessionCredentials(session)).toEqual({
+      email: "1234567",
+      password: "compat-secret",
+    });
+  });
+
+  it("reports missing gateway credentials when gateway_api_20 is explicit", () => {
+    const error = captureConfigurationError(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_API_BACKEND: "gateway_api_20",
+        LIBRUS_GATEWAY_LOGIN: "1234567",
+      }),
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message:
+        "Missing gateway API 2.0 credentials. Password: LIBRUS_GATEWAY_PASSWORD is unset.",
+    });
+  });
+
+  it("fails when LIBRUS_API_BACKEND is invalid", () => {
+    const error = captureConfigurationError(() =>
+      LibrusSession.fromEnv({
+        LIBRUS_API_BACKEND: "synergia",
+        LIBRUS_PORTAL_EMAIL: "portal@example.com",
+        LIBRUS_PORTAL_PASSWORD: "portal-secret",
+      }),
+    );
+
+    expect(error).toMatchObject({
+      code: "CONFIGURATION_ERROR",
+      message:
+        'Invalid LIBRUS_API_BACKEND. Expected "api_v3" or "gateway_api_20".',
     });
   });
 
@@ -292,6 +592,30 @@ describe("LibrusSession.fromEnv", () => {
 });
 
 describe("LibrusSession.resolveChild", () => {
+  it("rejects portal-only child discovery in gateway_api_20", async () => {
+    const session = LibrusSession.fromGatewayCredentials({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+
+    await expect(session.listChildren()).rejects.toMatchObject({
+      code: "UNSUPPORTED_BACKEND",
+      details: { apiBackend: "gateway_api_20" },
+    });
+  });
+
+  it("rejects explicit child selection in gateway_api_20", async () => {
+    const session = LibrusSession.fromGatewayCredentials({
+      login: "1234567",
+      password: "gateway-secret",
+    });
+
+    await expect(session.forChild("101")).rejects.toMatchObject({
+      code: "UNSUPPORTED_BACKEND",
+      details: { apiBackend: "gateway_api_20" },
+    });
+  });
+
   it("matches child by id first", async () => {
     const { portalClient } = createPortalClientStub({
       accounts: [

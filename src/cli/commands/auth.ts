@@ -5,11 +5,13 @@ import type { AuthPhoto } from "../../sdk/models/synergia/auth.js";
 import type { CliContext } from "./common.js";
 import {
   addFormatOption,
+  addChildOption,
   configureCommand,
+  createChildApiClient,
   createSingleDataSection,
   type CliFormatOptions,
   writeBase64Download,
-  writeChildScopedOutput,
+  writeOptionalChildScopedOutput,
 } from "./common.js";
 
 function inferContentTypeFromFileName(fileName?: string): string | null {
@@ -58,58 +60,70 @@ export function createAuthCommand(context: CliContext): Command {
     context,
   );
   const photos = configureCommand(
-    addFormatOption(new Command("photos").description("List auth photos")),
+    addChildOption(
+      addFormatOption(new Command("photos").description("List auth photos")),
+    ),
     context,
   );
   const photo = configureCommand(
-    addFormatOption(
-      new Command("photo").description("Download an auth photo by id"),
+    addChildOption(
+      addFormatOption(
+        new Command("photo").description("Download an auth photo by id"),
+      ),
     ),
     context,
   );
   const userInfo = configureCommand(
-    addFormatOption(
-      new Command("user-info").description("Get auth user info by id"),
+    addChildOption(
+      addFormatOption(
+        new Command("user-info").description("Get auth user info by id"),
+      ),
     ),
     context,
   );
   const tokenInfo = configureCommand(
-    addFormatOption(
-      new Command("token-info").description("Get auth token info"),
+    addChildOption(
+      addFormatOption(
+        new Command("token-info").description("Get auth token info"),
+      ),
     ),
     context,
   );
   const classroom = configureCommand(
-    addFormatOption(
-      new Command("classroom").description("Get auth classroom data by id"),
+    addChildOption(
+      addFormatOption(
+        new Command("classroom").description("Get auth classroom data by id"),
+      ),
     ),
     context,
   );
 
-  photos.requiredOption("--child <id-or-login>", "Child account id or login");
-  photos.action(async (options: CliFormatOptions & { child: string }) => {
+  photos.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.listAuthPhotos();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  photo.requiredOption("--child <id-or-login>", "Child account id or login");
   photo.requiredOption("--id <id>", "Photo id");
   photo.requiredOption("--output <path>", "Write the photo to this file path");
   photo.action(
     async (
       options: CliFormatOptions & {
-        child: string;
+        child?: string;
         id: string;
         output: string;
       },
     ) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const response = await client.getAuthPhoto(options.id);
       const photoData = response.data.photo ?? null;
       const data = writeBase64Download(
@@ -121,58 +135,58 @@ export function createAuthCommand(context: CliContext): Command {
         },
       );
 
-      writeChildScopedOutput(
+      writeOptionalChildScopedOutput(
         context,
         options.format,
         child,
         data,
-        (summary) => [
-          { title: "Child", value: summary },
-          ...createSingleDataSection("Saved File", data),
-        ],
+        (summary) =>
+          summary
+            ? [
+                { title: "Child", value: summary },
+                ...createSingleDataSection("Saved File", data),
+              ]
+            : createSingleDataSection("Saved File", data),
       );
     },
   );
 
-  userInfo.requiredOption("--child <id-or-login>", "Child account id or login");
   userInfo.requiredOption("--id <id>", "User identifier");
   userInfo.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getAuthUserInfo(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 
-  tokenInfo.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
-  tokenInfo.action(async (options: CliFormatOptions & { child: string }) => {
+  tokenInfo.action(async (options: CliFormatOptions & { child?: string }) => {
     const session = context.createSession();
-    const child = await session.resolveChild(options.child);
-    const client = await session.forChild(child);
+    const { child, client } = await createChildApiClient(
+      session,
+      options.child,
+    );
     const data = await client.getAuthTokenInfo();
 
-    writeChildScopedOutput(context, options.format, child, data);
+    writeOptionalChildScopedOutput(context, options.format, child, data);
   });
 
-  classroom.requiredOption(
-    "--child <id-or-login>",
-    "Child account id or login",
-  );
   classroom.requiredOption("--id <id>", "Classroom id");
   classroom.action(
-    async (options: CliFormatOptions & { child: string; id: string }) => {
+    async (options: CliFormatOptions & { child?: string; id: string }) => {
       const session = context.createSession();
-      const child = await session.resolveChild(options.child);
-      const client = await session.forChild(child);
+      const { child, client } = await createChildApiClient(
+        session,
+        options.child,
+      );
       const data = await client.getAuthClassroom(options.id);
 
-      writeChildScopedOutput(context, options.format, child, data);
+      writeOptionalChildScopedOutput(context, options.format, child, data);
     },
   );
 

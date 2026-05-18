@@ -80,6 +80,7 @@ export function fetchPublishedPackageMetadata(packageSpec) {
   }
 }
 
+/* v8 ignore next -- covered by release workflow smoke usage instead of unit import. */
 if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? "")).href) {
   const [, , packageName, packageVersion] = process.argv;
 
