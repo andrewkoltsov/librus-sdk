@@ -73,17 +73,15 @@ CLI published from this repository.
 `LibrusSession.fromEnv()` and the CLI read credentials and timeout settings from
 these variables:
 
-| Variable                  | Required | Purpose                                                              |
-| ------------------------- | -------- | -------------------------------------------------------------------- |
-| `LIBRUS_API_BACKEND`      | No       | Optional `api_v3` or `gateway_api_20` selector.                      |
-| `LIBRUS_PORTAL_EMAIL`     | `api_v3` | Portal login email used for `portal.librus.pl`.                      |
-| `LIBRUS_PORTAL_PASSWORD`  | `api_v3` | Portal login password used for `portal.librus.pl`.                   |
-| `LIBRUS_GATEWAY_LOGIN`    | Gateway  | School-issued Gateway API 2.0 login. This is not an email address.   |
-| `LIBRUS_GATEWAY_PASSWORD` | Gateway  | Password for the Gateway API 2.0 login.                              |
-| `LIBRUS_CHILD`            | No       | Optional default child id or login for `api_v3` CLI commands.        |
-| `LIBRUS_EMAIL`            | Fallback | Deprecated Portal-only alias when `LIBRUS_PORTAL_EMAIL` is unset.    |
-| `LIBRUS_PASSWORD`         | Fallback | Deprecated Portal-only alias when `LIBRUS_PORTAL_PASSWORD` is unset. |
-| `LIBRUS_TIMEOUT_MS`       | No       | Positive integer request timeout in milliseconds.                    |
+| Variable                  | Required         | Purpose                                                            |
+| ------------------------- | ---------------- | ------------------------------------------------------------------ |
+| `LIBRUS_API_BACKEND`      | No               | Optional `api_v3` or `gateway_api_20` selector.                    |
+| `LIBRUS_PORTAL_EMAIL`     | `api_v3`         | Portal login email used for `portal.librus.pl`.                    |
+| `LIBRUS_PORTAL_PASSWORD`  | `api_v3`         | Portal login password used for `portal.librus.pl`.                 |
+| `LIBRUS_GATEWAY_LOGIN`    | `gateway_api_20` | School-issued Gateway API 2.0 login. This is not an email address. |
+| `LIBRUS_GATEWAY_PASSWORD` | `gateway_api_20` | Password for the Gateway API 2.0 login.                            |
+| `LIBRUS_CHILD`            | No               | Optional default child id or login for `api_v3` CLI commands.      |
+| `LIBRUS_TIMEOUT_MS`       | No               | Positive integer request timeout in milliseconds.                  |
 
 If no timeout is configured, portal and child-scoped SDK requests default to
 `30000` milliseconds. Invalid timeout values fail fast with
