@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-05-20
+
+### Fixed
+
+- Development dependency lockfile now resolves `brace-expansion` to `5.0.6`,
+  removing the disclosed `CVE-2026-45149` high-severity resource exhaustion
+  advisory from maintainer tooling. Published SDK and CLI runtime dependencies
+  are unchanged.
+
 ## [0.7.0] - 2026-05-18
 
 ### Added
