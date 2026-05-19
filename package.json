@@ -24,8 +24,8 @@
       "import": "./dist/sdk/index.js"
     },
     "./openapi.json": "./openapi.json",
-    "./gateway_api_20_openapi.json": "./gateway_api_20_openapi.json",
-    "./wiadomosci_librus_pl_api_openapi.json": "./wiadomosci_librus_pl_api_openapi.json"
+    "./openapi/gateway_api_20_openapi.json": "./openapi/gateway_api_20_openapi.json",
+    "./openapi/wiadomosci_librus_pl_api_openapi.json": "./openapi/wiadomosci_librus_pl_api_openapi.json"
   },
   "engines": {
     "node": ">=22"
@@ -68,8 +68,7 @@
   "files": [
     "dist",
     "openapi.json",
-    "gateway_api_20_openapi.json",
-    "wiadomosci_librus_pl_api_openapi.json",
+    "openapi",
     "README.md",
     "LICENSE"
   ],

@@ -24,7 +24,11 @@ async function main(): Promise<void> {
       document: generateOpenApiDocument({ version: packageJson.version }),
     },
     {
-      outputPath: resolve(repositoryRoot, "gateway_api_20_openapi.json"),
+      outputPath: resolve(
+        repositoryRoot,
+        "openapi",
+        "gateway_api_20_openapi.json",
+      ),
       document: generateGatewayApi20OpenApiDocument({
         version: packageJson.version,
       }),
@@ -32,6 +36,7 @@ async function main(): Promise<void> {
     {
       outputPath: resolve(
         repositoryRoot,
+        "openapi",
         "wiadomosci_librus_pl_api_openapi.json",
       ),
       document: generateWiadomosciOpenApiDocument({

@@ -61,8 +61,8 @@ temporarily for compatibility and prints a warning before delegating.
 The package also ships generated OpenAPI documents for the SDK-supported
 `api_v3`, `gateway_api_20`, and `wiadomosci.librus.pl/api` surfaces, so
 non-TypeScript consumers can generate clients in other languages. The legacy
-API 3.0 document remains [`openapi.json`](./openapi.json) and is exported as
-`librus-sdk/openapi.json`.
+API 3.0 document remains [`openapi.json`](./openapi.json) in the package root
+and is exported as `librus-sdk/openapi.json`.
 
 ## Public Interface
 
@@ -443,9 +443,9 @@ Generated files:
 
 - [`openapi.json`](./openapi.json): child-scoped `https://api.librus.pl/3.0`
   `api_v3` bearer-token requests.
-- [`gateway_api_20_openapi.json`](./gateway_api_20_openapi.json):
+- [`openapi/gateway_api_20_openapi.json`](./openapi/gateway_api_20_openapi.json):
   cookie-backed `https://synergia.librus.pl/gateway/api/2.0` requests.
-- [`wiadomosci_librus_pl_api_openapi.json`](./wiadomosci_librus_pl_api_openapi.json):
+- [`openapi/wiadomosci_librus_pl_api_openapi.json`](./openapi/wiadomosci_librus_pl_api_openapi.json):
   cookie-backed `https://wiadomosci.librus.pl/api` inbox requests.
 
 Regenerate or verify the file locally with:

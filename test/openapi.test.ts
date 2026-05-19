@@ -61,7 +61,7 @@ describe("generateOpenApiDocument", () => {
     const document = getGatewayGeneratedDocument();
     const checkedIn = JSON.parse(
       readFileSync(
-        resolve(getRepositoryRoot(), "gateway_api_20_openapi.json"),
+        resolve(getRepositoryRoot(), "openapi", "gateway_api_20_openapi.json"),
         "utf8",
       ),
     ) as ReturnType<typeof getGatewayGeneratedDocument>;
@@ -73,7 +73,11 @@ describe("generateOpenApiDocument", () => {
     const document = getWiadomosciGeneratedDocument();
     const checkedIn = JSON.parse(
       readFileSync(
-        resolve(getRepositoryRoot(), "wiadomosci_librus_pl_api_openapi.json"),
+        resolve(
+          getRepositoryRoot(),
+          "openapi",
+          "wiadomosci_librus_pl_api_openapi.json",
+        ),
         "utf8",
       ),
     ) as ReturnType<typeof getWiadomosciGeneratedDocument>;
