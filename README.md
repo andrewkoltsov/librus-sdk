@@ -58,9 +58,10 @@ npm exec --package librus-sdk -- librus-sdk grades list --child <id-or-login>
 The canonical CLI binary is `librus-sdk`. A deprecated `librus` alias remains
 temporarily for compatibility and prints a warning before delegating.
 
-The package also ships a generated [`openapi.json`](./openapi.json) for the
-SDK-supported child-scoped `https://api.librus.pl/3.0` surface, so non-TypeScript
-consumers can generate clients in other languages. It is also exported as
+The package also ships generated OpenAPI documents for the SDK-supported
+`api_v3`, `gateway_api_20`, and `wiadomosci.librus.pl/api` surfaces, so
+non-TypeScript consumers can generate clients in other languages. The legacy
+API 3.0 document remains [`openapi.json`](./openapi.json) and is exported as
 `librus-sdk/openapi.json`.
 
 ## Public Interface
@@ -111,20 +112,24 @@ import {
   LibrusSession,
   PortalClient,
   SynergiaApiClient,
+  generateGatewayApi20OpenApiDocument,
   generateOpenApiDocument,
+  generateWiadomosciOpenApiDocument,
   LibrusSdkError,
   type LibrusApiBackend,
 } from "librus-sdk";
 ```
 
-| Export                    | Purpose                                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `LibrusSession`           | Recommended high-level entry point. Handles login, linked-child discovery, child selection, and creation of child-scoped API clients. |
-| `BffApiClient`            | Experimental child-scoped client for selected `https://testbff.librus.pl/v1` mobile backend reads.                                    |
-| `GatewayApi20AuthClient`  | Lower-level Gateway API 2.0 login/password auth client for `synergia.librus.pl/gateway/api/2.0` cookie-backed requests.               |
-| `PortalClient`            | Lower-level portal session client for `portal.librus.pl` login, `/Me`, and `/SynergiaAccounts`.                                       |
-| `SynergiaApiClient`       | Child-scoped GET client for the supported `https://api.librus.pl/3.0` surface when you already have a bearer token.                   |
-| `generateOpenApiDocument` | Generates the shipped OpenAPI document for the supported child-scoped GET subset.                                                     |
+| Export                                | Purpose                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `LibrusSession`                       | Recommended high-level entry point. Handles login, linked-child discovery, child selection, and creation of child-scoped API clients. |
+| `BffApiClient`                        | Experimental child-scoped client for selected `https://testbff.librus.pl/v1` mobile backend reads.                                    |
+| `GatewayApi20AuthClient`              | Lower-level Gateway API 2.0 login/password auth client for `synergia.librus.pl/gateway/api/2.0` cookie-backed requests.               |
+| `PortalClient`                        | Lower-level portal session client for `portal.librus.pl` login, `/Me`, and `/SynergiaAccounts`.                                       |
+| `SynergiaApiClient`                   | Child-scoped GET client for the supported `https://api.librus.pl/3.0` surface when you already have a bearer token.                   |
+| `generateOpenApiDocument`             | Generates the shipped OpenAPI document for the supported `api_v3` child-scoped GET subset.                                            |
+| `generateGatewayApi20OpenApiDocument` | Generates the shipped OpenAPI document for the supported `gateway_api_20` GET subset.                                                 |
+| `generateWiadomosciOpenApiDocument`   | Generates the shipped OpenAPI document for the supported `wiadomosci.librus.pl/api` inbox subset.                                     |
 
 Recommended session flow:
 
@@ -280,13 +285,13 @@ here rather than promising every helper type as a named top-level export.
 | `authMode`         | No       | `bearer` by default, or `cookie` for Gateway-created sessions.  |
 | `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.  |
 
-`generateOpenApiDocument()` options (`GenerateOpenApiDocumentOptions`):
+OpenAPI generator options (`GenerateOpenApiDocumentOptions`):
 
 | Property    | Required | Meaning                                                                                                          |
 | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `title`     | No       | Overrides the generated OpenAPI `info.title`.                                                                    |
 | `version`   | No       | Overrides the generated OpenAPI `info.version`. Pass the package version when generating a publishable document. |
-| `serverUrl` | No       | Overrides the default server URL `https://api.librus.pl/3.0`.                                                    |
+| `serverUrl` | No       | Overrides the generator's default server URL.                                                                    |
 
 ### Public Types And Errors
 
@@ -430,10 +435,18 @@ credentials, bearer tokens, and cookie values are not included.
 
 ### OpenAPI
 
-`openapi.json` is generated from the SDK's supported Synergia GET endpoints and
-the shared valibot response schemas. The document is best-effort and
-intentionally covers only the child-scoped `api.librus.pl/3.0` requests, not
-the `portal.librus.pl` login flow.
+OpenAPI documents are generated from the SDK's supported endpoints and valibot
+response schemas. The documents are best-effort and intentionally cover only
+post-auth API calls, not the Portal or Gateway login flows.
+
+Generated files:
+
+- [`openapi.json`](./openapi.json): child-scoped `https://api.librus.pl/3.0`
+  `api_v3` bearer-token requests.
+- [`gateway_api_20_openapi.json`](./gateway_api_20_openapi.json):
+  cookie-backed `https://synergia.librus.pl/gateway/api/2.0` requests.
+- [`wiadomosci_librus_pl_api_openapi.json`](./wiadomosci_librus_pl_api_openapi.json):
+  cookie-backed `https://wiadomosci.librus.pl/api` inbox requests.
 
 Regenerate or verify the file locally with:
 
@@ -445,9 +458,15 @@ npm run openapi:check
 You can also generate the document programmatically:
 
 ```ts
-import { generateOpenApiDocument } from "librus-sdk";
+import {
+  generateGatewayApi20OpenApiDocument,
+  generateOpenApiDocument,
+  generateWiadomosciOpenApiDocument,
+} from "librus-sdk";
 
 const openApi = generateOpenApiDocument({ version: "0.4.0" });
+const gatewayApi20 = generateGatewayApi20OpenApiDocument({ version: "0.4.0" });
+const wiadomosciApi = generateWiadomosciOpenApiDocument({ version: "0.4.0" });
 ```
 
 ### Release And Versioning Policy

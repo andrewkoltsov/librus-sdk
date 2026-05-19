@@ -4,7 +4,11 @@ export {
   type LibrusApiBackend,
   type LibrusAuthMode,
 } from "./LibrusSession.js";
-export { generateOpenApiDocument } from "./openapi.js";
+export {
+  generateGatewayApi20OpenApiDocument,
+  generateOpenApiDocument,
+  generateWiadomosciOpenApiDocument,
+} from "./openapi.js";
 export { PortalClient } from "./portal/PortalClient.js";
 export { DirectSynergiaAuthClient } from "./synergia/DirectSynergiaAuthClient.js";
 export { GatewayApi20AuthClient } from "./synergia/GatewayApi20AuthClient.js";

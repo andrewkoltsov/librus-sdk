@@ -4,36 +4,62 @@ import { fileURLToPath } from "node:url";
 
 import { format } from "prettier";
 
-import { generateOpenApiDocument } from "../src/sdk/openapi.js";
+import {
+  generateGatewayApi20OpenApiDocument,
+  generateOpenApiDocument,
+  generateWiadomosciOpenApiDocument,
+} from "../src/sdk/openapi.js";
 
 async function main(): Promise<void> {
   const scriptDir = dirname(fileURLToPath(import.meta.url));
   const repositoryRoot = resolve(scriptDir, "..");
   const packageJsonPath = resolve(repositoryRoot, "package.json");
-  const outputPath = resolve(repositoryRoot, "openapi.json");
 
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
     version: string;
   };
-  const document = generateOpenApiDocument({ version: packageJson.version });
-  const serialized = await format(JSON.stringify(document), {
-    filepath: outputPath,
-  });
+  const documents = [
+    {
+      outputPath: resolve(repositoryRoot, "openapi.json"),
+      document: generateOpenApiDocument({ version: packageJson.version }),
+    },
+    {
+      outputPath: resolve(repositoryRoot, "gateway_api_20_openapi.json"),
+      document: generateGatewayApi20OpenApiDocument({
+        version: packageJson.version,
+      }),
+    },
+    {
+      outputPath: resolve(
+        repositoryRoot,
+        "wiadomosci_librus_pl_api_openapi.json",
+      ),
+      document: generateWiadomosciOpenApiDocument({
+        version: packageJson.version,
+      }),
+    },
+  ];
   const checkMode = process.argv.includes("--check");
 
-  if (checkMode) {
-    const current = await readFile(outputPath, "utf8");
+  for (const { document, outputPath } of documents) {
+    const serialized = await format(JSON.stringify(document), {
+      filepath: outputPath,
+    });
 
-    if (current !== serialized) {
-      throw new Error(
-        "openapi.json is out of date. Run `npm run openapi:generate`.",
-      );
+    if (checkMode) {
+      const current = await readFile(outputPath, "utf8");
+
+      if (current !== serialized) {
+        throw new Error(
+          `${outputPath} is out of date. Run \`npm run openapi:generate\`.`,
+        );
+      }
+
+      continue;
     }
 
-    return;
+    await writeFile(outputPath, serialized, "utf8");
   }
-
-  await writeFile(outputPath, serialized, "utf8");
 }
 
 await main();
