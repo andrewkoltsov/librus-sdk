@@ -23,7 +23,8 @@
       "types": "./dist/sdk/index.d.ts",
       "import": "./dist/sdk/index.js"
     },
-    "./openapi.json": "./openapi.json",
+    "./openapi.json": "./openapi/api_v3_openapi.json",
+    "./openapi/api_v3_openapi.json": "./openapi/api_v3_openapi.json",
     "./openapi/gateway_api_20_openapi.json": "./openapi/gateway_api_20_openapi.json",
     "./openapi/wiadomosci_librus_pl_api_openapi.json": "./openapi/wiadomosci_librus_pl_api_openapi.json"
   },
@@ -67,7 +68,6 @@
   },
   "files": [
     "dist",
-    "openapi.json",
     "openapi",
     "README.md",
     "LICENSE"

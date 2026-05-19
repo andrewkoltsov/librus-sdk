@@ -48,10 +48,13 @@ function getOperation(
 }
 
 describe("generateOpenApiDocument", () => {
-  it("matches the checked-in openapi.json", () => {
+  it("matches the checked-in api_v3_openapi.json", () => {
     const document = getGeneratedDocument();
     const checkedIn = JSON.parse(
-      readFileSync(resolve(getRepositoryRoot(), "openapi.json"), "utf8"),
+      readFileSync(
+        resolve(getRepositoryRoot(), "openapi", "api_v3_openapi.json"),
+        "utf8",
+      ),
     ) as ReturnType<typeof getGeneratedDocument>;
 
     expect(checkedIn).toEqual(document);

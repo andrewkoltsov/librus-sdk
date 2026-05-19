@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   };
   const documents = [
     {
-      outputPath: resolve(repositoryRoot, "openapi.json"),
+      outputPath: resolve(repositoryRoot, "openapi", "api_v3_openapi.json"),
       document: generateOpenApiDocument({ version: packageJson.version }),
     },
     {
