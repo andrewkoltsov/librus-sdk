@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Librus Wiadomosci API (SDK-supported subset)",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "description": "Best-effort OpenAPI document generated from the SDK's supported wiadomosci.librus.pl inbox API surface. Authentication starts with the Portal/Synergia handoff; this document covers the subsequent cookie-backed JSON calls against wiadomosci.librus.pl/api."
   },
   "servers": [

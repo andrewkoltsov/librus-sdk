@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Librus Gateway API 2.0 (SDK-supported subset)",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "description": "Best-effort OpenAPI document generated from the SDK's supported Gateway API 2.0 GET surface. Authentication starts with the school-issued login/password flow; this document covers the subsequent cookie-backed calls against synergia.librus.pl/gateway/api/2.0."
   },
   "servers": [
