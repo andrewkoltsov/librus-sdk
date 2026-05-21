@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { generateOpenApiDocument } from "../src/sdk/index.js";
+import {
+  generateGatewayApi20OpenApiDocument,
+  generateOpenApiDocument,
+  generateWiadomosciOpenApiDocument,
+} from "../src/sdk/index.js";
 
 type JsonObject = Record<string, unknown>;
 
@@ -24,6 +28,18 @@ function getGeneratedDocument() {
   return generateOpenApiDocument({ version: getPackageVersion() });
 }
 
+function getGatewayGeneratedDocument() {
+  return generateGatewayApi20OpenApiDocument({
+    version: getPackageVersion(),
+  });
+}
+
+function getWiadomosciGeneratedDocument() {
+  return generateWiadomosciOpenApiDocument({
+    version: getPackageVersion(),
+  });
+}
+
 function getOperation(
   document: ReturnType<typeof getGeneratedDocument>,
   path: string,
@@ -32,11 +48,42 @@ function getOperation(
 }
 
 describe("generateOpenApiDocument", () => {
-  it("matches the checked-in openapi.json", () => {
+  it("matches the checked-in api_v3_openapi.json", () => {
     const document = getGeneratedDocument();
     const checkedIn = JSON.parse(
-      readFileSync(resolve(getRepositoryRoot(), "openapi.json"), "utf8"),
+      readFileSync(
+        resolve(getRepositoryRoot(), "openapi", "api_v3_openapi.json"),
+        "utf8",
+      ),
     ) as ReturnType<typeof getGeneratedDocument>;
+
+    expect(checkedIn).toEqual(document);
+  });
+
+  it("matches the checked-in gateway_api_20_openapi.json", () => {
+    const document = getGatewayGeneratedDocument();
+    const checkedIn = JSON.parse(
+      readFileSync(
+        resolve(getRepositoryRoot(), "openapi", "gateway_api_20_openapi.json"),
+        "utf8",
+      ),
+    ) as ReturnType<typeof getGatewayGeneratedDocument>;
+
+    expect(checkedIn).toEqual(document);
+  });
+
+  it("matches the checked-in wiadomosci_librus_pl_api_openapi.json", () => {
+    const document = getWiadomosciGeneratedDocument();
+    const checkedIn = JSON.parse(
+      readFileSync(
+        resolve(
+          getRepositoryRoot(),
+          "openapi",
+          "wiadomosci_librus_pl_api_openapi.json",
+        ),
+        "utf8",
+      ),
+    ) as ReturnType<typeof getWiadomosciGeneratedDocument>;
 
     expect(checkedIn).toEqual(document);
   });
@@ -57,6 +104,49 @@ describe("generateOpenApiDocument", () => {
         scheme: "bearer",
       }),
     );
+  });
+
+  it("documents cookie auth against Gateway API 2.0", () => {
+    const document = getGatewayGeneratedDocument();
+
+    expect(document.servers).toEqual([
+      {
+        url: "https://synergia.librus.pl/gateway/api/2.0",
+        description: "Cookie-backed Librus Gateway API 2.0 base URL.",
+      },
+    ]);
+
+    expect(document.components.securitySchemes.cookieAuth).toEqual(
+      expect.objectContaining({
+        type: "apiKey",
+        in: "header",
+        name: "Cookie",
+      }),
+    );
+    expect(getOperation(document, "/Grades").security).toEqual([
+      { cookieAuth: [] },
+    ]);
+  });
+
+  it("documents the wiadomosci.librus.pl inbox API surface", () => {
+    const document = getWiadomosciGeneratedDocument();
+
+    expect(document.servers).toEqual([
+      {
+        url: "https://wiadomosci.librus.pl/api",
+        description: "Portal-authenticated Librus Wiadomosci API base URL.",
+      },
+    ]);
+    expect(Object.keys(document.paths)).toEqual([
+      "/inbox/messages",
+      "/inbox/messages/{messageId}",
+      "/inbox/unreadMessagesCount",
+    ]);
+    expect(getOperation(document, "/inbox/messages").parameters).toEqual([
+      expect.objectContaining({ name: "page", in: "query" }),
+      expect.objectContaining({ name: "limit", in: "query" }),
+      expect.objectContaining({ name: "afterId", in: "query" }),
+    ]);
   });
 
   it("describes the timetable endpoint with both supported query filters", () => {

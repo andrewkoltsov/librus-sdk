@@ -1,0 +1,199 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Librus Wiadomosci API (SDK-supported subset)",
+    "version": "0.7.1",
+    "description": "Best-effort OpenAPI document generated from the SDK's supported wiadomosci.librus.pl inbox API surface. Authentication starts with the Portal/Synergia handoff; this document covers the subsequent cookie-backed JSON calls against wiadomosci.librus.pl/api."
+  },
+  "servers": [
+    {
+      "url": "https://wiadomosci.librus.pl/api",
+      "description": "Portal-authenticated Librus Wiadomosci API base URL."
+    }
+  ],
+  "tags": [
+    {
+      "name": "messages",
+      "description": "Portal-authenticated inbox reads exposed by wiadomosci.librus.pl."
+    }
+  ],
+  "security": [{ "cookieAuth": [] }],
+  "paths": {
+    "/inbox/messages": {
+      "get": {
+        "operationId": "listWiadomosciMessages",
+        "summary": "List inbox messages",
+        "tags": ["messages"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiadomosciMessagesResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Message list page number.",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum messages to return for the page.",
+            "schema": { "type": "integer", "default": 300 }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "required": false,
+            "description": "Return messages after this message id.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/inbox/messages/{messageId}": {
+      "get": {
+        "operationId": "getWiadomosciMessage",
+        "summary": "Get an inbox message by id",
+        "tags": ["messages"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiadomosciMessageResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "description": "Message identifier.",
+            "schema": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      }
+    },
+    "/inbox/unreadMessagesCount": {
+      "get": {
+        "operationId": "getWiadomosciUnreadMessagesCount",
+        "summary": "Get the unread inbox message count",
+        "tags": ["messages"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Successful JSON response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiadomosciUnreadMessagesCountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Cookie",
+        "description": "Cookie-backed wiadomosci.librus.pl session established by the Portal/Synergia handoff."
+      }
+    },
+    "schemas": {
+      "UnknownRecord": { "type": "object", "additionalProperties": {} },
+      "WiadomosciMessage": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "Id": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+          "senderId": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+          "receiverId": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "receiver": { "$ref": "#/components/schemas/UnknownRecord" },
+          "topic": { "type": "string" },
+          "Subject": { "type": "string" },
+          "content": { "type": "string" },
+          "Body": { "type": "string" },
+          "readDate": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "ReadDate": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "sendDate": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          },
+          "SendDate": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "enum": [null] }
+            ]
+          }
+        },
+        "required": []
+      },
+      "WiadomosciMessagesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WiadomosciMessage" }
+          }
+        },
+        "required": ["data"]
+      },
+      "WiadomosciMessageResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/WiadomosciMessage" }
+        },
+        "required": []
+      },
+      "WiadomosciUnreadMessagesCountResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "anyOf": [{ "type": "number" }, { "type": "string" }] }
+        },
+        "required": ["data"]
+      }
+    }
+  }
+}

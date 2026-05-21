@@ -1,4 +1,5 @@
 import { toJsonSchemaDefs } from "@valibot/to-json-schema";
+import * as v from "valibot";
 
 import {
   apiRefOrJsonSchema,
@@ -158,7 +159,7 @@ interface OpenApiOperationDefinition {
   response:
     | {
         kind: "json";
-        schemaName: SchemaName;
+        schemaName: string;
         description?: string;
       }
     | {
@@ -167,7 +168,7 @@ interface OpenApiOperationDefinition {
       };
 }
 
-const openApiSchemaDefinitions = {
+const synergiaOpenApiSchemaDefinitions = {
   ApiRef: apiRefSchema,
   ApiRefOrJson: apiRefOrJsonSchema,
   UnknownRecord: unknownRecordSchema,
@@ -251,7 +252,35 @@ const openApiSchemaDefinitions = {
   HomeworkCategoriesResponse: homeworkCategoriesResponseSchema,
 } as const;
 
-type SchemaName = keyof typeof openApiSchemaDefinitions;
+const wiadomosciMessageSchema = v.looseObject({
+  messageId: v.exactOptional(v.union([v.string(), v.number()])),
+  Id: v.exactOptional(v.union([v.string(), v.number()])),
+  senderId: v.exactOptional(v.union([v.string(), v.number()])),
+  receiverId: v.exactOptional(v.union([v.string(), v.number()])),
+  receiver: v.exactOptional(unknownRecordSchema),
+  topic: v.exactOptional(v.string()),
+  Subject: v.exactOptional(v.string()),
+  content: v.exactOptional(v.string()),
+  Body: v.exactOptional(v.string()),
+  readDate: v.exactOptional(v.union([v.string(), v.number(), v.null()])),
+  ReadDate: v.exactOptional(v.union([v.string(), v.number(), v.null()])),
+  sendDate: v.exactOptional(v.union([v.string(), v.number(), v.null()])),
+  SendDate: v.exactOptional(v.union([v.string(), v.number(), v.null()])),
+});
+
+const wiadomosciOpenApiSchemaDefinitions = {
+  UnknownRecord: unknownRecordSchema,
+  WiadomosciMessage: wiadomosciMessageSchema,
+  WiadomosciMessagesResponse: v.looseObject({
+    data: v.array(wiadomosciMessageSchema),
+  }),
+  WiadomosciMessageResponse: v.looseObject({
+    data: v.exactOptional(wiadomosciMessageSchema),
+  }),
+  WiadomosciUnreadMessagesCountResponse: v.looseObject({
+    data: v.union([v.number(), v.string()]),
+  }),
+} as const;
 
 const synergiaIdSchema: JsonObject = {
   oneOf: [{ type: "string" }, { type: "integer" }],
@@ -325,7 +354,7 @@ const tagDescriptions = [
   },
 ] as const;
 
-const operations: readonly OpenApiOperationDefinition[] = [
+const synergiaOperations: readonly OpenApiOperationDefinition[] = [
   {
     path: "/Me",
     operationId: "getMe",
@@ -1193,8 +1222,81 @@ const operations: readonly OpenApiOperationDefinition[] = [
   },
 ] as const;
 
+const wiadomosciTagDescriptions = [
+  {
+    name: "messages",
+    description:
+      "Portal-authenticated inbox reads exposed by wiadomosci.librus.pl.",
+  },
+] as const;
+
+const wiadomosciOperations: readonly OpenApiOperationDefinition[] = [
+  {
+    path: "/inbox/messages",
+    operationId: "listWiadomosciMessages",
+    summary: "List inbox messages",
+    tag: "messages",
+    parameters: [
+      {
+        name: "page",
+        in: "query",
+        required: false,
+        description: "Message list page number.",
+        schema: { type: "integer", default: 1 },
+      },
+      {
+        name: "limit",
+        in: "query",
+        required: false,
+        description: "Maximum messages to return for the page.",
+        schema: { type: "integer", default: 300 },
+      },
+      {
+        name: "afterId",
+        in: "query",
+        required: false,
+        description: "Return messages after this message id.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: {
+      kind: "json",
+      schemaName: "WiadomosciMessagesResponse",
+    },
+  },
+  {
+    path: "/inbox/messages/{messageId}",
+    operationId: "getWiadomosciMessage",
+    summary: "Get an inbox message by id",
+    tag: "messages",
+    parameters: [
+      {
+        name: "messageId",
+        in: "path",
+        required: true,
+        description: "Message identifier.",
+        schema: synergiaIdSchema,
+      },
+    ],
+    response: {
+      kind: "json",
+      schemaName: "WiadomosciMessageResponse",
+    },
+  },
+  {
+    path: "/inbox/unreadMessagesCount",
+    operationId: "getWiadomosciUnreadMessagesCount",
+    summary: "Get the unread inbox message count",
+    tag: "messages",
+    response: {
+      kind: "json",
+      schemaName: "WiadomosciUnreadMessagesCountResponse",
+    },
+  },
+] as const;
+
 function createJsonResponse(
-  schemaName: SchemaName,
+  schemaName: string,
   description?: string,
 ): JsonObject {
   return {
@@ -1220,12 +1322,15 @@ function createBinaryResponse(description?: string): JsonObject {
   };
 }
 
-function createOperation(operation: OpenApiOperationDefinition): JsonObject {
+function createOperation(
+  operation: OpenApiOperationDefinition,
+  security: Array<Record<string, string[]>>,
+): JsonObject {
   const result: JsonObject = {
     operationId: operation.operationId,
     summary: operation.summary,
     tags: [operation.tag],
-    security: [{ bearerAuth: [] }],
+    security,
     responses: {
       "200":
         operation.response.kind === "json"
@@ -1248,31 +1353,114 @@ function createOperation(operation: OpenApiOperationDefinition): JsonObject {
   return result;
 }
 
-function createPaths(): Record<string, JsonObject> {
+function createPaths(
+  operations: readonly OpenApiOperationDefinition[],
+  security: Array<Record<string, string[]>>,
+): Record<string, JsonObject> {
   const paths: Record<string, JsonObject> = {};
 
   for (const operation of operations) {
     paths[operation.path] = {
-      get: createOperation(operation),
+      get: createOperation(operation, security),
     };
   }
 
   return paths;
 }
 
-function createSchemas(): Record<string, unknown> {
-  return toJsonSchemaDefs(openApiSchemaDefinitions, {
+function createSchemas(
+  definitions: Record<
+    string,
+    v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>
+  >,
+): Record<string, unknown> {
+  return toJsonSchemaDefs(definitions, {
     target: "openapi-3.0",
     overrideRef: (context) => `#/components/schemas/${context.referenceId}`,
   });
 }
 
+function generateSynergiaOpenApiDocument(
+  options: GenerateOpenApiDocumentOptions = {},
+  backend: "api_v3" | "gateway_api_20",
+): LibrusOpenApiDocument {
+  const isGateway = backend === "gateway_api_20";
+  const title =
+    options.title ??
+    (isGateway
+      ? "Librus Gateway API 2.0 (SDK-supported subset)"
+      : "Librus Synergia API (SDK-supported subset)");
+  const version = options.version ?? "0.0.0";
+  const serverUrl =
+    options.serverUrl ??
+    (isGateway
+      ? "https://synergia.librus.pl/gateway/api/2.0"
+      : "https://api.librus.pl/3.0");
+  const security = isGateway ? [{ cookieAuth: [] }] : [{ bearerAuth: [] }];
+
+  return {
+    openapi: "3.0.3",
+    info: {
+      title,
+      version,
+      description: isGateway
+        ? "Best-effort OpenAPI document generated from the SDK's supported Gateway API 2.0 GET surface. Authentication starts with the school-issued login/password flow; this document covers the subsequent cookie-backed calls against synergia.librus.pl/gateway/api/2.0."
+        : "Best-effort OpenAPI document generated from the SDK's supported child-scoped Synergia GET surface. Authentication starts on portal.librus.pl; this document covers the subsequent bearer-token calls against api.librus.pl/3.0.",
+    },
+    servers: [
+      {
+        url: serverUrl,
+        description: isGateway
+          ? "Cookie-backed Librus Gateway API 2.0 base URL."
+          : "Child-scoped Librus Synergia API base URL.",
+      },
+    ],
+    tags: [...tagDescriptions],
+    security,
+    paths: createPaths(synergiaOperations, security),
+    components: {
+      securitySchemes: isGateway
+        ? {
+            cookieAuth: {
+              type: "apiKey",
+              in: "header",
+              name: "Cookie",
+              description:
+                "Cookie-backed Synergia session established by the Gateway API 2.0 login flow.",
+            },
+          }
+        : {
+            bearerAuth: {
+              type: "http",
+              scheme: "bearer",
+              description:
+                "Child-scoped bearer token returned by the Librus family portal flow.",
+            },
+          },
+      schemas: createSchemas(synergiaOpenApiSchemaDefinitions),
+    },
+  };
+}
+
 export function generateOpenApiDocument(
   options: GenerateOpenApiDocumentOptions = {},
 ): LibrusOpenApiDocument {
-  const title = options.title ?? "Librus Synergia API (SDK-supported subset)";
+  return generateSynergiaOpenApiDocument(options, "api_v3");
+}
+
+export function generateGatewayApi20OpenApiDocument(
+  options: GenerateOpenApiDocumentOptions = {},
+): LibrusOpenApiDocument {
+  return generateSynergiaOpenApiDocument(options, "gateway_api_20");
+}
+
+export function generateWiadomosciOpenApiDocument(
+  options: GenerateOpenApiDocumentOptions = {},
+): LibrusOpenApiDocument {
+  const title = options.title ?? "Librus Wiadomosci API (SDK-supported subset)";
   const version = options.version ?? "0.0.0";
-  const serverUrl = options.serverUrl ?? "https://api.librus.pl/3.0";
+  const serverUrl = options.serverUrl ?? "https://wiadomosci.librus.pl/api";
+  const security = [{ cookieAuth: [] }];
 
   return {
     openapi: "3.0.3",
@@ -1280,27 +1468,28 @@ export function generateOpenApiDocument(
       title,
       version,
       description:
-        "Best-effort OpenAPI document generated from the SDK's supported child-scoped Synergia GET surface. Authentication starts on portal.librus.pl; this document covers the subsequent bearer-token calls against api.librus.pl/3.0.",
+        "Best-effort OpenAPI document generated from the SDK's supported wiadomosci.librus.pl inbox API surface. Authentication starts with the Portal/Synergia handoff; this document covers the subsequent cookie-backed JSON calls against wiadomosci.librus.pl/api.",
     },
     servers: [
       {
         url: serverUrl,
-        description: "Child-scoped Librus Synergia API base URL.",
+        description: "Portal-authenticated Librus Wiadomosci API base URL.",
       },
     ],
-    tags: [...tagDescriptions],
-    security: [{ bearerAuth: [] }],
-    paths: createPaths(),
+    tags: [...wiadomosciTagDescriptions],
+    security,
+    paths: createPaths(wiadomosciOperations, security),
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
+        cookieAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "Cookie",
           description:
-            "Child-scoped bearer token returned by the Librus family portal flow.",
+            "Cookie-backed wiadomosci.librus.pl session established by the Portal/Synergia handoff.",
         },
       },
-      schemas: createSchemas(),
+      schemas: createSchemas(wiadomosciOpenApiSchemaDefinitions),
     },
   };
 }

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Generated OpenAPI documents for the supported `gateway_api_20` and
+  `wiadomosci.librus.pl/api` surfaces.
+
 ## [0.7.1] - 2026-05-20
 
 ### Fixed

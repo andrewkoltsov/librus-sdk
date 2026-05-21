@@ -65,8 +65,8 @@ continues to publish to npmjs only.
 
 ## Release Checklist
 
-1. Run `npm version X.Y.Z --no-git-tag-version` to update
-   `package.json`, `package-lock.json`, and `openapi.json` together.
+1. Run `npm version X.Y.Z --no-git-tag-version` to update `package.json`,
+   `package-lock.json`, and the generated OpenAPI JSON files together.
 2. Move the release notes from `Unreleased` into a new versioned section in
    `CHANGELOG.md`.
 3. Merge the release commit to `master`.
@@ -78,7 +78,8 @@ continues to publish to npmjs only.
 8. Confirm the workflow's published-package verification step succeeds.
 
 Using `npm version` matters here because the repository's `version` lifecycle
-hook regenerates `openapi.json` from the new package version automatically.
+hook regenerates the OpenAPI JSON files from the new package version
+automatically.
 
 ## Maintainer Continuity
 
