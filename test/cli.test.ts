@@ -24,26 +24,35 @@ import {
 import {
   LibrusSdkError,
   LibrusNetworkTimeoutError,
+  SynergiaApiClient,
   type ChildAccount,
   type ChildAccountSummary,
+  type Logger,
 } from "../src/sdk/index.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { bin: Record<string, string>; version: string };
 const originalLibrusChild = process.env.LIBRUS_CHILD;
+const originalLibrusLogLevel = process.env.LIBRUS_LOG_LEVEL;
 
 beforeEach(() => {
   delete process.env.LIBRUS_CHILD;
+  delete process.env.LIBRUS_LOG_LEVEL;
 });
 
 afterEach(() => {
   if (originalLibrusChild === undefined) {
     delete process.env.LIBRUS_CHILD;
-    return;
+  } else {
+    process.env.LIBRUS_CHILD = originalLibrusChild;
   }
 
-  process.env.LIBRUS_CHILD = originalLibrusChild;
+  if (originalLibrusLogLevel === undefined) {
+    delete process.env.LIBRUS_LOG_LEVEL;
+  } else {
+    process.env.LIBRUS_LOG_LEVEL = originalLibrusLogLevel;
+  }
 });
 
 function createChild(overrides: Partial<ChildAccount> = {}): ChildAccount {
@@ -91,6 +100,36 @@ function createGatewayApi20SessionStub() {
         Url: "https://synergia.librus.pl/gateway/api/2.0/Grades",
       }),
     }),
+  };
+}
+
+function createLoggingGatewayApi20SessionStub(logger?: Logger) {
+  return {
+    getApiBackend: () => "gateway_api_20",
+    getAuthMode: () => "synergia",
+    forChild: async () => {
+      const options = {
+        authMode: "cookie",
+        fetch: vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              Grades: [],
+              Resources: {},
+              Url: "https://synergia.librus.pl/gateway/api/2.0/Grades",
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            },
+          ),
+        ),
+      } as const;
+
+      return new SynergiaApiClient(
+        "",
+        logger === undefined ? options : { ...options, logger },
+      );
+    },
   };
 }
 
@@ -170,6 +209,74 @@ describe("runCli", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
     expect(output.data.Grades).toEqual([]);
+  });
+
+  it("writes verbose SDK logs to stderr without changing JSON stdout", async () => {
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "--verbose", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: (logger) =>
+          createLoggingGatewayApi20SessionStub(logger) as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{ data: { Grades: unknown[] } }>(stdout);
+
+    expect(exitCode).toBe(0);
+    expect(output.data.Grades).toEqual([]);
+    expect(stderr).toContain("DEBUG synergia.request.start");
+    expect(stderr).toContain("INFO synergia.request.success");
+    expect(stderr).not.toContain("super-secret");
+    expect(stderr).not.toContain("Bearer");
+  });
+
+  it("enables SDK logs from LIBRUS_LOG_LEVEL", async () => {
+    process.env.LIBRUS_LOG_LEVEL = "info";
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: (logger) =>
+          createLoggingGatewayApi20SessionStub(logger) as never,
+        outputWidth: 80,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('"Grades": []');
+    expect(stderr).not.toContain("DEBUG synergia.request.start");
+    expect(stderr).toContain("INFO synergia.request.success");
+    expect(stderr).not.toContain("super-secret");
+  });
+
+  it("returns a structured error for invalid LIBRUS_LOG_LEVEL", async () => {
+    process.env.LIBRUS_LOG_LEVEL = "trace";
+    let stdout = "";
+    let stderr = "";
+    const exitCode = await runCli(
+      withJsonFormat(["node", "librus", "grades", "list"]),
+      {
+        stdout: { write: (chunk) => (stdout += chunk) },
+        stderr: { write: (chunk) => (stderr += chunk) },
+        createSession: () => createGatewayApi20SessionStub() as never,
+        outputWidth: 80,
+      },
+    );
+    const output = parseJson<{ error: { code: string; message: string } }>(
+      stderr,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(output.error.code).toBe("CONFIGURATION_ERROR");
+    expect(output.error.message).toContain("LIBRUS_LOG_LEVEL");
   });
 
   it("returns a structured unsupported error when gateway_api_20 receives --child", async () => {

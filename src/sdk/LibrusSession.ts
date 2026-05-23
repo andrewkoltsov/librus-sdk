@@ -30,6 +30,7 @@ import {
   validateOptionalRequestTimeoutMs,
 } from "./requestTimeout.js";
 import { emitDeprecationWarningOnce } from "./deprecationWarnings.js";
+import type { Logger } from "./logger.js";
 
 type PortalCredentialEnvName =
   | "LIBRUS_EMAIL"
@@ -103,6 +104,7 @@ export interface LibrusSessionOptions {
     "ensurePortalLogin" | "portalClient"
   >;
   requestTimeoutMs?: number;
+  logger?: Logger;
 }
 
 export class LibrusSession {
@@ -154,9 +156,13 @@ export class LibrusSession {
       options.portalClientOptions,
       requestTimeoutMs,
     );
-    const synergiaClientOptions = applyRequestTimeout(
-      options.synergiaClientOptions,
-      requestTimeoutMs,
+    const loggedPortalClientOptions = applyLogger(
+      portalClientOptions,
+      options.logger,
+    );
+    const synergiaClientOptions = applyLogger(
+      applyRequestTimeout(options.synergiaClientOptions, requestTimeoutMs),
+      options.logger,
     );
     const bffClientOptions = applyRequestTimeout(
       options.bffClientOptions,
@@ -175,7 +181,7 @@ export class LibrusSession {
     if (this.apiBackend === "api_v3") {
       this.portalCredentials = normalizePortalCredentials(options.credentials);
       this.portalClient =
-        options.portalClient ?? new PortalClient(portalClientOptions);
+        options.portalClient ?? new PortalClient(loggedPortalClientOptions);
     } else {
       this.gatewayCredentials = normalizeGatewayCredentials(
         options.credentials,
@@ -191,22 +197,34 @@ export class LibrusSession {
     this.wiadomosciClientOptions = wiadomosciClientOptions;
   }
 
-  static fromEnv(env: NodeJS.ProcessEnv = process.env): LibrusSession {
+  static fromEnv(
+    env: NodeJS.ProcessEnv = process.env,
+    options: Omit<
+      LibrusSessionOptions,
+      "apiBackend" | "authMode" | "credentials"
+    > = {},
+  ): LibrusSession {
     const apiBackend = resolveApiBackend(env);
     const requestTimeoutMs = parseRequestTimeoutMsFromEnv(
       env.LIBRUS_TIMEOUT_MS,
     );
-    const options = requestTimeoutMs === undefined ? {} : { requestTimeoutMs };
+    const sessionOptions =
+      requestTimeoutMs === undefined
+        ? options
+        : {
+            ...options,
+            requestTimeoutMs: options.requestTimeoutMs ?? requestTimeoutMs,
+          };
 
     if (apiBackend === "gateway_api_20") {
       return LibrusSession.fromGatewayCredentials(
         resolveGatewayCredentialsFromEnv(env),
-        options,
+        sessionOptions,
       );
     }
 
     return new LibrusSession({
-      ...options,
+      ...sessionOptions,
       apiBackend: "api_v3",
       credentials: resolvePortalCredentialsFromEnv(env),
     });
@@ -737,4 +755,15 @@ function applyRequestTimeout<T extends { requestTimeoutMs?: number }>(
   return options
     ? { ...options, requestTimeoutMs }
     : ({ requestTimeoutMs } as T);
+}
+
+function applyLogger<T extends { logger?: Logger }>(
+  options: T | undefined,
+  logger: Logger | undefined,
+): T | undefined {
+  if (options?.logger !== undefined || logger === undefined) {
+    return options;
+  }
+
+  return options ? { ...options, logger } : ({ logger } as T);
 }

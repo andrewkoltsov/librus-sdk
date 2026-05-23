@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Generated OpenAPI documents for the supported `gateway_api_20` and
   `wiadomosci.librus.pl/api` surfaces.
+- Secret-safe SDK logging hooks for Portal login and Synergia request lifecycle
+  events, plus CLI `--verbose` and `LIBRUS_LOG_LEVEL` stderr diagnostics.
 
 ## [0.7.1] - 2026-05-20
 

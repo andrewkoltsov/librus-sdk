@@ -4,6 +4,7 @@ import { InvalidArgumentError, type Command } from "commander";
 import {
   LibrusSession,
   LibrusSdkError,
+  type Logger,
   type ChildAccount,
   type ChildAccountSummary,
   type LibrusApiBackend,
@@ -33,7 +34,7 @@ export interface CliOutput {
 export interface CliContext {
   stdout: CliOutput;
   stderr: CliOutput;
-  createSession: () => LibrusSession;
+  createSession: (logger?: Logger) => LibrusSession;
   outputWidth?: number;
   writeFile?: (path: string, data: Uint8Array) => void;
 }
