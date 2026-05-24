@@ -32,18 +32,8 @@ jobs:
           results_format: sarif
           publish_results: true
 
-      - name: Check Scorecard SARIF output
-        id: scorecard-sarif
-        if: always()
-        run: |
-          if [ -f scorecard-results.sarif ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Upload Scorecard artifact
-        if: always() && steps.scorecard-sarif.outputs.exists == 'true'
+        if: ${{ always() && hashFiles('scorecard-results.sarif') != '' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scorecard-results
@@ -51,7 +41,7 @@ jobs:
           retention-days: 5
 
       - name: Upload Scorecard results to code scanning
-        if: always() && steps.scorecard-sarif.outputs.exists == 'true'
+        if: ${{ always() && hashFiles('scorecard-results.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
         with:
           sarif_file: scorecard-results.sarif
