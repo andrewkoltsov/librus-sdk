@@ -13,6 +13,7 @@ import {
   resolveRequestTimeoutMs,
   wrapFetchWithTimeout,
 } from "../requestTimeout.js";
+import { getErrorLogFields, noopLogger, type Logger } from "../logger.js";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 import {
   portalMeSchema,
@@ -28,6 +29,7 @@ export interface PortalClientOptions {
   loginPath?: string;
   loginActionPath?: string;
   requestTimeoutMs?: number;
+  logger?: Logger;
 }
 
 export class PortalClient {
@@ -37,9 +39,11 @@ export class PortalClient {
   private readonly loginPath: string;
   private readonly loginActionPath: string;
   private readonly requestTimeoutMs: number;
+  private readonly logger: Logger;
   private loggedIn = false;
 
   constructor(options: PortalClientOptions = {}) {
+    this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     const sessionFetch = createSessionFetch(options.fetch ?? fetch);
     this.fetchImpl = wrapFetchWithTimeout(
@@ -55,48 +59,67 @@ export class PortalClient {
   }
 
   async login(credentials: PortalCredentials): Promise<void> {
-    const loginPageUrl = this.buildUrl(this.portalBaseUrl, this.loginPath);
-    const loginPageResponse = await this.fetchImpl(loginPageUrl, {
-      method: "GET",
+    const startedAt = Date.now();
+
+    this.logger.log("debug", "portal.login.start", {
+      portalBaseUrl: this.portalBaseUrl,
     });
-
-    if (!loginPageResponse.ok) {
-      throw new LibrusAuthenticationError();
-    }
-
-    const loginPageHtml = await loginPageResponse.text();
-    const csrfToken = extractPortalCsrfToken(loginPageHtml);
-    const form = new URLSearchParams({
-      email: credentials.email,
-      password: credentials.password,
-      _token: csrfToken,
-    });
-
-    const loginActionResponse = await this.fetchImpl(
-      this.buildUrl(this.portalBaseUrl, this.loginActionPath),
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded",
-          referer: loginPageUrl,
-        },
-        body: form.toString(),
-      },
-    );
-
-    if (!loginActionResponse.ok) {
-      throw new LibrusAuthenticationError();
-    }
 
     try {
-      await this.getMe();
-      this.loggedIn = true;
-    } catch (error) {
-      if (error instanceof LibrusApiError && error.details?.status === 401) {
+      const loginPageUrl = this.buildUrl(this.portalBaseUrl, this.loginPath);
+      const loginPageResponse = await this.fetchImpl(loginPageUrl, {
+        method: "GET",
+      });
+
+      if (!loginPageResponse.ok) {
         throw new LibrusAuthenticationError();
       }
 
-      throw error;
+      const loginPageHtml = await loginPageResponse.text();
+      const csrfToken = extractPortalCsrfToken(loginPageHtml);
+      const form = new URLSearchParams({
+        email: credentials.email,
+        password: credentials.password,
+        _token: csrfToken,
+      });
+
+      const loginActionResponse = await this.fetchImpl(
+        this.buildUrl(this.portalBaseUrl, this.loginActionPath),
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            referer: loginPageUrl,
+          },
+          body: form.toString(),
+        },
+      );
+
+      if (!loginActionResponse.ok) {
+        throw new LibrusAuthenticationError();
+      }
+
+      await this.getMe();
+      this.loggedIn = true;
+      this.logger.log("info", "portal.login.success", {
+        durationMs: Date.now() - startedAt,
+      });
+    } catch (error) {
+      const authError =
+        error instanceof LibrusApiError && error.details?.status === 401
+          ? new LibrusAuthenticationError()
+          : error;
+
+      this.logger.log("error", "portal.login.failure", {
+        durationMs: Date.now() - startedAt,
+        ...getErrorLogFields(authError),
+      });
+
+      if (authError instanceof Error) {
+        throw authError;
+      }
+
+      throw authError;
     }
   }
 

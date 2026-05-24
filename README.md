@@ -83,6 +83,7 @@ these variables:
 | `LIBRUS_GATEWAY_PASSWORD` | `gateway_api_20` | Password for the Gateway API 2.0 login.                            |
 | `LIBRUS_CHILD`            | No               | Optional default child id or login for `api_v3` CLI commands.      |
 | `LIBRUS_TIMEOUT_MS`       | No               | Positive integer request timeout in milliseconds.                  |
+| `LIBRUS_LOG_LEVEL`        | No               | Optional CLI SDK log level: `debug`, `info`, `warn`, or `error`.   |
 
 If no timeout is configured, portal and child-scoped SDK requests default to
 `30000` milliseconds. Invalid timeout values fail fast with
@@ -117,6 +118,7 @@ import {
   generateWiadomosciOpenApiDocument,
   LibrusSdkError,
   type LibrusApiBackend,
+  type Logger,
 } from "librus-sdk";
 ```
 
@@ -127,6 +129,7 @@ import {
 | `GatewayApi20AuthClient`              | Lower-level Gateway API 2.0 login/password auth client for `synergia.librus.pl/gateway/api/2.0` cookie-backed requests.               |
 | `PortalClient`                        | Lower-level portal session client for `portal.librus.pl` login, `/Me`, and `/SynergiaAccounts`.                                       |
 | `SynergiaApiClient`                   | Child-scoped GET client for the supported `https://api.librus.pl/3.0` surface when you already have a bearer token.                   |
+| `Logger`                              | Minimal structured logging interface accepted by SDK clients and sessions.                                                            |
 | `generateOpenApiDocument`             | Generates the shipped OpenAPI document for the supported `api_v3` child-scoped GET subset.                                            |
 | `generateGatewayApi20OpenApiDocument` | Generates the shipped OpenAPI document for the supported `gateway_api_20` GET subset.                                                 |
 | `generateWiadomosciOpenApiDocument`   | Generates the shipped OpenAPI document for the supported `wiadomosci.librus.pl/api` inbox subset.                                     |
@@ -142,6 +145,26 @@ const client = await session.forChild(children[0]);
 const grades = await client.getGrades();
 console.log(grades);
 ```
+
+Custom logger:
+
+```ts
+import { LibrusSession, type Logger } from "librus-sdk";
+import pino from "pino";
+
+const pinoLogger = pino();
+const logger: Logger = {
+  log: (level, event, fields) => pinoLogger[level]({ event, ...fields }),
+};
+
+const session = LibrusSession.fromEnv(process.env, { logger });
+const client = await session.forChild("child-login");
+await client.getGrades();
+```
+
+SDK logs are structured and secret-safe. They include request URLs, status,
+durations, auth mode, and stable error codes, but never include passwords,
+bearer tokens, cookie values, request bodies, or response bodies.
 
 Gateway API 2.0 flow:
 
@@ -171,9 +194,9 @@ with `UNSUPPORTED_BACKEND` in `gateway_api_20`.
 
 Current high-level methods on `LibrusSession`:
 
-- `LibrusSession.fromEnv(env?)`
+- `LibrusSession.fromEnv(env?, options?)`
 - `LibrusSession.fromGatewayCredentials(credentials, options?)`
-- `new LibrusSession({ apiBackend?, credentials, portalClient?, portalClientOptions?, gatewayApi20AuthClient?, gatewayApi20AuthClientOptions?, bffClientOptions?, synergiaClientOptions?, wiadomosciClientOptions?, requestTimeoutMs? })`
+- `new LibrusSession({ apiBackend?, credentials, portalClient?, portalClientOptions?, gatewayApi20AuthClient?, gatewayApi20AuthClientOptions?, bffClientOptions?, synergiaClientOptions?, wiadomosciClientOptions?, requestTimeoutMs?, logger? })`
 - `login()`
 - `getApiBackend()`
 - `getPortalMe()`
@@ -311,6 +334,7 @@ Root CLI commands:
 
 - `librus-sdk --help`
 - `librus-sdk --version`
+- `librus-sdk --verbose <command>`
 
 Every leaf command supports `--format <text|json>`. In `api_v3`, child-scoped
 commands require a child selector: pass `--child <id-or-login>` or set
@@ -319,6 +343,10 @@ account is already child-scoped, so the same commands run without `--child` and
 explicit `--child` fails with `UNSUPPORTED_BACKEND`. Portal-only commands such
 as `children list`, `messages bff-list`, and `messages wiadomosci-list` are not
 available in `gateway_api_20`.
+
+`--verbose` enables debug-level SDK diagnostics on stderr. `LIBRUS_LOG_LEVEL`
+can enable diagnostics without a flag and filters by minimum level. Successful
+command payloads still go to stdout, so `--format json` remains machine-readable.
 
 | Family           | Subcommands                                                                                                 | Extra selectors and flags                                                                                                                                                                          |
 | ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

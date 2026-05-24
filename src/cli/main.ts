@@ -26,6 +26,7 @@ import { createMeCommand } from "./commands/me.js";
 import { createNotesCommand } from "./commands/notes.js";
 import { createNotificationsCommand } from "./commands/notifications.js";
 import { createTimetableCommand } from "./commands/timetable.js";
+import { createCliLogger, resolveCliLogLevel } from "./logger.js";
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
@@ -39,7 +40,10 @@ export function createDefaultCliContext(): CliContext {
     stderr: {
       write: (chunk) => process.stderr.write(chunk),
     },
-    createSession: () => LibrusSession.fromEnv(),
+    createSession: (logger) =>
+      logger === undefined
+        ? LibrusSession.fromEnv()
+        : LibrusSession.fromEnv(process.env, { logger }),
     outputWidth: process.stdout.columns ?? 80,
     writeFile: (path, data) => writeFileSync(path, data),
   };
@@ -50,7 +54,8 @@ export function createProgram(context: CliContext): Command {
     new Command()
       .name("librus-sdk")
       .description("CLI for the Librus family portal flow")
-      .version(packageJson.version),
+      .version(packageJson.version)
+      .option("--verbose", "Write diagnostic logs to stderr"),
     context,
   );
 
@@ -76,19 +81,35 @@ export async function runCli(
   argv = process.argv,
   context = createDefaultCliContext(),
 ): Promise<number> {
-  const program = createProgram(context);
   const userArgs = argv.slice(2);
+  const helpProgram = createProgram(context);
 
   if (
     userArgs.length === 0 ||
     (userArgs.length === 1 &&
       (userArgs[0] === "--help" || userArgs[0] === "-h"))
   ) {
-    context.stdout.write(program.helpInformation());
+    context.stdout.write(helpProgram.helpInformation());
     return 0;
   }
 
   try {
+    const logLevel = isInformationalCliInvocation(userArgs)
+      ? undefined
+      : resolveCliLogLevel(userArgs);
+    const logger =
+      logLevel === undefined
+        ? undefined
+        : createCliLogger(context.stderr, logLevel);
+    const runtimeContext =
+      logger === undefined
+        ? context
+        : {
+            ...context,
+            createSession: () => context.createSession(logger),
+          };
+    const program = createProgram(runtimeContext);
+
     await program.parseAsync(argv);
     return 0;
   } catch (error) {
@@ -117,6 +138,13 @@ export async function runCli(
       ? error.exitCode
       : 1;
   }
+}
+
+function isInformationalCliInvocation(argv: string[]): boolean {
+  return argv.some(
+    (arg) =>
+      arg === "--help" || arg === "-h" || arg === "--version" || arg === "-V",
+  );
 }
 
 export function isCliEntryPoint(

@@ -1,4 +1,5 @@
 export { BffApiClient } from "./bff/BffApiClient.js";
+export { noopLogger, type Logger, type LogLevel } from "./logger.js";
 export {
   LibrusSession,
   type LibrusApiBackend,

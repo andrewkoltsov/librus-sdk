@@ -1,7 +1,12 @@
 import type { FetchLike } from "../models/common.js";
-import { LibrusApiError, LibrusSdkError } from "../models/errors.js";
+import {
+  LibrusApiError,
+  LibrusNetworkTimeoutError,
+  LibrusSdkError,
+} from "../models/errors.js";
 import type { SynergiaBinaryResult } from "../models/synergia/common.js";
 import { parseApiResponse } from "../validation/responseValidation.js";
+import { getErrorLogFields, noopLogger, type Logger } from "../logger.js";
 import type { BaseIssue, BaseSchema, InferOutput } from "valibot";
 
 export type SynergiaQuery = Record<
@@ -108,20 +113,44 @@ export async function getJson<
   schema: TSchema,
   options: SynergiaRequestOptions = {},
   authMode: SynergiaAuthMode = "bearer",
+  logger: Logger = noopLogger,
 ): Promise<InferOutput<TSchema>> {
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
-  const response = await fetchImpl(endpoint, {
+  const startedAt = Date.now();
+  const requestFields = {
+    authMode,
+    endpoint,
     method: "GET",
-    headers: buildSynergiaHeaders(accessToken, authMode, {
-      accept: "application/json",
-    }),
-  });
+    path,
+  };
 
-  if (!response.ok) {
-    await throwForFailure(response, endpoint);
+  logger.log("debug", "synergia.request.start", requestFields);
+
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: "GET",
+      headers: buildSynergiaHeaders(accessToken, authMode, {
+        accept: "application/json",
+      }),
+    });
+
+    if (!response.ok) {
+      await throwForFailure(response, endpoint);
+    }
+
+    const payload = parseApiResponse(schema, await response.json(), endpoint);
+
+    logger.log("info", "synergia.request.success", {
+      ...requestFields,
+      durationMs: Date.now() - startedAt,
+      status: response.status,
+    });
+
+    return payload;
+  } catch (error) {
+    logSynergiaRequestError(logger, error, requestFields, startedAt);
+    throw error;
   }
-
-  return parseApiResponse(schema, await response.json(), endpoint);
 }
 
 export async function getBinary(
@@ -131,20 +160,65 @@ export async function getBinary(
   path: string,
   options: SynergiaRequestOptions = {},
   authMode: SynergiaAuthMode = "bearer",
+  logger: Logger = noopLogger,
 ): Promise<SynergiaBinaryResult> {
   const endpoint = buildEndpoint(apiBaseUrl, path, options.query);
-  const response = await fetchImpl(endpoint, {
+  const startedAt = Date.now();
+  const requestFields = {
+    authMode,
+    endpoint,
     method: "GET",
-    headers: buildSynergiaHeaders(accessToken, authMode),
-  });
+    path,
+  };
 
-  if (!response.ok) {
-    await throwForFailure(response, endpoint);
+  logger.log("debug", "synergia.request.start", requestFields);
+
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: "GET",
+      headers: buildSynergiaHeaders(accessToken, authMode),
+    });
+
+    if (!response.ok) {
+      await throwForFailure(response, endpoint);
+    }
+
+    const result = {
+      data: await response.arrayBuffer(),
+      contentDisposition: response.headers.get("content-disposition"),
+      contentType: response.headers.get("content-type"),
+    };
+
+    logger.log("info", "synergia.request.success", {
+      ...requestFields,
+      durationMs: Date.now() - startedAt,
+      status: response.status,
+    });
+
+    return result;
+  } catch (error) {
+    logSynergiaRequestError(logger, error, requestFields, startedAt);
+    throw error;
+  }
+}
+
+function logSynergiaRequestError(
+  logger: Logger,
+  error: unknown,
+  requestFields: Record<string, unknown>,
+  startedAt: number,
+): void {
+  if (error instanceof LibrusNetworkTimeoutError) {
+    logger.log("warn", "synergia.timeout", {
+      ...requestFields,
+      durationMs: Date.now() - startedAt,
+      timeoutMs: error.details?.timeoutMs,
+    });
   }
 
-  return {
-    data: await response.arrayBuffer(),
-    contentDisposition: response.headers.get("content-disposition"),
-    contentType: response.headers.get("content-type"),
-  };
+  logger.log("error", "synergia.request.failure", {
+    ...requestFields,
+    durationMs: Date.now() - startedAt,
+    ...getErrorLogFields(error),
+  });
 }
