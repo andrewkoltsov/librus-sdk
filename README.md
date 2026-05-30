@@ -301,12 +301,31 @@ here rather than promising every helper type as a named top-level export.
 
 `SynergiaApiClient` constructor options (`SynergiaApiClientOptions`):
 
-| Property           | Required | Meaning                                                         |
-| ------------------ | -------- | --------------------------------------------------------------- |
-| `fetch`            | No       | Custom fetch implementation for child-scoped API requests.      |
-| `apiBaseUrl`       | No       | Synergia API base URL. Defaults to `https://api.librus.pl/3.0`. |
-| `authMode`         | No       | `bearer` by default, or `cookie` for Gateway-created sessions.  |
-| `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.  |
+| Property           | Required | Meaning                                                                |
+| ------------------ | -------- | ---------------------------------------------------------------------- |
+| `fetch`            | No       | Custom fetch implementation for child-scoped API requests.             |
+| `apiBaseUrl`       | No       | Synergia API base URL. Defaults to `https://api.librus.pl/3.0`.        |
+| `authMode`         | No       | `bearer` by default, or `cookie` for Gateway-created sessions.         |
+| `requestTimeoutMs` | No       | Positive integer timeout in milliseconds. Defaults to `30000`.         |
+| `retry`            | No       | Retry policy for transient failures, or `false` to disable. See below. |
+
+#### Retry / backoff
+
+Transient Synergia failures (`408, 425, 429, 500, 502, 503, 504`) are retried
+automatically with exponential backoff and full jitter. Only idempotent methods
+(`GET`, `HEAD`) are retried by default, `Retry-After` is honored on `429`, and an
+in-flight `AbortSignal` cancels pending retries immediately. Per-attempt timeouts
+and deterministic errors (validation failures) are never retried. Pass
+`retry: false` to disable retries entirely.
+
+| `retry` field       | Default                               | Meaning                                 |
+| ------------------- | ------------------------------------- | --------------------------------------- |
+| `maxAttempts`       | `3`                                   | Total attempts, including the first.    |
+| `baseDelayMs`       | `250`                                 | Base delay for exponential backoff.     |
+| `maxDelayMs`        | `5000`                                | Upper bound for a single backoff delay. |
+| `retriableStatuses` | `[408, 425, 429, 500, 502, 503, 504]` | HTTP statuses that trigger a retry.     |
+| `retriableMethods`  | `["GET", "HEAD"]`                     | HTTP methods eligible for retry.        |
+| `jitter`            | `true`                                | Apply full jitter to backoff delays.    |
 
 OpenAPI generator options (`GenerateOpenApiDocumentOptions`):
 
