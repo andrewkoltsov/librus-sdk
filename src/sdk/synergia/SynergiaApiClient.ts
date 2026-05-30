@@ -207,6 +207,7 @@ import {
   resolveRequestTimeoutMs,
   wrapFetchWithTimeout,
 } from "../requestTimeout.js";
+import { noopLogger, type Logger } from "../logger.js";
 
 export interface SynergiaApiClientOptions {
   fetch?: FetchLike;
@@ -214,6 +215,7 @@ export interface SynergiaApiClientOptions {
   authMode?: SynergiaAuthMode;
   messageBackend?: MessageReadBackend;
   requestTimeoutMs?: number;
+  logger?: Logger;
 }
 
 type SynergiaId = string | number;
@@ -229,10 +231,12 @@ export class SynergiaApiClient {
   private readonly authMode: SynergiaAuthMode;
   private readonly messageBackend: MessageReadBackend | undefined;
   private readonly requestTimeoutMs: number;
+  private readonly logger: Logger;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
     this.authMode = options.authMode ?? "bearer";
+    this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     this.fetchImpl = wrapFetchWithTimeout(
       options.fetch ?? fetch,
@@ -257,6 +261,7 @@ export class SynergiaApiClient {
       schema,
       options,
       this.authMode,
+      this.logger,
     );
   }
 
@@ -271,6 +276,7 @@ export class SynergiaApiClient {
       path,
       options,
       this.authMode,
+      this.logger,
     );
   }
 
