@@ -9,3 +9,11 @@ coverage/
 .DS_Store
 .claude/
 .serena/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
+
+# Local planning and Graphify artifacts
+.tasks/
+graphify-out/
