@@ -357,15 +357,21 @@ describe("wrapFetchWithRetry", () => {
       maxDelayMs: 5_000,
       jitter: false,
     });
+    // Fresh response per call, mirroring real fetch (a discarded body on an
+    // earlier attempt must not poison the final returned response).
     const baseFetch = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse(503));
+      .mockImplementation(async () => jsonResponse(503));
     const wrapped = wrapFetchWithRetry(baseFetch, exhaustConfig);
 
     const promise = wrapped(ENDPOINT, { method: "GET" });
     await vi.advanceTimersByTimeAsync(100);
 
-    await expect(promise).resolves.toMatchObject({ status: 503 });
+    const response = await promise;
+    expect(response.status).toBe(503);
+    // The final response must remain readable — its body must not have been
+    // cancelled as part of the (exhausted) retry decision.
+    await expect(response.json()).resolves.toEqual({});
     expect(baseFetch).toHaveBeenCalledTimes(2);
   });
 
@@ -409,6 +415,41 @@ describe("SynergiaApiClient retry wiring", () => {
       code: "API_REQUEST_FAILED",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps repeated 503 maintenance to a stable error with retries enabled", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+        async () =>
+          new Response(JSON.stringify({ Status: "Maintenance" }), {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          }),
+      );
+      const client = new SynergiaApiClient("token", {
+        fetch: fetchMock,
+        retry: {
+          maxAttempts: 2,
+          baseDelayMs: 100,
+          maxDelayMs: 5_000,
+          jitter: false,
+        },
+      });
+
+      const resultPromise = client.getMe().catch((error: unknown) => error);
+      await vi.advanceTimersByTimeAsync(100);
+      const error = await resultPromise;
+
+      expect(error).toMatchObject({
+        code: "SERVICE_MAINTENANCE",
+        details: { status: 503 },
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not retry deterministic validation failures", async () => {

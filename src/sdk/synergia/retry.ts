@@ -244,6 +244,12 @@ export interface WithRetryConfig<T> extends Pick<
     delayMs: number;
     reason?: string;
   }) => void;
+  /**
+   * Invoked with a resolved value that is being abandoned because another
+   * attempt will run. Never called for the value that is ultimately returned,
+   * so it is safe to release resources here (e.g. cancel an unread HTTP body).
+   */
+  onDiscard?: (value: T) => void;
 }
 
 /**
@@ -297,6 +303,11 @@ export async function withRetry<T>(
       }
 
       throw outcome.error;
+    }
+
+    // We are committed to another attempt: this resolved value is abandoned.
+    if (outcome.kind === "value") {
+      config.onDiscard?.(outcome.value);
     }
 
     const delayMs =
@@ -374,15 +385,11 @@ export function wrapFetchWithRetry(
       maxDelayMs: config.maxDelayMs,
       jitter: config.jitter,
       signal,
-      shouldRetry: (response) => {
-        const decision = decideForResponse(response);
-
-        // Release the discarded response so the socket is not held open.
-        if (decision.retry) {
-          void response.body?.cancel();
-        }
-
-        return decision;
+      shouldRetry: decideForResponse,
+      // Only fires for responses we actually abandon before another attempt —
+      // never the final returned response — so its body stays readable.
+      onDiscard: (response) => {
+        void response.body?.cancel();
       },
       shouldRetryError: (error) =>
         // Genuine network rejections (e.g. ECONNRESET) are transient and
