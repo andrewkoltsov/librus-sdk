@@ -394,7 +394,7 @@ export class LibrusSession {
     return new SynergiaApiClient(child.accessToken, {
       ...this.synergiaClientOptions,
       onAuthInvalidated: () => this.refreshBearerToken(child.id),
-    });
+    } as SynergiaApiClientOptions);
   }
 
   /**
@@ -427,9 +427,10 @@ export class LibrusSession {
 
     await this.login();
 
+    let fresh: ChildAccount;
+
     try {
-      const fresh = await portalClient.getFreshSynergiaAccount(child.login);
-      return fresh.accessToken;
+      fresh = await portalClient.getFreshSynergiaAccount(child.login);
     } catch (error) {
       if (!isUnauthorized(error)) {
         throw error;
@@ -437,9 +438,21 @@ export class LibrusSession {
 
       // The cached portal session is dead. Force a fresh login and retry once.
       await portalClient.login(this.getPortalCredentials());
-      const fresh = await portalClient.getFreshSynergiaAccount(child.login);
-      return fresh.accessToken;
+      fresh = await portalClient.getFreshSynergiaAccount(child.login);
     }
+
+    // Keep accountsCache in sync so a subsequent forChild() call starts with
+    // the refreshed token instead of the now-stale one stored at login time.
+    if (this.accountsCache) {
+      this.accountsCache = {
+        ...this.accountsCache,
+        accounts: this.accountsCache.accounts.map((a) =>
+          a.id === fresh.id ? fresh : a,
+        ),
+      };
+    }
+
+    return fresh.accessToken;
   }
 
   async forChildWiadomosci(
@@ -459,7 +472,8 @@ export class LibrusSession {
     return new SynergiaApiClient(child.accessToken, {
       ...this.synergiaClientOptions,
       messageBackend,
-    });
+      onAuthInvalidated: () => this.refreshBearerToken(child.id),
+    } as SynergiaApiClientOptions);
   }
 
   async forChildBff(

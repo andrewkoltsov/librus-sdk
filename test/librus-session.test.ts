@@ -1165,7 +1165,12 @@ describe("LibrusSession token refresh", () => {
         accessToken: REFRESH_SECRETS.freshToken,
       }),
     );
-    const fetchMock = vi.fn<typeof fetch>(async () => unauthorizedResponse());
+    // Track which Authorization header was in use when each 401 occurred.
+    const authAtCall: Array<string | undefined> = [];
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      authAtCall.push(authHeaderOf(init));
+      return unauthorizedResponse();
+    });
 
     const session = new LibrusSession({
       credentials: {
@@ -1188,6 +1193,12 @@ describe("LibrusSession token refresh", () => {
     const cause = (error as LibrusAuthenticationError).cause;
     expect(cause).toBeInstanceOf(LibrusApiError);
     expect((cause as LibrusApiError).details?.status).toBe(401);
+
+    // cause must be the *first* (pre-refresh) 401 — the one that fired while
+    // the stale token was in use — not the retry 401.
+    expect(authAtCall).toHaveLength(2);
+    expect(authAtCall[0]).toBe(`Bearer ${REFRESH_SECRETS.staleToken}`);
+    expect(authAtCall[1]).toBe(`Bearer ${REFRESH_SECRETS.freshToken}`);
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

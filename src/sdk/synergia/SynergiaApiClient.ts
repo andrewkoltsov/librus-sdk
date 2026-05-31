@@ -223,13 +223,16 @@ export interface SynergiaApiClientOptions {
   requestTimeoutMs?: number;
   retry?: RetryOption;
   logger?: Logger;
-  /**
-   * @internal Session-only hook. {@link LibrusSession.forChild} wires this in
-   * so an expired bearer token can be refreshed and the request retried once on
-   * a `401`. Not part of the public API — standalone clients omit it and keep
-   * the historical "throw on 401" behavior. Deliberately an inline type so the
-   * coupling surface stays internal.
-   */
+}
+
+/**
+ * @internal Not exported. {@link LibrusSession.forChild} and
+ * {@link LibrusSession.forChildWiadomosci} extend the public options with this
+ * callback so the session can refresh an expired bearer token transparently.
+ * Keeping it off the exported interface prevents it from appearing in the
+ * generated `.d.ts`.
+ */
+interface SynergiaApiClientInternalOptions extends SynergiaApiClientOptions {
   onAuthInvalidated?: () => Promise<string>;
 }
 
@@ -252,7 +255,9 @@ export class SynergiaApiClient {
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
     this.authMode = options.authMode ?? "bearer";
-    this.onAuthInvalidated = options.onAuthInvalidated;
+    this.onAuthInvalidated = (
+      options as SynergiaApiClientInternalOptions
+    ).onAuthInvalidated;
     this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     const timeoutFetch = wrapFetchWithTimeout(
@@ -333,9 +338,11 @@ export class SynergiaApiClient {
         return await run();
       } catch (retryError) {
         if (isUnauthorized(retryError)) {
+          // Preserve the original (pre-refresh) 401 as cause so callers can
+          // inspect the initial expired-token response.
           throw new LibrusAuthenticationError(
             "Synergia request failed with 401 after refreshing the bearer token.",
-            { code: CODE_AUTH_REFRESH_FAILED, cause: retryError },
+            { code: CODE_AUTH_REFRESH_FAILED, cause: error },
           );
         }
 
