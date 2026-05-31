@@ -206,6 +206,7 @@ Current high-level methods on `LibrusSession`:
 - `forChild(selectorOrChild)`
 - `forChildWiadomosci(selectorOrChild)`
 - `forChildBff(selectorOrChild)`
+- `refreshBearerToken(childId)` — manually refresh the Synergia bearer for a child (normally called automatically on 401)
 
 Current methods on `PortalClient`:
 

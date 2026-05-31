@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Automatic session-layer bearer-token refresh for child-scoped clients. A
+  `SynergiaApiClient` obtained from `LibrusSession.forChild()` now transparently
+  refreshes its bearer token and retries the request once on a `401`, instead of
+  surfacing the expired-token error. Concurrent `401`s for the same child
+  collapse to a single refresh, and a `401` that persists after refresh throws
+  `LibrusAuthenticationError` with code `AUTH_REFRESH_FAILED` (the original
+  `401` preserved as `cause`). `LibrusSession.refreshBearerToken(childId)` is
+  also available directly. Standalone `new SynergiaApiClient(token)` is
+  unchanged and still throws on `401`.
 - Automatic retry with exponential backoff and jitter for transient Synergia
   failures (`408, 425, 429, 500, 502, 503, 504`). Idempotent methods
   (`GET`/`HEAD`) only by default, honors `Retry-After` on `429`, and respects an

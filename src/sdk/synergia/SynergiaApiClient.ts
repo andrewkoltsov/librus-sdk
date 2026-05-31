@@ -1,5 +1,9 @@
 import type { FetchLike } from "../models/common.js";
-import { LibrusApiError } from "../models/errors.js";
+import {
+  CODE_AUTH_REFRESH_FAILED,
+  LibrusApiError,
+  LibrusAuthenticationError,
+} from "../models/errors.js";
 import type {
   SchoolNoticeResponse,
   SchoolNoticesResponse,
@@ -221,6 +225,17 @@ export interface SynergiaApiClientOptions {
   logger?: Logger;
 }
 
+/**
+ * @internal Not exported. {@link LibrusSession.forChild} and
+ * {@link LibrusSession.forChildWiadomosci} extend the public options with this
+ * callback so the session can refresh an expired bearer token transparently.
+ * Keeping it off the exported interface prevents it from appearing in the
+ * generated `.d.ts`.
+ */
+interface SynergiaApiClientInternalOptions extends SynergiaApiClientOptions {
+  onAuthInvalidated?: (staleToken: string) => Promise<string>;
+}
+
 type SynergiaId = string | number;
 
 const MESSAGES_SCOPE = "messages";
@@ -230,15 +245,21 @@ const MESSAGES_SCOPE_HINT =
 export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;
   private readonly apiBaseUrl: string;
-  private readonly accessToken: string;
+  private accessToken: string;
   private readonly authMode: SynergiaAuthMode;
   private readonly messageBackend: MessageReadBackend | undefined;
   private readonly requestTimeoutMs: number;
   private readonly logger: Logger;
+  private readonly onAuthInvalidated:
+    | ((staleToken: string) => Promise<string>)
+    | undefined;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
     this.authMode = options.authMode ?? "bearer";
+    this.onAuthInvalidated = (
+      options as SynergiaApiClientInternalOptions
+    ).onAuthInvalidated;
     this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     const timeoutFetch = wrapFetchWithTimeout(
@@ -264,15 +285,17 @@ export class SynergiaApiClient {
     schema: TSchema,
     options: SynergiaRequestOptions = {},
   ): Promise<InferOutput<TSchema>> {
-    return requestGetJson(
-      this.fetchImpl,
-      this.accessToken,
-      this.apiBaseUrl,
-      path,
-      schema,
-      options,
-      this.authMode,
-      this.logger,
+    return this.withAuthRefresh(() =>
+      requestGetJson(
+        this.fetchImpl,
+        this.accessToken,
+        this.apiBaseUrl,
+        path,
+        schema,
+        options,
+        this.authMode,
+        this.logger,
+      ),
     );
   }
 
@@ -280,15 +303,62 @@ export class SynergiaApiClient {
     path: string,
     options: SynergiaRequestOptions = {},
   ): Promise<SynergiaBinaryResult> {
-    return requestGetBinary(
-      this.fetchImpl,
-      this.accessToken,
-      this.apiBaseUrl,
-      path,
-      options,
-      this.authMode,
-      this.logger,
+    return this.withAuthRefresh(() =>
+      requestGetBinary(
+        this.fetchImpl,
+        this.accessToken,
+        this.apiBaseUrl,
+        path,
+        options,
+        this.authMode,
+        this.logger,
+      ),
     );
+  }
+
+  /**
+   * Run a GET request, refreshing the bearer token and retrying **once** if the
+   * session supplied an `onAuthInvalidated` callback and the request fails with
+   * a `401`. `run` reads `this.accessToken` at call-time, so the retry uses the
+   * freshly refreshed token. Without a callback the original error propagates
+   * unchanged, preserving the standalone-client contract.
+   *
+   * The token is captured before `run()` so that parallel requests on the same
+   * client each report the token they actually used, even if a sibling handler
+   * has already updated `this.accessToken` by the time the catch block fires.
+   *
+   * Safe only for idempotent (GET) requests — see the invariant note in
+   * `request.ts`.
+   */
+  private async withAuthRefresh<T>(run: () => Promise<T>): Promise<T> {
+    // Capture before run() so a concurrent sibling that already refreshed
+    // this.accessToken does not pollute our stale-token value.
+    const tokenUsed = this.accessToken;
+
+    try {
+      return await run();
+    } catch (error) {
+      if (!this.onAuthInvalidated || !isUnauthorized(error)) {
+        throw error;
+      }
+
+      this.accessToken = await this.onAuthInvalidated(tokenUsed);
+
+      try {
+        return await run();
+      } catch (retryError) {
+        if (isUnauthorized(retryError)) {
+          // Preserve the original (pre-refresh) 401 as cause so callers can
+          // inspect the initial expired-token response.
+          throw new LibrusAuthenticationError(
+            "Synergia request failed with 401 after refreshing the bearer token.",
+            { code: CODE_AUTH_REFRESH_FAILED, cause: error },
+          );
+        }
+
+        throw retryError;
+      }
+    }
   }
 
   private async withMessageAccessDiagnostics<T>(
@@ -886,4 +956,8 @@ export class SynergiaApiClient {
       homeworkCategoriesResponseSchema,
     );
   }
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof LibrusApiError && error.details?.status === 401;
 }

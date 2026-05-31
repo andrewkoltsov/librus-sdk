@@ -16,6 +16,7 @@ import {
   type WiadomosciMessagesClientOptions,
 } from "./wiadomosci/WiadomosciMessagesClient.js";
 import {
+  LibrusApiError,
   LibrusConfigurationError,
   LibrusSdkError,
   type ChildAccount,
@@ -122,6 +123,22 @@ export class LibrusSession {
       >
     | undefined;
   private accountsCache?: SynergiaAccountsResponse;
+  /**
+   * Latest known bearer token per child id (keyed by `String(id)`). Updated
+   * after every successful portal refresh so that:
+   *   - `forChild(childObject)` always starts with the freshest token even when
+   *     the caller holds a stale `ChildAccount` reference.
+   *   - A delayed `401` (one that fires after an in-flight refresh has already
+   *     cleared `refreshInFlight`) can detect the superseded token and return
+   *     the already-refreshed value without a second portal round-trip.
+   */
+  private readonly latestTokenPerChild = new Map<string, string>();
+  /**
+   * In-flight bearer-token refreshes keyed by child id. Collapses concurrent
+   * refreshes for the same child to a single portal round-trip (stampede
+   * protection) while the refresh is pending.
+   */
+  private readonly refreshInFlight = new Map<string, Promise<string>>();
 
   constructor(options: LibrusSessionOptions) {
     if (options.authMode !== undefined) {
@@ -384,7 +401,94 @@ export class LibrusSession {
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
 
-    return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new SynergiaApiClient(token, {
+      ...this.synergiaClientOptions,
+      onAuthInvalidated: (staleToken: string) =>
+        this.acquireFreshToken(String(child.id), staleToken),
+    } as SynergiaApiClientOptions);
+  }
+
+  /**
+   * Re-fetch a fresh Synergia bearer token for a known child, reusing the
+   * cached portal login (and re-logging in if the portal session itself is
+   * dead). Concurrent calls for the same child share one in-flight promise.
+   */
+  async refreshBearerToken(childId: string | number): Promise<string> {
+    this.assertApiV3Backend("refreshBearerToken");
+    return this.acquireFreshToken(String(childId), undefined);
+  }
+
+  /**
+   * Internal refresh path used by the `onAuthInvalidated` callback. Accepts
+   * the token the client actually used for the failed request so it can detect
+   * when a sibling request already refreshed to a newer token and skip the
+   * portal round-trip.
+   */
+  private acquireFreshToken(
+    key: string,
+    staleToken: string | undefined,
+  ): Promise<string> {
+    if (staleToken !== undefined) {
+      const latest = this.latestTokenPerChild.get(key);
+
+      if (latest !== undefined && latest !== staleToken) {
+        return Promise.resolve(latest);
+      }
+    }
+
+    const existing = this.refreshInFlight.get(key);
+
+    if (existing) {
+      return existing;
+    }
+
+    const promise = this.performBearerTokenRefresh(key).finally(() => {
+      this.refreshInFlight.delete(key);
+    });
+
+    this.refreshInFlight.set(key, promise);
+
+    return promise;
+  }
+
+  private async performBearerTokenRefresh(childId: string): Promise<string> {
+    const child = await this.resolveChild(childId);
+    const portalClient = this.getPortalClient();
+
+    await this.login();
+
+    let fresh: ChildAccount;
+
+    try {
+      fresh = await portalClient.getFreshSynergiaAccount(child.login);
+    } catch (error) {
+      if (!isUnauthorized(error)) {
+        throw error;
+      }
+
+      // The cached portal session is dead. Force a fresh login and retry once.
+      await portalClient.login(this.getPortalCredentials());
+      fresh = await portalClient.getFreshSynergiaAccount(child.login);
+    }
+
+    // Record the latest token so delayed 401s and forChild(childObject) calls
+    // can pick up the fresh value without another portal round-trip.
+    this.latestTokenPerChild.set(String(fresh.id), fresh.accessToken);
+
+    // Keep accountsCache in sync so resolveChild() returns the fresh account.
+    if (this.accountsCache) {
+      this.accountsCache = {
+        ...this.accountsCache,
+        accounts: this.accountsCache.accounts.map((a) =>
+          a.id === fresh.id ? fresh : a,
+        ),
+      };
+    }
+
+    return fresh.accessToken;
   }
 
   async forChildWiadomosci(
@@ -401,10 +505,15 @@ export class LibrusSession {
       portalClient: this.getPortalClient(),
     });
 
-    return new SynergiaApiClient(child.accessToken, {
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new SynergiaApiClient(token, {
       ...this.synergiaClientOptions,
       messageBackend,
-    });
+      onAuthInvalidated: (staleToken: string) =>
+        this.acquireFreshToken(String(child.id), staleToken),
+    } as SynergiaApiClientOptions);
   }
 
   async forChildBff(
@@ -415,7 +524,10 @@ export class LibrusSession {
       typeof selectorOrChild === "string"
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
-    return new BffApiClient(child.accessToken, this.bffClientOptions);
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new BffApiClient(token, this.bffClientOptions);
   }
 
   private getPortalCredentials(): PortalCredentials {
@@ -483,6 +595,10 @@ export class LibrusSession {
       { apiBackend: this.apiBackend },
     );
   }
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof LibrusApiError && error.details?.status === 401;
 }
 
 function resolveApiBackend(env: NodeJS.ProcessEnv): ApiBackendEnvValue {
