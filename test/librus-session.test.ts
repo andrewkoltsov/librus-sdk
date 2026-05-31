@@ -1178,14 +1178,69 @@ describe("LibrusSession token refresh", () => {
     expect(first).toBe(REFRESH_SECRETS.freshToken);
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
 
-    // A second call that supplies the stale token (simulating a delayed 401
-    // from a client that was already using the old token) must reuse the
-    // cached result without a second portal round-trip.
-    const second = await session.refreshBearerToken(
-      101,
-      REFRESH_SECRETS.staleToken,
+    // A second explicit refresh (no stale-token context) always goes through
+    // to the portal — the stale-token dedup is internal to onAuthInvalidated.
+    getFreshSynergiaAccount.mockResolvedValue(
+      createChild({
+        id: 101,
+        login: "child-login",
+        accessToken: "fresh-bearer-CCC",
+      }),
     );
-    expect(second).toBe(REFRESH_SECRETS.freshToken);
+    const second = await session.refreshBearerToken(101);
+    expect(second).toBe("fresh-bearer-CCC");
+    expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(2);
+  });
+
+  it("single-client parallel requests reuse the first refresh when both get a stale-token 401", async () => {
+    const child = createChild({
+      id: 101,
+      login: "child-login",
+      accessToken: REFRESH_SECRETS.staleToken,
+    });
+    const { getFreshSynergiaAccount, portalClient } = createPortalClientStub({
+      accounts: [child],
+    });
+    getFreshSynergiaAccount.mockResolvedValue(
+      createChild({
+        id: 101,
+        login: "child-login",
+        accessToken: REFRESH_SECRETS.freshToken,
+      }),
+    );
+
+    const seenAuth: Array<string | undefined> = [];
+    // Stale token → 401; fresh token → 200.
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      const auth = authHeaderOf(init);
+      seenAuth.push(auth);
+      return auth === `Bearer ${REFRESH_SECRETS.staleToken}`
+        ? unauthorizedResponse()
+        : luckyNumberResponse();
+    });
+
+    const session = new LibrusSession({
+      credentials: {
+        email: REFRESH_SECRETS.email,
+        password: REFRESH_SECRETS.password,
+      },
+      portalClient,
+      synergiaClientOptions: { fetch: fetchMock, retry: false },
+    });
+
+    const client = await session.forChild(child);
+
+    // Fire two requests in parallel. Each captures the stale token before
+    // run() executes, so the second delayed 401 correctly identifies its token
+    // as stale and reuses the fresh-1 produced by the first refresh.
+    const [a, b] = await Promise.all([
+      client.getLuckyNumber(),
+      client.getLuckyNumber(),
+    ]);
+
+    expect(a.LuckyNumber.LuckyNumber).toBe(13);
+    expect(b.LuckyNumber.LuckyNumber).toBe(13);
+    // Exactly one portal refresh, not two.
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
   });
 

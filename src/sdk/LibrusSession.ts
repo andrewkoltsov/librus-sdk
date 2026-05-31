@@ -407,7 +407,7 @@ export class LibrusSession {
     return new SynergiaApiClient(token, {
       ...this.synergiaClientOptions,
       onAuthInvalidated: (staleToken: string) =>
-        this.refreshBearerToken(child.id, staleToken),
+        this.acquireFreshToken(String(child.id), staleToken),
     } as SynergiaApiClientOptions);
   }
 
@@ -415,27 +415,27 @@ export class LibrusSession {
    * Re-fetch a fresh Synergia bearer token for a known child, reusing the
    * cached portal login (and re-logging in if the portal session itself is
    * dead). Concurrent calls for the same child share one in-flight promise.
-   *
-   * The optional `staleToken` argument is supplied by the internal
-   * `onAuthInvalidated` callback. When present, the method first checks
-   * `latestTokenPerChild`: if a previous refresh already produced a different
-   * token the caller can skip a portal round-trip entirely and reuse it. This
-   * prevents a delayed `401` (one that fires after the in-flight map has been
-   * cleared) from triggering a redundant second refresh.
    */
-  async refreshBearerToken(
-    childId: string | number,
-    staleToken?: string,
-  ): Promise<string> {
+  async refreshBearerToken(childId: string | number): Promise<string> {
     this.assertApiV3Backend("refreshBearerToken");
+    return this.acquireFreshToken(String(childId), undefined);
+  }
 
-    const key = String(childId);
-
+  /**
+   * Internal refresh path used by the `onAuthInvalidated` callback. Accepts
+   * the token the client actually used for the failed request so it can detect
+   * when a sibling request already refreshed to a newer token and skip the
+   * portal round-trip.
+   */
+  private acquireFreshToken(
+    key: string,
+    staleToken: string | undefined,
+  ): Promise<string> {
     if (staleToken !== undefined) {
       const latest = this.latestTokenPerChild.get(key);
 
       if (latest !== undefined && latest !== staleToken) {
-        return latest;
+        return Promise.resolve(latest);
       }
     }
 
@@ -512,7 +512,7 @@ export class LibrusSession {
       ...this.synergiaClientOptions,
       messageBackend,
       onAuthInvalidated: (staleToken: string) =>
-        this.refreshBearerToken(child.id, staleToken),
+        this.acquireFreshToken(String(child.id), staleToken),
     } as SynergiaApiClientOptions);
   }
 
@@ -524,7 +524,10 @@ export class LibrusSession {
       typeof selectorOrChild === "string"
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
-    return new BffApiClient(child.accessToken, this.bffClientOptions);
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new BffApiClient(token, this.bffClientOptions);
   }
 
   private getPortalCredentials(): PortalCredentials {

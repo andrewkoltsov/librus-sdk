@@ -323,10 +323,18 @@ export class SynergiaApiClient {
    * freshly refreshed token. Without a callback the original error propagates
    * unchanged, preserving the standalone-client contract.
    *
+   * The token is captured before `run()` so that parallel requests on the same
+   * client each report the token they actually used, even if a sibling handler
+   * has already updated `this.accessToken` by the time the catch block fires.
+   *
    * Safe only for idempotent (GET) requests — see the invariant note in
    * `request.ts`.
    */
   private async withAuthRefresh<T>(run: () => Promise<T>): Promise<T> {
+    // Capture before run() so a concurrent sibling that already refreshed
+    // this.accessToken does not pollute our stale-token value.
+    const tokenUsed = this.accessToken;
+
     try {
       return await run();
     } catch (error) {
@@ -334,8 +342,7 @@ export class SynergiaApiClient {
         throw error;
       }
 
-      const staleToken = this.accessToken;
-      this.accessToken = await this.onAuthInvalidated(staleToken);
+      this.accessToken = await this.onAuthInvalidated(tokenUsed);
 
       try {
         return await run();
