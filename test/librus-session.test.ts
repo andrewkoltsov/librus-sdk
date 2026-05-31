@@ -1149,6 +1149,90 @@ describe("LibrusSession token refresh", () => {
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
   });
 
+  it("reuses the already-refreshed token when a delayed 401 fires after the in-flight refresh cleared", async () => {
+    const child = createChild({
+      id: 101,
+      login: "child-login",
+      accessToken: REFRESH_SECRETS.staleToken,
+    });
+    const { getFreshSynergiaAccount, portalClient } = createPortalClientStub({
+      accounts: [child],
+    });
+    getFreshSynergiaAccount.mockResolvedValue(
+      createChild({
+        id: 101,
+        login: "child-login",
+        accessToken: REFRESH_SECRETS.freshToken,
+      }),
+    );
+    const session = new LibrusSession({
+      credentials: {
+        email: REFRESH_SECRETS.email,
+        password: REFRESH_SECRETS.password,
+      },
+      portalClient,
+    });
+
+    // First refresh completes and clears the in-flight map.
+    const first = await session.refreshBearerToken(101);
+    expect(first).toBe(REFRESH_SECRETS.freshToken);
+    expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
+
+    // A second call that supplies the stale token (simulating a delayed 401
+    // from a client that was already using the old token) must reuse the
+    // cached result without a second portal round-trip.
+    const second = await session.refreshBearerToken(
+      101,
+      REFRESH_SECRETS.staleToken,
+    );
+    expect(second).toBe(REFRESH_SECRETS.freshToken);
+    expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("forChild with a stale ChildAccount object starts with the refreshed token after a refresh", async () => {
+    const child = createChild({
+      id: 101,
+      login: "child-login",
+      accessToken: REFRESH_SECRETS.staleToken,
+    });
+    const { getFreshSynergiaAccount, portalClient } = createPortalClientStub({
+      accounts: [child],
+    });
+    getFreshSynergiaAccount.mockResolvedValue(
+      createChild({
+        id: 101,
+        login: "child-login",
+        accessToken: REFRESH_SECRETS.freshToken,
+      }),
+    );
+
+    const seenAuth: Array<string | undefined> = [];
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      seenAuth.push(authHeaderOf(init));
+      return luckyNumberResponse();
+    });
+
+    const session = new LibrusSession({
+      credentials: {
+        email: REFRESH_SECRETS.email,
+        password: REFRESH_SECRETS.password,
+      },
+      portalClient,
+      synergiaClientOptions: { fetch: fetchMock, retry: false },
+    });
+
+    // Refresh outside of a client call; the session now holds the fresh token.
+    await session.refreshBearerToken(child.id);
+
+    // Pass the *original* stale child object — forChild must still use the
+    // fresh token that was produced by the earlier refresh.
+    const client = await session.forChild(child);
+    await client.getLuckyNumber();
+
+    expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
+    expect(seenAuth).toEqual([`Bearer ${REFRESH_SECRETS.freshToken}`]);
+  });
+
   it("throws AUTH_REFRESH_FAILED preserving the original 401 when a 401 persists after refresh", async () => {
     const child = createChild({
       id: 101,

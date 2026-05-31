@@ -233,7 +233,7 @@ export interface SynergiaApiClientOptions {
  * generated `.d.ts`.
  */
 interface SynergiaApiClientInternalOptions extends SynergiaApiClientOptions {
-  onAuthInvalidated?: () => Promise<string>;
+  onAuthInvalidated?: (staleToken: string) => Promise<string>;
 }
 
 type SynergiaId = string | number;
@@ -250,7 +250,9 @@ export class SynergiaApiClient {
   private readonly messageBackend: MessageReadBackend | undefined;
   private readonly requestTimeoutMs: number;
   private readonly logger: Logger;
-  private readonly onAuthInvalidated: (() => Promise<string>) | undefined;
+  private readonly onAuthInvalidated:
+    | ((staleToken: string) => Promise<string>)
+    | undefined;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
@@ -332,7 +334,8 @@ export class SynergiaApiClient {
         throw error;
       }
 
-      this.accessToken = await this.onAuthInvalidated();
+      const staleToken = this.accessToken;
+      this.accessToken = await this.onAuthInvalidated(staleToken);
 
       try {
         return await run();

@@ -124,9 +124,19 @@ export class LibrusSession {
     | undefined;
   private accountsCache?: SynergiaAccountsResponse;
   /**
+   * Latest known bearer token per child id (keyed by `String(id)`). Updated
+   * after every successful portal refresh so that:
+   *   - `forChild(childObject)` always starts with the freshest token even when
+   *     the caller holds a stale `ChildAccount` reference.
+   *   - A delayed `401` (one that fires after an in-flight refresh has already
+   *     cleared `refreshInFlight`) can detect the superseded token and return
+   *     the already-refreshed value without a second portal round-trip.
+   */
+  private readonly latestTokenPerChild = new Map<string, string>();
+  /**
    * In-flight bearer-token refreshes keyed by child id. Collapses concurrent
    * refreshes for the same child to a single portal round-trip (stampede
-   * protection), so parallel `401`s trigger exactly one refresh.
+   * protection) while the refresh is pending.
    */
   private readonly refreshInFlight = new Map<string, Promise<string>>();
 
@@ -391,9 +401,13 @@ export class LibrusSession {
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
 
-    return new SynergiaApiClient(child.accessToken, {
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new SynergiaApiClient(token, {
       ...this.synergiaClientOptions,
-      onAuthInvalidated: () => this.refreshBearerToken(child.id),
+      onAuthInvalidated: (staleToken: string) =>
+        this.refreshBearerToken(child.id, staleToken),
     } as SynergiaApiClientOptions);
   }
 
@@ -401,11 +415,30 @@ export class LibrusSession {
    * Re-fetch a fresh Synergia bearer token for a known child, reusing the
    * cached portal login (and re-logging in if the portal session itself is
    * dead). Concurrent calls for the same child share one in-flight promise.
+   *
+   * The optional `staleToken` argument is supplied by the internal
+   * `onAuthInvalidated` callback. When present, the method first checks
+   * `latestTokenPerChild`: if a previous refresh already produced a different
+   * token the caller can skip a portal round-trip entirely and reuse it. This
+   * prevents a delayed `401` (one that fires after the in-flight map has been
+   * cleared) from triggering a redundant second refresh.
    */
-  async refreshBearerToken(childId: string | number): Promise<string> {
+  async refreshBearerToken(
+    childId: string | number,
+    staleToken?: string,
+  ): Promise<string> {
     this.assertApiV3Backend("refreshBearerToken");
 
     const key = String(childId);
+
+    if (staleToken !== undefined) {
+      const latest = this.latestTokenPerChild.get(key);
+
+      if (latest !== undefined && latest !== staleToken) {
+        return latest;
+      }
+    }
+
     const existing = this.refreshInFlight.get(key);
 
     if (existing) {
@@ -441,8 +474,11 @@ export class LibrusSession {
       fresh = await portalClient.getFreshSynergiaAccount(child.login);
     }
 
-    // Keep accountsCache in sync so a subsequent forChild() call starts with
-    // the refreshed token instead of the now-stale one stored at login time.
+    // Record the latest token so delayed 401s and forChild(childObject) calls
+    // can pick up the fresh value without another portal round-trip.
+    this.latestTokenPerChild.set(String(fresh.id), fresh.accessToken);
+
+    // Keep accountsCache in sync so resolveChild() returns the fresh account.
     if (this.accountsCache) {
       this.accountsCache = {
         ...this.accountsCache,
@@ -469,10 +505,14 @@ export class LibrusSession {
       portalClient: this.getPortalClient(),
     });
 
-    return new SynergiaApiClient(child.accessToken, {
+    const token =
+      this.latestTokenPerChild.get(String(child.id)) ?? child.accessToken;
+
+    return new SynergiaApiClient(token, {
       ...this.synergiaClientOptions,
       messageBackend,
-      onAuthInvalidated: () => this.refreshBearerToken(child.id),
+      onAuthInvalidated: (staleToken: string) =>
+        this.refreshBearerToken(child.id, staleToken),
     } as SynergiaApiClientOptions);
   }
 
