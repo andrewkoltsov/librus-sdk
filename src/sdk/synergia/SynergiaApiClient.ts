@@ -1,5 +1,9 @@
 import type { FetchLike } from "../models/common.js";
-import { LibrusApiError } from "../models/errors.js";
+import {
+  CODE_AUTH_REFRESH_FAILED,
+  LibrusApiError,
+  LibrusAuthenticationError,
+} from "../models/errors.js";
 import type {
   SchoolNoticeResponse,
   SchoolNoticesResponse,
@@ -219,6 +223,14 @@ export interface SynergiaApiClientOptions {
   requestTimeoutMs?: number;
   retry?: RetryOption;
   logger?: Logger;
+  /**
+   * @internal Session-only hook. {@link LibrusSession.forChild} wires this in
+   * so an expired bearer token can be refreshed and the request retried once on
+   * a `401`. Not part of the public API — standalone clients omit it and keep
+   * the historical "throw on 401" behavior. Deliberately an inline type so the
+   * coupling surface stays internal.
+   */
+  onAuthInvalidated?: () => Promise<string>;
 }
 
 type SynergiaId = string | number;
@@ -230,15 +242,17 @@ const MESSAGES_SCOPE_HINT =
 export class SynergiaApiClient {
   private readonly fetchImpl: FetchLike;
   private readonly apiBaseUrl: string;
-  private readonly accessToken: string;
+  private accessToken: string;
   private readonly authMode: SynergiaAuthMode;
   private readonly messageBackend: MessageReadBackend | undefined;
   private readonly requestTimeoutMs: number;
   private readonly logger: Logger;
+  private readonly onAuthInvalidated: (() => Promise<string>) | undefined;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;
     this.authMode = options.authMode ?? "bearer";
+    this.onAuthInvalidated = options.onAuthInvalidated;
     this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
     const timeoutFetch = wrapFetchWithTimeout(
@@ -264,15 +278,17 @@ export class SynergiaApiClient {
     schema: TSchema,
     options: SynergiaRequestOptions = {},
   ): Promise<InferOutput<TSchema>> {
-    return requestGetJson(
-      this.fetchImpl,
-      this.accessToken,
-      this.apiBaseUrl,
-      path,
-      schema,
-      options,
-      this.authMode,
-      this.logger,
+    return this.withAuthRefresh(() =>
+      requestGetJson(
+        this.fetchImpl,
+        this.accessToken,
+        this.apiBaseUrl,
+        path,
+        schema,
+        options,
+        this.authMode,
+        this.logger,
+      ),
     );
   }
 
@@ -280,15 +296,52 @@ export class SynergiaApiClient {
     path: string,
     options: SynergiaRequestOptions = {},
   ): Promise<SynergiaBinaryResult> {
-    return requestGetBinary(
-      this.fetchImpl,
-      this.accessToken,
-      this.apiBaseUrl,
-      path,
-      options,
-      this.authMode,
-      this.logger,
+    return this.withAuthRefresh(() =>
+      requestGetBinary(
+        this.fetchImpl,
+        this.accessToken,
+        this.apiBaseUrl,
+        path,
+        options,
+        this.authMode,
+        this.logger,
+      ),
     );
+  }
+
+  /**
+   * Run a GET request, refreshing the bearer token and retrying **once** if the
+   * session supplied an `onAuthInvalidated` callback and the request fails with
+   * a `401`. `run` reads `this.accessToken` at call-time, so the retry uses the
+   * freshly refreshed token. Without a callback the original error propagates
+   * unchanged, preserving the standalone-client contract.
+   *
+   * Safe only for idempotent (GET) requests — see the invariant note in
+   * `request.ts`.
+   */
+  private async withAuthRefresh<T>(run: () => Promise<T>): Promise<T> {
+    try {
+      return await run();
+    } catch (error) {
+      if (!this.onAuthInvalidated || !isUnauthorized(error)) {
+        throw error;
+      }
+
+      this.accessToken = await this.onAuthInvalidated();
+
+      try {
+        return await run();
+      } catch (retryError) {
+        if (isUnauthorized(retryError)) {
+          throw new LibrusAuthenticationError(
+            "Synergia request failed with 401 after refreshing the bearer token.",
+            { code: CODE_AUTH_REFRESH_FAILED, cause: retryError },
+          );
+        }
+
+        throw retryError;
+      }
+    }
   }
 
   private async withMessageAccessDiagnostics<T>(
@@ -886,4 +939,8 @@ export class SynergiaApiClient {
       homeworkCategoriesResponseSchema,
     );
   }
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof LibrusApiError && error.details?.status === 401;
 }

@@ -1,3 +1,10 @@
+/**
+ * Error code used when a session-layer bearer-token refresh still yields a 401.
+ * Surfaced on {@link LibrusAuthenticationError} so callers can distinguish a
+ * failed refresh from an initial authentication failure.
+ */
+export const CODE_AUTH_REFRESH_FAILED = "AUTH_REFRESH_FAILED";
+
 export interface LibrusErrorDetails {
   endpoint?: string;
   issues?: string[];
@@ -7,12 +14,21 @@ export interface LibrusErrorDetails {
   [key: string]: unknown;
 }
 
+export interface LibrusSdkErrorOptions {
+  cause?: unknown;
+}
+
 export class LibrusSdkError extends Error {
   readonly code: string;
   readonly details: LibrusErrorDetails | undefined;
 
-  constructor(code: string, message: string, details?: LibrusErrorDetails) {
-    super(message);
+  constructor(
+    code: string,
+    message: string,
+    details?: LibrusErrorDetails,
+    options?: LibrusSdkErrorOptions,
+  ) {
+    super(message, options);
     this.name = "LibrusSdkError";
     this.code = code;
     this.details = details;
@@ -30,9 +46,17 @@ export class LibrusApiError extends LibrusSdkError {
   }
 }
 
+export interface LibrusAuthenticationErrorOptions extends LibrusSdkErrorOptions {
+  code?: string;
+}
+
 export class LibrusAuthenticationError extends LibrusSdkError {
-  constructor(message = "Portal authentication failed") {
-    super("AUTHENTICATION_FAILED", message);
+  constructor(
+    message = "Portal authentication failed",
+    options: LibrusAuthenticationErrorOptions = {},
+  ) {
+    const { code = "AUTHENTICATION_FAILED", ...sdkOptions } = options;
+    super(code, message, undefined, sdkOptions);
     this.name = "LibrusAuthenticationError";
   }
 }

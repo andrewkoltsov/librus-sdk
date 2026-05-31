@@ -20,6 +20,12 @@ export interface SynergiaRequestOptions {
 
 export type SynergiaAuthMode = "bearer" | "cookie";
 
+// Invariant: every request helper here issues a GET. This keeps them safe to
+// replay — both the transient-failure retry (`wrapFetchWithRetry`) and the
+// session-layer 401 auth-refresh retry (`SynergiaApiClient.withAuthRefresh`)
+// assume idempotency. A future mutating helper (POST/PUT/DELETE) must NOT
+// inherit either retry path; add it with its own non-retrying request flow.
+
 const LIBRUS_MOBILE_ORIGIN = "app://librus";
 const LIBRUS_MOBILE_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 LibrusMobileApp";

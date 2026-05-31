@@ -16,6 +16,7 @@ import {
   type WiadomosciMessagesClientOptions,
 } from "./wiadomosci/WiadomosciMessagesClient.js";
 import {
+  LibrusApiError,
   LibrusConfigurationError,
   LibrusSdkError,
   type ChildAccount,
@@ -122,6 +123,12 @@ export class LibrusSession {
       >
     | undefined;
   private accountsCache?: SynergiaAccountsResponse;
+  /**
+   * In-flight bearer-token refreshes keyed by child id. Collapses concurrent
+   * refreshes for the same child to a single portal round-trip (stampede
+   * protection), so parallel `401`s trigger exactly one refresh.
+   */
+  private readonly refreshInFlight = new Map<string, Promise<string>>();
 
   constructor(options: LibrusSessionOptions) {
     if (options.authMode !== undefined) {
@@ -384,7 +391,55 @@ export class LibrusSession {
         ? await this.resolveChild(selectorOrChild)
         : selectorOrChild;
 
-    return new SynergiaApiClient(child.accessToken, this.synergiaClientOptions);
+    return new SynergiaApiClient(child.accessToken, {
+      ...this.synergiaClientOptions,
+      onAuthInvalidated: () => this.refreshBearerToken(child.id),
+    });
+  }
+
+  /**
+   * Re-fetch a fresh Synergia bearer token for a known child, reusing the
+   * cached portal login (and re-logging in if the portal session itself is
+   * dead). Concurrent calls for the same child share one in-flight promise.
+   */
+  async refreshBearerToken(childId: string | number): Promise<string> {
+    this.assertApiV3Backend("refreshBearerToken");
+
+    const key = String(childId);
+    const existing = this.refreshInFlight.get(key);
+
+    if (existing) {
+      return existing;
+    }
+
+    const promise = this.performBearerTokenRefresh(key).finally(() => {
+      this.refreshInFlight.delete(key);
+    });
+
+    this.refreshInFlight.set(key, promise);
+
+    return promise;
+  }
+
+  private async performBearerTokenRefresh(childId: string): Promise<string> {
+    const child = await this.resolveChild(childId);
+    const portalClient = this.getPortalClient();
+
+    await this.login();
+
+    try {
+      const fresh = await portalClient.getFreshSynergiaAccount(child.login);
+      return fresh.accessToken;
+    } catch (error) {
+      if (!isUnauthorized(error)) {
+        throw error;
+      }
+
+      // The cached portal session is dead. Force a fresh login and retry once.
+      await portalClient.login(this.getPortalCredentials());
+      const fresh = await portalClient.getFreshSynergiaAccount(child.login);
+      return fresh.accessToken;
+    }
   }
 
   async forChildWiadomosci(
@@ -483,6 +538,10 @@ export class LibrusSession {
       { apiBackend: this.apiBackend },
     );
   }
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof LibrusApiError && error.details?.status === 401;
 }
 
 function resolveApiBackend(env: NodeJS.ProcessEnv): ApiBackendEnvValue {
