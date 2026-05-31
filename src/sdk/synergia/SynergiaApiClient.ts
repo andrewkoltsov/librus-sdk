@@ -207,6 +207,8 @@ import {
   resolveRequestTimeoutMs,
   wrapFetchWithTimeout,
 } from "../requestTimeout.js";
+import { resolveRetryConfig, wrapFetchWithRetry } from "./retry.js";
+import type { RetryOption } from "./retry.js";
 import { noopLogger, type Logger } from "../logger.js";
 
 export interface SynergiaApiClientOptions {
@@ -215,6 +217,7 @@ export interface SynergiaApiClientOptions {
   authMode?: SynergiaAuthMode;
   messageBackend?: MessageReadBackend;
   requestTimeoutMs?: number;
+  retry?: RetryOption;
   logger?: Logger;
 }
 
@@ -238,10 +241,18 @@ export class SynergiaApiClient {
     this.authMode = options.authMode ?? "bearer";
     this.logger = options.logger ?? noopLogger;
     this.requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
-    this.fetchImpl = wrapFetchWithTimeout(
+    const timeoutFetch = wrapFetchWithTimeout(
       options.fetch ?? fetch,
       this.requestTimeoutMs,
     );
+    this.fetchImpl =
+      options.retry === false
+        ? timeoutFetch
+        : wrapFetchWithRetry(
+            timeoutFetch,
+            resolveRetryConfig(options.retry),
+            this.logger,
+          );
     this.apiBaseUrl = options.apiBaseUrl ?? "https://api.librus.pl/3.0";
     this.messageBackend = options.messageBackend;
   }

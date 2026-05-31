@@ -60,7 +60,12 @@ describe("SynergiaApiClient", () => {
       ),
     );
 
-    const client = new SynergiaApiClient("token", { fetch: fetchMock });
+    // retry disabled: this test asserts the 503 -> maintenance error mapping,
+    // not retry behavior (which has dedicated coverage in retry.test.ts).
+    const client = new SynergiaApiClient("token", {
+      fetch: fetchMock,
+      retry: false,
+    });
 
     await expect(client.getMe()).rejects.toMatchObject({
       code: "SERVICE_MAINTENANCE",

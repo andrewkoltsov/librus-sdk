@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Automatic retry with exponential backoff and jitter for transient Synergia
+  failures (`408, 425, 429, 500, 502, 503, 504`). Idempotent methods
+  (`GET`/`HEAD`) only by default, honors `Retry-After` on `429`, and respects an
+  in-flight `AbortSignal`. Configurable via `SynergiaApiClientOptions.retry`, or
+  disable with `retry: false`. This changes default SDK behavior: child-scoped
+  requests now retry transient failures instead of failing immediately.
 - Generated OpenAPI documents for the supported `gateway_api_20` and
   `wiadomosci.librus.pl/api` surfaces.
 - Secret-safe SDK logging hooks for Portal login and Synergia request lifecycle
