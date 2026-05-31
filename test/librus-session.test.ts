@@ -1149,7 +1149,7 @@ describe("LibrusSession token refresh", () => {
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
   });
 
-  it("reuses the already-refreshed token when a delayed 401 fires after the in-flight refresh cleared", async () => {
+  it("refreshBearerToken always triggers a portal call regardless of the latest-token cache", async () => {
     const child = createChild({
       id: 101,
       login: "child-login",
@@ -1173,13 +1173,12 @@ describe("LibrusSession token refresh", () => {
       portalClient,
     });
 
-    // First refresh completes and clears the in-flight map.
     const first = await session.refreshBearerToken(101);
     expect(first).toBe(REFRESH_SECRETS.freshToken);
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
 
-    // A second explicit refresh (no stale-token context) always goes through
-    // to the portal — the stale-token dedup is internal to onAuthInvalidated.
+    // A second explicit refresh (no stale-token context) always goes to the
+    // portal — the stale-token short-circuit is internal to onAuthInvalidated.
     getFreshSynergiaAccount.mockResolvedValue(
       createChild({
         id: 101,
@@ -1192,7 +1191,7 @@ describe("LibrusSession token refresh", () => {
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(2);
   });
 
-  it("single-client parallel requests reuse the first refresh when both get a stale-token 401", async () => {
+  it("single-client parallel 401s collapse to one portal refresh even when the second 401 arrives after the first refresh clears", async () => {
     const child = createChild({
       id: 101,
       login: "child-login",
@@ -1209,14 +1208,27 @@ describe("LibrusSession token refresh", () => {
       }),
     );
 
-    const seenAuth: Array<string | undefined> = [];
-    // Stale token → 401; fresh token → 200.
+    // Gate: hold the second stale-token 401 response so it arrives only after
+    // the first refresh has fully completed. Released via vi.waitFor below so
+    // that a macrotask boundary guarantees latestTokenPerChild is set.
+    let releaseGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
+    let callCount = 0;
     const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      callCount++;
       const auth = authHeaderOf(init);
-      seenAuth.push(auth);
-      return auth === `Bearer ${REFRESH_SECRETS.staleToken}`
-        ? unauthorizedResponse()
-        : luckyNumberResponse();
+      const isStale = auth === `Bearer ${REFRESH_SECRETS.staleToken}`;
+
+      if (callCount === 2 && isStale) {
+        // Deterministically delay this second stale 401 until after
+        // performBearerTokenRefresh has set latestTokenPerChild.
+        await gate;
+      }
+
+      return isStale ? unauthorizedResponse() : luckyNumberResponse();
     });
 
     const session = new LibrusSession({
@@ -1230,18 +1242,30 @@ describe("LibrusSession token refresh", () => {
 
     const client = await session.forChild(child);
 
-    // Fire two requests in parallel. Each captures the stale token before
-    // run() executes, so the second delayed 401 correctly identifies its token
-    // as stale and reuses the fresh-1 produced by the first refresh.
-    const [a, b] = await Promise.all([
+    // Fire both requests. The second stale 401 is held by the gate.
+    const allPromise = Promise.all([
       client.getLuckyNumber(),
       client.getLuckyNumber(),
     ]);
+
+    // A macrotask boundary guarantees all pending microtasks (including
+    // latestTokenPerChild.set inside performBearerTokenRefresh) have run.
+    await vi.waitFor(() => {
+      expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
+    });
+
+    // Release the gate. The second stale 401 now arrives after the refresh,
+    // exercising the latestTokenPerChild short-circuit path in acquireFreshToken.
+    releaseGate();
+
+    const [a, b] = await allPromise;
 
     expect(a.LuckyNumber.LuckyNumber).toBe(13);
     expect(b.LuckyNumber.LuckyNumber).toBe(13);
     // Exactly one portal refresh, not two.
     expect(getFreshSynergiaAccount).toHaveBeenCalledTimes(1);
+    // Four fetch calls: stale×2 (initial requests), fresh×2 (retries).
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("forChild with a stale ChildAccount object starts with the refreshed token after a refresh", async () => {
