@@ -97,7 +97,7 @@ export function wrapFetchWithTimeout(
   };
 }
 
-function combineAbortSignals(
+export function combineAbortSignals(
   timeoutSignal: AbortSignal,
   upstreamSignal: AbortSignal | null | undefined,
 ): { cleanup: () => void; signal: AbortSignal } {
