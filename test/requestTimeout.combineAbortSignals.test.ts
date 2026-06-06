@@ -1,6 +1,9 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import { combineAbortSignals } from "../src/sdk/requestTimeout.js";
+
+const FAST_CHECK_SETTINGS = { numRuns: 200, seed: 20260404 } as const;
 
 describe("combineAbortSignals", () => {
   it("returns timeout signal directly when upstream is undefined", () => {
@@ -91,5 +94,39 @@ describe("combineAbortSignals", () => {
     expect(signal.aborted).toBe(true);
     expect(signal.reason).toBe("first");
     cleanup();
+  });
+});
+
+describe("combineAbortSignals — property", () => {
+  it("aborts exactly once with the first reason for any abort ordering", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("timeout", "upstream"),
+        fc.string(),
+        fc.string(),
+        (firstSource, firstReason, secondReason) => {
+          const tc = new AbortController();
+          const up = new AbortController();
+          const { signal, cleanup } = combineAbortSignals(tc.signal, up.signal);
+
+          let abortCount = 0;
+          signal.addEventListener("abort", () => {
+            abortCount += 1;
+          });
+
+          const [first, second] =
+            firstSource === "timeout" ? [tc, up] : [up, tc];
+          first.abort(firstReason);
+          second.abort(secondReason);
+
+          expect(signal.aborted).toBe(true);
+          expect(abortCount).toBe(1);
+          expect(signal.reason).toBe(firstReason);
+
+          cleanup();
+        },
+      ),
+      FAST_CHECK_SETTINGS,
+    );
   });
 });
