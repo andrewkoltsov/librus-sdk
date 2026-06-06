@@ -79,4 +79,22 @@ describe("parseApiResponse — issue truncation", () => {
 
     expect(err.details?.endpoint).toBe(ENDPOINT);
   });
+
+  it("never leaks received payload values into issue summaries", () => {
+    const secretSchema = v.object({
+      password: v.number(),
+      token: v.number(),
+    });
+    const err = throwingParse(secretSchema, {
+      password: "hunter2-SECRET",
+      token: "Bearer-LEAK",
+    });
+    const issues = err.details?.issues ?? [];
+
+    expect(issues.length).toBeGreaterThan(0);
+    for (const issue of issues) {
+      expect(issue).not.toContain("hunter2-SECRET");
+      expect(issue).not.toContain("Bearer-LEAK");
+    }
+  });
 });
