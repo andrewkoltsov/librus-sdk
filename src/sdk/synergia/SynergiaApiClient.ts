@@ -251,8 +251,7 @@ export class SynergiaApiClient {
   private readonly requestTimeoutMs: number;
   private readonly logger: Logger;
   private readonly onAuthInvalidated:
-    | ((staleToken: string) => Promise<string>)
-    | undefined;
+    ((staleToken: string) => Promise<string>) | undefined;
 
   constructor(accessToken: string, options: SynergiaApiClientOptions = {}) {
     this.accessToken = accessToken;

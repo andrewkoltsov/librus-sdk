@@ -74,8 +74,7 @@ export interface GradeAveragesListResponse extends SynergiaResponseEnvelope {
 }
 
 export type GradeAveragesResponse =
-  | GradeAveragesListResponse
-  | SynergiaStatusResponse;
+  GradeAveragesListResponse | SynergiaStatusResponse;
 
 export interface GradeCategoriesResponse extends SynergiaResponseEnvelope {
   Categories: GradeCategory[];
@@ -107,9 +106,7 @@ export interface BehaviourPointCommentsResponse extends SynergiaResponseEnvelope
 
 export interface BehaviourSystemProposalResponse extends SynergiaResponseEnvelope {
   BehaviourGradesSystemProposal:
-    | BehaviourSystemProposal
-    | BehaviourSystemProposal[]
-    | null;
+    BehaviourSystemProposal | BehaviourSystemProposal[] | null;
 }
 
 export interface DescriptiveGradesResponse extends SynergiaResponseEnvelope {
@@ -149,8 +146,7 @@ export interface PointGradeAveragesListResponse extends SynergiaResponseEnvelope
 }
 
 export type PointGradeAveragesResponse =
-  | PointGradeAveragesListResponse
-  | SynergiaStatusResponse;
+  PointGradeAveragesListResponse | SynergiaStatusResponse;
 
 export interface PointGradeCategoriesResponse extends SynergiaResponseEnvelope {
   Categories: PointGradeCategory[];

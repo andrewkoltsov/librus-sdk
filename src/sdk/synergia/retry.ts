@@ -278,8 +278,7 @@ export async function withRetry<T>(
 
     let decision: RetryDecision;
     let outcome:
-      | { kind: "value"; value: T }
-      | { kind: "error"; error: unknown };
+      { kind: "value"; value: T } | { kind: "error"; error: unknown };
 
     try {
       const value = await fn(attempt);
