@@ -311,8 +311,7 @@ export function writeChildScopedOutput(
   child: ChildAccount,
   data: unknown,
   buildTextSections:
-    | ((child: ChildAccountSummary) => CliTextSection[])
-    | null = null,
+    ((child: ChildAccountSummary) => CliTextSection[]) | null = null,
 ): void {
   const summary = summarizeChildAccount(child);
   const payload = {
