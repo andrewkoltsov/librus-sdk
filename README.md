@@ -264,8 +264,8 @@ under `data.photo`, including base64 content in `data.photo.content`. The CLI
 file.
 
 `HomeWork.LessonNo` mirrors the live Librus payload and may be `string`,
-`number`, or `null`. `HomeWork.Subject` may be omitted entirely or returned as
-`null`.
+`number`, or `null`. `HomeWork.Class` and `HomeWork.Subject` may be omitted
+entirely or returned as `null`.
 
 ### Constructor And Helper Option Shapes
 

@@ -169,7 +169,7 @@ describe("SynergiaApiClient", () => {
     expectTokenGetRequest(fetchMock, "https://api.librus.pl/3.0/Attendances");
   });
 
-  it("accepts homework payloads with mixed lesson numbers and missing subjects", async () => {
+  it("accepts homework payloads with mixed lesson numbers, missing classes, and missing subjects", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -193,7 +193,6 @@ describe("SynergiaApiClient", () => {
             {
               AddDate: "2026-03-30 08:00:00",
               Category: null,
-              Class: null,
               Content: "Solve exercises 1-3",
               CreatedBy: null,
               Date: "2026-03-30",
@@ -237,6 +236,8 @@ describe("SynergiaApiClient", () => {
       Id: 10,
       Url: "https://api.librus.pl/3.0/Subjects/10",
     });
+    expect(Object.hasOwn(response.HomeWorks[1]!, "Class")).toBe(false);
+    expect(response.HomeWorks[1]?.Class).toBeUndefined();
     expect(Object.hasOwn(response.HomeWorks[1]!, "Subject")).toBe(false);
     expect(response.HomeWorks[1]?.Subject).toBeUndefined();
     expect(response.HomeWorks[2]?.Subject).toBeNull();
