@@ -89,17 +89,20 @@ jobs:
           PACKAGE_NAME: librus-sdk
           PACKAGE_VERSION: ${{ steps.package_metadata.outputs.version }}
         run: |
-          for attempt in 1 2 3; do
+          # npm can take a few minutes to serve a freshly published version
+          # ("Your package is being processed"), so wait up to ~5 minutes.
+          max_attempts=30
+          for attempt in $(seq 1 "$max_attempts"); do
             if node ./scripts/verify-published-package.mjs "$PACKAGE_NAME" "$PACKAGE_VERSION"; then
               exit 0
             fi
 
-            if [ "$attempt" -eq 3 ]; then
-              echo "Published package metadata for $PACKAGE_NAME@$PACKAGE_VERSION did not expose attestations/signatures after 3 attempts." >&2
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "Published package metadata for $PACKAGE_NAME@$PACKAGE_VERSION did not expose attestations/signatures after $max_attempts attempts." >&2
               exit 1
             fi
 
-            sleep 5
+            sleep 10
           done
 
       - name: Check whether GitHub Release already exists
