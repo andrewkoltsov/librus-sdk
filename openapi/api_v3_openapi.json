@@ -3313,7 +3313,6 @@
               "required": [
                 "AddDate",
                 "Category",
-                "Class",
                 "Content",
                 "CreatedBy",
                 "Date",

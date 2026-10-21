@@ -5,7 +5,7 @@ import type { SynergiaResponseEnvelope } from "./common.js";
 export interface HomeWork {
   AddDate: string;
   Category: JsonObject | ApiRef | null;
-  Class: JsonObject | ApiRef | null;
+  Class?: JsonObject | ApiRef | null;
   Content: string;
   CreatedBy: JsonObject | ApiRef | null;
   Date: string;
