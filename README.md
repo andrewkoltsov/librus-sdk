@@ -39,7 +39,7 @@ supply-chain signals over time.
 
 ## Install
 
-This package requires Node.js 22 or newer.
+This package requires Node.js 22.12 or newer.
 
 Install the package from npm:
 

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-21
+
 ### Added
 
 - Automatic session-layer bearer-token refresh for child-scoped clients. A
@@ -28,10 +30,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Secret-safe SDK logging hooks for Portal login and Synergia request lifecycle
   events, plus CLI `--verbose` and `LIBRUS_LOG_LEVEL` stderr diagnostics.
 
+### Changed
+
+- Minimum supported Node.js is now 22.12.0 (previously 22.x), required by the
+  CLI's `commander` 15 upgrade, which is ESM-only and relies on
+  `require(esm)` support.
+
 ### Fixed
 
 - Homework validation now accepts live `HomeWork.Class` values that are omitted
   entirely or returned as `null`.
+
+### Security
+
+- `LibrusResponseValidationError.details.issues` no longer includes the
+  received payload value. Issue summaries are now built from the field label
+  and expected type only, so secrets or personal data echoed back by Librus
+  cannot leak through `details.issues`.
+- Development dependency lockfile now resolves `brace-expansion` to `5.0.12`,
+  `nanoid` to `3.3.20`, and `source-map-js` to `1.2.2`, removing disclosed
+  high-severity advisories (`GHSA-q2hr-2g5m-vwhr`, `GHSA-qhr7-859c-m2p7`,
+  `GHSA-6j4f-fj2g-mc7p`, `GHSA-rgw5-rvv9-x895`, `GHSA-2v37-7h3g-55p8`,
+  `GHSA-68fv-2mgg-jv7q`) from maintainer tooling. Published SDK and CLI runtime
+  dependencies are unchanged by these fixes.
 
 ## [0.7.1] - 2026-05-20
 
