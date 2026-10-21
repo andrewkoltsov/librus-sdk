@@ -112,5 +112,8 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "allowScripts": {
+    "esbuild": true
   }
 }
