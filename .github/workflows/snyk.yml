@@ -15,6 +15,9 @@ permissions:
 jobs:
   test:
     name: Dependency vulnerability scan
+    # GitHub does not expose secrets to PRs from forks, so SNYK_TOKEN is always
+    # empty there. Skip instead of failing; the npm audit gate still runs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
