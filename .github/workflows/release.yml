@@ -15,7 +15,7 @@ concurrency:
 jobs:
   publish:
     name: Publish release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       id-token: write
@@ -79,6 +79,11 @@ jobs:
           else
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Build package
+        # npm publish reads package.json before prepublishOnly builds dist/,
+        # and warns that every "bin" target is missing. Build first.
+        run: npm run build
 
       - name: Publish package to npm
         if: steps.npm_status.outputs.published != 'true'
