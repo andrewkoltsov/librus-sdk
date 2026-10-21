@@ -28,6 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Secret-safe SDK logging hooks for Portal login and Synergia request lifecycle
   events, plus CLI `--verbose` and `LIBRUS_LOG_LEVEL` stderr diagnostics.
 
+### Fixed
+
+- Homework validation now accepts live `HomeWork.Class` values that are omitted
+  entirely or returned as `null`.
+
 ## [0.7.1] - 2026-05-20
 
 ### Fixed
