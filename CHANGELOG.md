@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- README now has a Common Patterns section with worked examples for explicit
+  child selection, a custom `fetch`, and timeout/retry tuning.
+
 ## [0.8.0] - 2026-10-21
 
 ### Added

@@ -267,6 +267,89 @@ file.
 `number`, or `null`. `HomeWork.Class` and `HomeWork.Subject` may be omitted
 entirely or returned as `null`.
 
+### Common Patterns
+
+Choose a child explicitly (`api_v3`). `forChild(...)` accepts a numeric id as a
+string, a unique login, or a `ChildAccount` returned by `listChildren()`.
+Selector misses throw `LibrusSdkError` with code `CHILD_NOT_FOUND` or
+`AMBIGUOUS_CHILD`:
+
+```ts
+import { LibrusSdkError, LibrusSession } from "librus-sdk";
+
+const session = LibrusSession.fromEnv();
+const children = await session.listChildren();
+
+for (const child of children) {
+  console.log(child.id, child.login, child.studentName);
+}
+
+try {
+  const client = await session.forChild(process.env.LIBRUS_CHILD ?? "");
+  console.log(await client.getLuckyNumber());
+} catch (error) {
+  if (error instanceof LibrusSdkError && error.code === "CHILD_NOT_FOUND") {
+    console.error(
+      "Pick one of:",
+      children.map((child) => child.login),
+    );
+  } else {
+    throw error;
+  }
+}
+```
+
+Supply a custom `fetch`, for example to add a header or route through
+instrumentation. Pass it to every client the session creates; `PortalClient`
+wraps it in its own cookie handling:
+
+```ts
+import { LibrusSession } from "librus-sdk";
+
+const tracedFetch: typeof fetch = async (input, init) => {
+  const started = Date.now();
+  const response = await fetch(input, init);
+  console.debug("librus request", response.status, Date.now() - started);
+  return response;
+};
+
+const session = LibrusSession.fromEnv(process.env, {
+  portalClientOptions: { fetch: tracedFetch },
+  synergiaClientOptions: { fetch: tracedFetch },
+});
+const client = await session.forChild("child-login");
+await client.getGrades();
+```
+
+Tune timeouts and retries. `requestTimeoutMs` bounds each attempt and is the
+session-wide default unless a client option sets its own; it also overrides
+`LIBRUS_TIMEOUT_MS`. `retry` shapes the backoff for child-scoped reads. A
+timed-out attempt is not retried and surfaces as `LibrusNetworkTimeoutError`:
+
+```ts
+import { LibrusNetworkTimeoutError, LibrusSession } from "librus-sdk";
+
+const session = LibrusSession.fromEnv(process.env, {
+  requestTimeoutMs: 10_000,
+  synergiaClientOptions: {
+    retry: { maxAttempts: 5, baseDelayMs: 500, maxDelayMs: 8_000 },
+  },
+});
+const client = await session.forChild("child-login");
+
+try {
+  await client.getAttendances();
+} catch (error) {
+  if (error instanceof LibrusNetworkTimeoutError) {
+    console.error("Librus timed out", error.details);
+  } else {
+    throw error;
+  }
+}
+```
+
+Use `synergiaClientOptions: { retry: false }` to fail fast instead.
+
 ### Constructor And Helper Option Shapes
 
 These tables describe the option objects currently accepted by the exported
