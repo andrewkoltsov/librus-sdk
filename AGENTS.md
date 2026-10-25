@@ -10,14 +10,15 @@ Guidance for coding agents working in this repository.
   - `gateway_api_20`: school-issued login/password authentication plus cookie-backed `https://synergia.librus.pl/gateway/api/2.0` requests.
 - `api_v3` is multi-child. `gateway_api_20` is already scoped to one account and must not pretend to support Portal-style child switching.
 - Do not reintroduce the legacy `synergia.librus.pl` HTML-scraping approach.
-- The package exposes both an SDK entrypoint and a CLI binary named `librus`.
+- The package exposes an SDK entrypoint and a CLI binary named `librus-sdk`; a deprecated `librus` alias remains for compatibility and prints a warning before delegating to `librus-sdk`.
+- Beyond the two `LIBRUS_API_BACKEND` values, `api_v3`/Portal sessions can also reach the portal-authenticated `wiadomosci.librus.pl/api` inbox surface via `forChildWiadomosci()`, and a research-oriented `BffApiClient` (`testbff.librus.pl`). These are opt-in surfaces layered on `api_v3`, not separate backend selections.
 
 ## Repository layout
 
-- `src/sdk/` contains the public SDK surface, auth helpers, API clients, and domain models.
-- `src/cli/` contains the CLI entrypoint and subcommands.
-- `test/` contains Vitest coverage for SDK and CLI behavior.
-- `docs/` contains reverse-engineering and verification notes. Treat these as background material, not product API.
+- `src/sdk/` contains the public SDK surface, auth helpers (`auth/`, `portal/`, `synergia/`), the `wiadomosci` and `bff` client surfaces, domain models (`models/`), and request validation (`validation/`).
+- `src/cli/` contains the CLI entrypoint (`main.ts`, plus the deprecated `librus` alias in `deprecatedMain.ts`), subcommands (`commands/`), and output formatting (`output/`).
+- `test/` contains Vitest unit coverage (`test/**/*.test.ts`), plus a separate `test/integration/` suite that runs under Node's built-in test runner (`node --test`) against live credentials — see "Testing guidance" below.
+- `docs/` contains reverse-engineering notes, dated verification logs, and `docs/releasing.md`. Treat these as background material, not product API.
 
 ## Development workflow
 
@@ -25,6 +26,8 @@ Guidance for coding agents working in this repository.
 - Build with `npm run build`.
 - Run tests with `npm test`.
 - Run the CLI locally with `npm run cli -- <command>`.
+- Lint with `npm run lint` (or `npm run lint:fix`); format with `npm run format` (or `npm run format:check`).
+- `npm run validate` runs lint, format check, build, coverage tests, and `pack:check` together — this is what `prepublishOnly` and CI expect to pass.
 - `master` is protected. Do not commit directly to `master`.
 - For GitHub PR work, prefer the GitHub connector for metadata, diffs, comments, and status inspection. If the connector can read a PR but cannot merge it with `403 Resource not accessible by integration`, fall back to the authenticated `gh` CLI for the merge and include an expected-head guard such as `gh pr merge <number> --match-head-commit <sha>`.
 - For parallel work, prefer a separate `git worktree` for each active feature so changes do not interfere with each other.
@@ -77,6 +80,7 @@ npm run cli -- grades list --child <id-or-login>
 - Add or update Vitest coverage for behavior changes.
 - Prefer focused unit tests alongside the closest existing suite in `test/`.
 - Avoid tests that depend on live Librus credentials or network access unless the task explicitly calls for manual verification.
+- Integration suites (`npm run test:integration*`) build the project and run against real credentials via `--env-file=.env.*.local` using Node's built-in test runner, not Vitest. Only run these when the task explicitly calls for live verification.
 
 ## Change guidance
 
