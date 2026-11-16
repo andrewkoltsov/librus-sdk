@@ -115,5 +115,8 @@
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "overrides": {
+    "minimatch": "^11.0.4"
   }
 }
